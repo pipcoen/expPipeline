@@ -1,5 +1,10 @@
-function [pathOut] = pathFinder(pathType, varargin) 
-inp = inputParser;
+function [pathOut] = pathFinder(pathType, mouseName, expDate, sessionNum) 
+if ~exist('pathType', 'var'); error('pathType required'); end
+if ~exist('mouseNam', 'var'); mouseName = ''; end
+if ~exist('expDate', 'var'); expDate = '0000-00-00'; end
+if ~exist('sessionNum', 'var'); sessionNum = ''; end
+
+    
 addRequired(inp,'pathType',@ischar);
 addOptional(inp,'mouseName', '',@ischar);
 addOptional(inp,'expDate', '0000-00-00',@ischar);
