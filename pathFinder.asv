@@ -25,11 +25,15 @@ switch lower(pathType)
     case 'shared'; pathOut = [sharedFolder processedFileName];
     case 'suite2poutput'; pathOut = [suite2POutput mousePath(1:end-1)];
     case 'explist'
-        if directoryCheck(1); pathOut = [processedFolder 'expList.mat'];
-        elseif  directoryCheck(2); pathOut = [sharedFolder 'expList.mat'];
-        else, error('No access to experimental list')
+        if a == directoryCheck(1); pathOut = [processedFolder 'expList.mat'];
+        elseif  exist([labL 'eLst.mat'], 'file'); 
+        else, error('No access to experimental list');
         end
-    case 'directorycheck'; pathOut = directoryCheck;
-    case 'processedfolder'; pathOut = processedFolder;
-    case 'sharedfolder'; pathOut = sharedFolder;
+    case 'bothelst'
+        pathOut{1,1} = [savL 'eLst.mat'];
+        pathOut{2,1} = [labL 'eLst.mat'];
+    case 'savl' 
+       pathOut = savL;
+    case 'labl'
+       pathOut = labL;
 end
