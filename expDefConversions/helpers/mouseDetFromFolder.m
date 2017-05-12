@@ -1,7 +1,7 @@
-function [mouseNam, exptDate, sessnNum] = mouseDetFromFolder(foldrNam)
+function [subject, expDate, sessionNum] = mouseDetFromFolder(foldrNam)
 sepPoint = find(foldrNam =='/' | foldrNam =='\');
 sepPoint(sepPoint < strfind(foldrNam, 'expInfo')) = [];
-mouseNam = foldrNam(sepPoint(1)+1:sepPoint(2)-1);
-exptDate = foldrNam(sepPoint(2)+1:sepPoint(3)-1);
-sessnNum = foldrNam(sepPoint(3)+1:end);
+subject = foldrNam(sepPoint(1)+1:sepPoint(2)-1);
+expDate = foldrNam(sepPoint(2)+1:sepPoint(3)-1);
+sessionNum = foldrNam(sepPoint(3)+1:end);
 end
