@@ -1,6 +1,6 @@
 function [pathOut] = pathFinder(pathType, subject, expDate, sessionNum) 
 if ~exist('pathType', 'var'); error('pathType required'); end
-if ~exist('subjectNam', 'var'); subject = ''; end
+if ~exist('subject', 'var'); subject = ''; end
 if ~exist('expDate', 'var'); expDate = '0000-00-00'; end
 if ~exist('sessionNum', 'var'); sessionNum = ''; end
 

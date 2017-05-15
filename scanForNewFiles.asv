@@ -66,19 +66,19 @@ folderList = cellfun(@(x,y,z) [x, y{1}, z], folderList, {expList.rigNameType}', 
 [~, uIdx] = unique(folderList);
 duplicates = unique(folderList(setdiff(1:length(folderList),uIdx)));
 for i = 1:length(duplicates)
-    tDat = expList(strcmp(folderList,duplicates{i}));
-    if strcmp(tDat(1).rigNameType{2}, 'training') || sum([tDat.excluded]>0)>=length(tDat)-1 || ...
-            sum([tDat.excluded]>0)+sum([tDat.validRepeat])== length(tDat)
+    tIdx = strcmp(duplicates,dupF{i});
+    dupT = expList(tIdx);
+    if strcmp(dupT(1).rTyp, 'trnR') || sum([dupT.excluded]>0)>=length(dupT)-1 || ...
+            sum([dupT.excluded]>0)+sum([dupT.valR])== length(dupT)
         continue;
     end
-    
-    [selF] = listdlg('ListString', cellfun(@num2str, {tDat.eDur}', 'uni', 0), ...
+    [selF] = listdlg('ListString', cellfun(@num2str, {dupT.eDur}', 'uni', 0), ...
         'PromptString', [{'Select durations to REMOVE for:'} ...
-        {[tDat(1).subject ' ' tDat(1).expDate ' ' tDat(1).eDef]} {''}]);
-    [tDat(:).validRepeat] = deal(1);
-    [tDat(selF).excluded] = deal(1);
-    [tDat(selF).validRepeat] = deal(0);
-    expList(strcmp(folderList,duplicates{i})) = tDat;
+        {[dupT(1).subject ' ' dupT(1).expDate ' ' dupT(1).eDef]} {''}]);
+    [dupT(:).valR] = deal(1);
+    [dupT(selF).excluded] = deal(1);
+    [dupT(selF).valR] = deal(0);
+    expList(tIdx) = dupT;
 end
 
 fLst = cellfun(@fileparts, {expList.fNam}', 'uni', 0);
@@ -88,22 +88,22 @@ dupF = fLst; dupF(uIdx) = [];
 dupF = unique(dupF);
 for i = 1:length(dupF)
     tIdx = (strcmp(fLst,dupF{i}).*([expList.excluded]'==0))>0;
-    tDat = expList(tIdx);
-    if length(tDat) < 2; continue; end
-    if strcmp(tDat(1).rTyp, 'trnR')
+    dupT = expList(tIdx);
+    if length(dupT) < 2; continue; end
+    if strcmp(dupT(1).rTyp, 'trnR')
         fprintf('Multiple training files for %s %s. Keeping largest\n', ...
-            tDat(1).subject, tDat(1).expDate);
-        mIdx = num2cell([tDat.eDur] ~= max([tDat.eDur]));
-        [tDat.excluded] = mIdx{:};
-        expList(tIdx) = tDat;
-    elseif strcmp(tDat(1).rTyp, 'twoR') && length(unique({tDat.out2})) > 1
-        nFOV = cellfun(@isempty, (strfind({tDat.out2}', 'NewFOV')));
-        [fBas, fExt] = cellfun(@fileparts, {tDat.out2}', 'uni', 0);
+            dupT(1).subject, dupT(1).expDate);
+        mIdx = num2cell([dupT.eDur] ~= max([dupT.eDur]));
+        [dupT.excluded] = mIdx{:};
+        expList(tIdx) = dupT;
+    elseif strcmp(dupT(1).rTyp, 'twoR') && length(unique({dupT.out2})) > 1
+        nFOV = cellfun(@isempty, (strfind({dupT.out2}', 'NewFOV')));
+        [fBas, fExt] = cellfun(@fileparts, {dupT.out2}', 'uni', 0);
         sExt = fExt(nFOV);
         sExt(1:end-1) = cellfun(@(x) [x '_'], fExt(1:end-1), 'uni', 0);
-        [tDat(nFOV).out2] = deal([fBas{1} sep cell2mat(sExt')]);
-        [tDat(nFOV).sessionNum] = deal({tDat(nFOV).sessionNum}');
-        expList(tIdx) = tDat;
+        [dupT(nFOV).out2] = deal([fBas{1} sep cell2mat(sExt')]);
+        [dupT(nFOV).sessionNum] = deal({dupT(nFOV).sessionNum}');
+        expList(tIdx) = dupT;
     end
 end
 expList = nestedSortStruct(expList, {'subject', 'expDate'});
