@@ -1,6 +1,6 @@
 function [expList] = scanForNewFiles(rebuildList)
 if ~exist('rebuildList', 'var'); rebuildList = false; end
-
+%#ok<*AGROW>
 expInfo = pathFinder('expInfo');
 if rebuildList; expList = []; else; load(pathFinder('expList')); end
 lastWeek = datestr(floor(now)-6:datenum(floor(now)), 'yyyy-mm-dd');
@@ -15,7 +15,7 @@ rigList = {'zym1', 'training'; 'zym2', 'training'; 'zym3', 'training'; ...
     'zooropa', 'widefield'; 'zgood', 'widefield'};
 %%
 if rebuildList; newBlocks = dir([expInfo '/PC*/**/*block*']);
-else; [~, nIdx] = setdiff({lastBlockFiles.folder}',{expList.folderName}'); 
+else; [~, nIdx] = setdiff({lastBlockFiles.folder}',{expList.rawFolder}'); 
     newBlocks = lastBlockFiles(nIdx);
 end
 tDat = struct;
@@ -34,12 +34,14 @@ for i = 1:length(newBlocks)
     tDat(i,1).rigNameType = rigList(strcmp(b.rigName, rigList(:,1)),:);
     if isfield(b, 'duration'); tDat(i,1).expDuration = b.duration; end
     tDat(i,1).sessionNum = sessionNum;
+    tDat(i,1).blockHelper = [tDat(i,1).expDef '_Blk_Proc.m'];
+    tDat(i,1).blockFunction = str2func(tDat(i,1).blockHelper);
     tDat(i,1).rawFolder = newBlocks(i).folder;
-    tDat(i,1).rawFile = pathFinder('block', subject, expDate, sessionNum);
-    tDat(i,1).rawTimeline = pathFinder('timeline', subject, expDate, sessionNum);
-    tDat(i,1).rawParams = pathFinder('parameters', subject, expDate, sessionNum);
-    tDat(i,1).processedData = pathFinder('processed', subject, expDate, sessionNum);
-    tDat(i,1).sharedData = pathFinder('shared', subject, expDate, sessionNum);
+    tDat(i,1).rawBlock = pathFinder('rawBlock', subject, expDate, sessionNum);
+    tDat(i,1).rawTimeline = pathFinder('rawTimeline', subject, expDate, sessionNum);
+    tDat(i,1).rawParams = pathFinder('rawParameters', subject, expDate, sessionNum);
+    tDat(i,1).processedData = pathFinder('processedData', subject, expDate, sessionNum);
+    tDat(i,1).sharedData = pathFinder('sharedData', subject, expDate, sessionNum);
     tDat(i,1).suite2POutput = pathFinder('suite2POutput', subject, expDate, sessionNum);
     tDat(i,1).validRepeat = 0;
     tDat(i,1).excluded = 0;
@@ -72,44 +74,41 @@ for i = 1:length(duplicates)
         continue;
     end
     
-    [selF] = listdlg('ListString', cellfun(@num2str, {tDat.eDur}', 'uni', 0), ...
+    [selF] = listdlg('ListString', cellfun(@num2str, {tDat.expDuration}', 'uni', 0), ...
         'PromptString', [{'Select durations to REMOVE for:'} ...
         {[tDat(1).subject ' ' tDat(1).expDate ' ' tDat(1).eDef]} {''}]);
     [tDat(:).validRepeat] = deal(1);
     [tDat(selF).excluded] = deal(1);
     [tDat(selF).validRepeat] = deal(0);
-    expList(strcmp(folderList,duplicates{i})) = tDat;
+    expList(strcmp(folderList,duplicates{i})) = tDat; 
 end
 
-fLst = cellfun(@fileparts, {expList.fNam}', 'uni', 0);
-fLst = cellfun(@(x,y) [x, y], fLst, {expList.rigN}', 'uni', 0);
-[~, uIdx] = unique(fLst);
-dupF = fLst; dupF(uIdx) = [];
-dupF = unique(dupF);
-for i = 1:length(dupF)
-    tIdx = (strcmp(fLst,dupF{i}).*([expList.excluded]'==0))>0;
-    tDat = expList(tIdx);
+folderList = cellfun(@fileparts, {expList.rawFolder}', 'uni', 0);
+folderList = cellfun(@(x,y) [x, y{2}], folderList, {expList.rigNameType}', 'uni', 0);
+[~, uIdx] = unique(folderList);
+duplicates = unique(folderList(setdiff(1:length(folderList),uIdx)));
+for i = 1:length(duplicates)
+    tDat = expList((strcmp(folderList,duplicates{i}).*([expList.excluded]'==0))>0);
     if length(tDat) < 2; continue; end
-    if strcmp(tDat(1).rTyp, 'trnR')
-        fprintf('Multiple training files for %s %s. Keeping largest\n', ...
-            tDat(1).subject, tDat(1).expDate);
-        mIdx = num2cell([tDat.eDur] ~= max([tDat.eDur]));
+    if strcmp(tDat(1).rigNameType{1}, 'training')
+        fprintf('Multiple training files for %s %s. Keeping largest\n', tDat(1).subject, tDat(1).expDate);
+        mIdx = num2cell([tDat.expDuration] ~= max([tDat.expDuration]));
         [tDat.excluded] = mIdx{:};
         expList(tIdx) = tDat;
-    elseif strcmp(tDat(1).rTyp, 'twoR') && length(unique({tDat.out2})) > 1
-        nFOV = cellfun(@isempty, (strfind({tDat.out2}', 'NewFOV')));
-        [fBas, fExt] = cellfun(@fileparts, {tDat.out2}', 'uni', 0);
-        sExt = fExt(nFOV);
-        sExt(1:end-1) = cellfun(@(x) [x '_'], fExt(1:end-1), 'uni', 0);
-        [tDat(nFOV).out2] = deal([fBas{1} sep cell2mat(sExt')]);
-        [tDat(nFOV).sessionNum] = deal({tDat(nFOV).sessionNum}');
+    elseif strcmp(tDat(1).rigNameType{1}, 'twophoton') && length(unique({tDat.out2})) > 1
+        newFOV = cellfun(@isempty, (strfind({tDat.suite2POutput}', 'NewFOV')));
+        [containingFolder, fileExtension] = cellfun(@fileparts, {tDat.suite2POutput}', 'uni', 0);
+        sExt = fileExtension(newFOV);
+        sExt(1:end-1) = cellfun(@(x) [x '_'], fileExtension(1:end-1), 'uni', 0);
+        [tDat(newFOV).out2] = deal([containingFolder{1} sep cell2mat(sExt')]);
+        [tDat(newFOV).sessionNum] = deal({tDat(newFOV).sessionNum}');
         expList(tIdx) = tDat;
     end
 end
 expList = nestedSortStruct(expList, {'subject', 'expDate'});
-sLoc = pathFinder('bothexpList'); 
-if exist(sLoc{1}, 'file'); save(sLoc{1}, 'expList'); end 
-if exist(sLoc{2}, 'file'); save(sLoc{2}, 'expList'); end 
+availableDirectories = pathFinder('directoryCheck'); 
+if availableDirectories(1); save(pathFinder('dropboxlist'), 'expList'); end 
+if availableDirectories(1); save(pathFinder('sharedlist'), 'expList'); end 
 end
 
 

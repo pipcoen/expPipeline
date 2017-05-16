@@ -31,6 +31,7 @@ for i = 1:size(expList,1)
     warning('on', 'MATLAB:load:variableNotFound');
     
     if exist(x.blockHelper, 'file'); end
+%     blockHelper = 
     if (~contains('blk',whoD) || rebuildProcessed(1)) && exist(x.blockHelper, 'file')
         convBlockFile(x);
     end
