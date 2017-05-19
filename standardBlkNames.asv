@@ -12,16 +12,14 @@ f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; ...
     'rewardDurSize'; 'interactSigOnDurAmp'; 'audVisThreshold'};
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 
-%Modify repeat on incorrect parameter field to deal with historical issues.
 if ~isfield(e, 'repeatNumValues')
     e.repeatNumValues = e.endTrialTimes*0+1; 
     [v(:).maxRepeatIncorrect] = deal(0);
-elseif isfield(v, 'maxRetryIfIncorrect')
-    v.maxRepeatIncorrect = v.maxRetryIfIncorrect;
-elseif ~isfield(v, 'maxRepeatIncorrect')   
+elseif isfield(v, 'maxRetryIfIncorrect'); 
+    v.interactDelay = p.interactPunishDelays(1);
+    
     [v(:).maxRetryIfIncorrect] = deal(9); 
 end
-
 
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if ~isfield(v, 'visualContrast')
