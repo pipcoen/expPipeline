@@ -49,7 +49,7 @@ p = load(x.rawParams); p = p.parameters;
 
 if ~strcmp(x.rigNameType{2}, 'training')
     t = load(x.rawTimeline); t=t.Timeline;
-    b.be2t = alignBlockTimes(b, t);
+    b.blockTimeOffset = alignBlockTimes(b, t);
 end
 [b, prm] = standardBlkNames(b, p);
 
@@ -57,7 +57,7 @@ x.validTrials = b.events.repeatNumValues(1:length(b.events.endTrialTimes))==1;
 
 if isfield(b.events, 'feedbackValues')
     repeatIdx = diff([b.events.repeatNumValues(1:length(x.validTrials)) 1])<0;
-    x.repeatNum = int8([b.paramsValues(x.validTrials).maxRetryIfIncorrect]>0 & b.events.feedbackValues(x.validTrials)<0);
+    x.repeatNum = int8([b.paramsValues(x.validTrials).maxRepeatIncorrect]>0 & b.events.feedbackValues(x.validTrials)<0);
     if x.repeatNum(end) == 1 && x.validTrials(end)==1; x.repeatNum(end) = 0; end
     x.repeatNum(x.repeatNum>0) = b.events.repeatNumValues(repeatIdx)-1;
 end
@@ -81,7 +81,7 @@ prm.totalTrials = length(b.events.endTrialTimes);
 prm.validTrials = sum(x.validTrials);
 prm.minutesOnRig = round((b.experimentEndedTime-b.experimentInitTime)/60);
 
-x.blockFunciton = str2func(x.blockHelper);
+x.blockFunciton = str2func(x.blockHelper(1:end-2));
 [blk, prm] = x.blockFunciton(x, b, blk, prm); %#ok
 
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
