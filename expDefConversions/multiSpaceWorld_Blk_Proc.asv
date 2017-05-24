@@ -10,7 +10,7 @@ audLeftRight = [audAmplitude.*(audInitialAzimuth<0) audAmplitude.*(audInitialAzi
 visContrast = single(cell2mat({b.paramsValues.visualContrast}')); 
 visLeftRight = [visContrast.*(visInitialAzimuth<0) visContrast.*visInitialAzimuth>0];
 
-stmV = indexByTrial(blk, b.events.visStimOnOffTimes, b.events.visStimOnOffValues);
+stmV = indexByTrial(b.events.stmOnOff, b.events.stmVTimes);
 blk.stmV = indexByTrial(blk, stmV(:,1), stmV, [1,1]);
 stmA = sigOnOffTimes(b.events.stmAValues, b.events.stmATimes);
 blk.stmA = indexByTrial(blk, stmA(:,1), stmA(:,1), 1);

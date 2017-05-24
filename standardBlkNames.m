@@ -45,7 +45,7 @@ if isfield(e, 'intOTimes')
 end
 if isfield(e, 'stmVValues')
     e.visStimOnOffTimes = e.stmVTimes; e.visStimOnOffValues = e.stmVValues;
-    e.audStimOnOffTimes = e.stmATimes; e.visStimOnOffValues = e.stmAValues;
+    e.audStimOnOffTimes = e.stmATimes; e.audStimOnOffValues = e.stmAValues;
 end
 
 %Modify repeat on incorrect parameter field to deal with historical issues.
@@ -54,7 +54,7 @@ if ~isfield(e, 'repeatNumValues')
     [v(:).maxRepeatIncorrect] = deal(0);
     p.maxRepeatIncorrect = 0;
 elseif isfield(v, 'maxRetryIfIncorrect')
-    tDat = {v.maxRepeatIncorrect}'; [v.maxRetryIfIncorrect] = tDat{:};
+    tDat = {v.maxRetryIfIncorrect}'; [v.maxRepeatIncorrect] = tDat{:};
     p.maxRepeatIncorrect = p.maxRetryIfIncorrect;
 elseif ~isfield(v, 'maxRepeatIncorrect')   
     [v(:).maxRepeatIncorrect] = deal(9); 
@@ -86,11 +86,11 @@ if isfield(v, 'clickAmpDurRate')
     p.clickRate = p.clickAmpDurRate(3);
     p.visAltitude = p.vStimAltitude(1);
     p.visSigma = p.vStimSigma;
-elseif isfield(v, 'visualAltitudeSigma')
+elseif isfield(v, 'clickDurRate')
     tDat = cellfun(@(x) x(1), {v.clickDurRate}, 'uni', 0); [v.clickDuration] = tDat{:};
     tDat = cellfun(@(x) x(2), {v.clickDurRate}, 'uni', 0); [v.clickRate] = tDat{:};
-    tDat = cellfun(@(x) x(1), {v.visualAltitudeSigma}, 'uni', 0); [v.clickDuration] = tDat{:};
-    tDat = cellfun(@(x) x(2), {v.visualAltitudeSigma}, 'uni', 0); [v.clickRate] = tDat{:};
+    tDat = cellfun(@(x) x(1), {v.visualAltitudeSigma}, 'uni', 0); [v.visAltitude] = tDat{:};
+    tDat = cellfun(@(x) x(2), {v.visualAltitudeSigma}, 'uni', 0); [v.visSigma] = tDat{:};
     tDat = {v.audioAmplitude}'; [v.audAmplitude] = tDat{:};
     
     p.audAmplitude = p.audioAmplitude;
@@ -166,7 +166,7 @@ end
 if isfield(p, 'preStimQuiRangeThr')
     p.preStimQuiescentRange = sort(p.preStimQuiRangeThr(1:2));
     p.preStimQuiescentThreshold = p.preStimQuiRangeThr(3);   
-    tDat = num2cell(mean(p.preStimQuiescentRange)*ones(1,length(e.stimPeriodOnOffTimes(1:2:end))))';  
+    tDat = num2cell(mean(p.preStimQuiescentRange)*ones(1,length(e.newTrialTimes)))';  
     [v.preStimQuiescentDuration] = tDat{:};  
 elseif isfield(e, 'preStimQuiescentDurationValues')
     tDat = num2cell(e.preStimQuiescentDurationValues)'; [v.preStimQuiescentDuration] = tDat{:};

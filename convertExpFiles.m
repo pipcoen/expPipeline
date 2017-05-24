@@ -33,7 +33,7 @@ for i = 1:size(expList,1)
     if any([~varIdx(2) rebuildProcessed(2)])
         switch lower(x.rigNameType{2})
             case 'twophoton'; conv2PData(x);            
-            case 'widefield'; conv2WidefieldData(x);
+            case 'widefield'; continue; %convWidefieldData(x);
         end
     end
     

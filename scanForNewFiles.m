@@ -94,7 +94,7 @@ for i = 1:length(duplicates)
         fprintf('Multiple training files for %s %s. Keeping largest\n', tDat(1).subject, tDat(1).expDate);
         maxDurationIdx = num2cell([tDat.expDuration] ~= max([tDat.expDuration]));
         [tDat.excluded] = maxDurationIdx{:};
-        expList(tIdx) = tDat;
+        expList((strcmp(folderList,duplicates{i}).*([expList.excluded]'==0))>0) = tDat;
     elseif strcmp(tDat(1).rigNameType{1}, 'twophoton') && length(unique({tDat.out2})) > 1
         newFOV = cellfun(@isempty, (strfind({tDat.suite2POutput}', 'NewFOV')));
         [containingFolder, fileExtension] = cellfun(@fileparts, {tDat.suite2POutput}', 'uni', 0);
@@ -102,7 +102,7 @@ for i = 1:length(duplicates)
         sExt(1:end-1) = cellfun(@(x) [x '_'], fileExtension(1:end-1), 'uni', 0);
         [tDat(newFOV).out2] = deal([containingFolder{1} sep cell2mat(sExt')]);
         [tDat(newFOV).sessionNum] = deal({tDat(newFOV).sessionNum}');
-        expList(tIdx) = tDat;
+        expList((strcmp(folderList,duplicates{i}).*([expList.excluded]'==0))>0) = tDat;
     end
 end
 expList = nestedSortStruct(expList, {'subject', 'expDate'});
