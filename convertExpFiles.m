@@ -62,15 +62,18 @@ if isfield(b.events, 'feedbackValues')
     if x.repeatNum(end) == 1 && x.validTrials(end)==1; x.repeatNum(end) = 0; end
     x.repeatNum(x.repeatNum>0) = b.events.repeatNumValues(repeatIdx)-1;
 end
-if isfield(b.events, 'stimStartTimes')
-    blk.stimStart = single(b.events.stimStartTimes(x.validTrials)');
-end
 
 blk.subject = x.subject;
 blk.expDate = x.expDate;
 blk.sessionNum = x.sessionNum;
 blk.trialStart = single(b.events.newTrialTimes(x.validTrials)');
 blk.trialEnd = b.events.endTrialTimes(x.validTrials)';
+
+if isfield(b.events, 'stimPeriodOnOffTimes')
+    stimPeriodStart = b.events.stimPeriodOnOffTimes(b.events.stimPeriodOnOffValues == 1)';
+    stimPeriodStart = indexByTrial(blk, stimPeriodStart, stimPeriodStart, 0);
+    blk.stimPeriodStart = single(cell2mat(stimPeriodStart));
+end
 
 repeatPoints = [strfind(diff([0,b.inputs.wheelValues])~=0, [0 0]) ...
     strfind(abs(diff([0,b.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];

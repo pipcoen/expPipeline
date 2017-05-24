@@ -1,74 +1,66 @@
 function [blk, prm] = multiSpaceWorld_Blk_Proc(x, b, blk, prm)
-b.paramsValues = b.paramsValues;
-correctResponse = [b.paramsValues.correctResponse]';  %Correct Response
-audInitialAzimuth = [b.paramsValues.audInitialAzimuth]';
-visInitialAzimuth = [b.paramsValues.visInitialAzimuth]';
+v = b.paramsValues;
+e = b.events;
 
-audAmplitude = single(cell2mat({b.paramsValues.audAmplitude}'));
+correctResponse = [v.correctResponse]';  %Correct Response
+audInitialAzimuth = [v.audInitialAzimuth]';
+visInitialAzimuth = [v.visInitialAzimuth]';
+
+audAmplitude = single(cell2mat({v.audAmplitude}'));
 audLeftRight = [audAmplitude.*(audInitialAzimuth<0) audAmplitude.*(audInitialAzimuth>0)];
 
-visContrast = single(cell2mat({b.paramsValues.visualContrast}')); 
+visContrast = single(cell2mat({v.visContrast}')); 
 visLeftRight = [visContrast.*(visInitialAzimuth<0) visContrast.*visInitialAzimuth>0];
 
-stmV = indexByTrial(blk, b.events.visStimOnOffTimes, b.events.visStimOnOffValues);
-blk.stmV = indexByTrial(blk, stmV(:,1), stmV, [1,1]);
-stmA = sigOnOffTimes(b.events.stmAValues, b.events.stmATimes);
-blk.stmA = indexByTrial(blk, stmA(:,1), stmA(:,1), 1);
+blk.visStimOnOff = indexByTrial(blk, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues']);
+blk.audStimOnOff = indexByTrial(blk, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues']);
 
-whTV = indexByTrial(blk, blk.wrTV(:,1), blk.wrTV, [1,2]);
-vsTV = [b.events.vPosTimes', b.events.vPosValues'];
-vsTV = indexByTrial(blk, vsTV(:,1), vsTV, [1 0]);
-asTV = [b.events.aPosTimes', b.events.aPosValues'];
-asTV = indexByTrial(blk, asTV(:,1), asTV, [1 0]);
-intO = b.events.intOTimes(x.validTrials)'-blk.sSrt;
+blk.wheelTimeValue = indexByTrial(blk, blk.rawWheelTimeValue(:,1), blk.rawWheelTimeValue);
+blk.visAzimuthTimeValue = indexByTrial(blk, e.visAzimuthTimes', [e.visAzimuthTimes' e.visAzimuthValues']);
+blk.audAzimuthTimeValue = indexByTrial(blk, e.audAzimuthTimes', [e.audAzimuthTimes' e.audAzimuthValues']);
 
-fBck = b.events.fBckValues(x.validTrials)'>0; 
-correctResponse = single(correctResponse(x.validTrials)>0)+1;
-resp = correctResponse;
-resp(fBck==0) = -1*(resp(fBck==0)-2)+1;
+closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)';
+reactionTime = e.feedbackTimes(x.validTrials)'-closedLoopStart(x.validTrials);
 
-blk.correctResponse = correctResponse;
-blk.resp = resp;
-blk.rNum = uint8(x.rNum');
-blk.fBck = fBck;
-blk.rTim = single(b.events.fBckTimes(x.validTrials)'-b.events.intOTimes(x.validTrials)');
-blk.clickDuration = single([b.paramsValues(x.validTrials).clickDuration]');
-blk.clickRate = single([b.paramsValues(x.validTrials).clickRate]');
+closedLoopStart = indexByTrial(blk, closedLoopStart, closedLoopStart, 1);
+blk.closedLoopStart = single(cell2mat(closedLoopStart));
+
+blk.feedback = e.feedbackValues(x.validTrials)'>0; 
+blk.correctResponse = uint8(correctResponse(x.validTrials)>0)+1;
+
+response = blk.correctResponse;
+response(blk.feedback==0) = -1*(response(blk.feedback==0)-2)+1;
+
+blk.response = uint8(response);
+blk.repeatNum = uint8(x.repeatNum');
+blk.reactionTime = single(reactionTime);
+blk.clickDuration = single([v(x.validTrials).clickDuration]');
+blk.clickRate = single([v(x.validTrials).clickRate]');
 blk.audAmplitude = audAmplitude(x.validTrials,:);
-blk.vCon = visContrast(x.validTrials,:);
-blk.aLeR = audLeftRight(x.validTrials,:);
-blk.vLeR = visLeftRight(x.validTrials,:);
-blk.audInitialAzimuth = [b.paramsValues(x.validTrials).audInitialAzimuth]';
-blk.visInitialAzimuth = [b.paramsValues(x.validTrials).visInitialAzimuth]';
-blk.visAltitude = [b.paramsValues(x.validTrials).visAltitude]';
-blk.visSigma = [b.paramsValues(x.validTrials).visAltitude]';
-blk.intO = single(intO);
-blk.whTV = whTV;
-blk.asTV = asTV;
-blk.vsTV = vsTV;
+blk.visContrast = visContrast(x.validTrials,:);
+blk.audLeftRight = audLeftRight(x.validTrials,:);
+blk.visLeftRight = visLeftRight(x.validTrials,:);
+blk.audInitialAzimuth = [v(x.validTrials).audInitialAzimuth]';
+blk.visInitialAzimuth = [v(x.validTrials).visInitialAzimuth]';
+blk.visAltitude = [v(x.validTrials).visAltitude]';
+blk.visSigma = [v(x.validTrials).visSigma]';
 
-audT = ~any(blk.vCon,2);
-visT = ~any(blk.audAmplitude,2);
-cohT = sign(blk.vIni.*blk.aIni)>0 & any(blk.audAmplitude,2) & any(blk.vCon,2);
-conT = sign(blk.vIni.*blk.aIni)<0 & any(blk.audAmplitude,2) & any(blk.vCon,2);
-cenT = blk.audAmplitude>0 & blk.aIni==0;
-blnT = ~any(blk.audAmplitude,2)&~any(blk.vCon,2)*2;
-blk.tTyp = ~blnT.*(audT+visT*2+cohT*3+conT*4+cenT*5);
+audTrial = ~any(blk.visContrast,2);
+visTrial = ~any(blk.audAmplitude,2);
+coherentTrial = sign(blk.visInitialAzimuth.*blk.audInitialAzimuth)>0 & any(blk.audAmplitude,2) & any(blk.visContrast,2);
+coflictTrial = sign(blk.visInitialAzimuth.*blk.audInitialAzimuth)<0 & any(blk.audAmplitude,2) & any(blk.visContrast,2);
+centeredAudTrial = blk.audAmplitude>0 & blk.audInitialAzimuth==0;
+blankTrial = ~any(blk.audAmplitude,2)&~any(blk.visContrast,2)*2;
+blk.trialType = ~blankTrial.*(audTrial+visTrial*2+coherentTrial*3+coflictTrial*4+centeredAudTrial*5);
 
 
-prm.visualContrast = unique(prm.visualContrast)';
-prm.clickDuration = prm.clickDurRate(1);
-prm.clickRate = prm.clickDurRate(2);
-prm.preStimQuiDuration = prm.preStimQuiRangeThr(1);
-prm.audAmplitude = unique(prm.audAmplitude)';
-prm.audioAzimuth = unique(abs(prm.audioAzimuth))';
-prm.visualAzimuth = unique(abs(prm.visualAzimuth))';
-prm.numberConditions = length(unique([audAmplitude, vCon], 'rows'));
-prm.visualPerformance = round(mean(fBck(blk.tTyp==1))*100);
-prm.audioPerformance = round(mean(fBck(blk.tTyp==2))*100);
-prm.multiPerformance = round(mean(fBck(blk.tTyp==3))*100);
-
-f2Re = {'interTrialDelay';'numRepeats';'interactPunishDelays'; ...
-   'clickDurRate'; 'visualAltitudeSigma'; 'preStimQuiRangeThr'};
-prm = chkThenRemoveFields(prm, f2Re);
+prm.visContrast = unique(blk.visContrast)';
+prm.audAmplitude = unique(blk.audAmplitude)';
+prm.maxRepeatIncorrect = max(prm.maxRepeatIncorrect);
+prm.audInitialAzimuth = unique(abs(blk.visInitialAzimuth))';
+prm.visInitialAzimuth = unique(abs(blk.audInitialAzimuth))';
+prm.numberConditions = length(unique([audAmplitude, visContrast audInitialAzimuth visInitialAzimuth], 'rows'));
+prm.audPerformance = round(mean(blk.feedback(blk.trialType==1))*100);
+prm.visPerformance = round(mean(blk.feedback(blk.trialType==2))*100);
+prm.mulPerformance = round(mean(blk.feedback(blk.trialType==3))*100);
 end
