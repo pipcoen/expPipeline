@@ -2,7 +2,9 @@ function [expList] = convertExpFiles(rebuildProcessed)
 if ~exist('rebuildProcessed', 'var') || isempty(rebuildProcessed); rebuildProcessed = [0 0]; end
 
 existDirectories = pathFinder('directoryCheck'); 
-if all(existDirectories); syncfolder(pathFinder('sharedFolder'), pathFinder('processedFolder'), 0); end
+if all(existDirectories); syncfolder(pathFinder('sharedData'), pathFinder('processedData'), 0);
+elseif ~any(existDirectories); error('No access to experimental directories'); 
+end
 
 [expList] = scanForNewFiles;
 if all(existDirectories==[0,1])
@@ -14,8 +16,9 @@ for i = 1:size(expList,1)
     x = expList(i); x.expList = expList;
     processedFiles = {x.processedData, x.sharedData}';
     
-    x.existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0; 
-    if expList(i).excluded; cellfun(@delete, processedFiles(x.existProcessed)); continue;
+    x.existProcessed = cellfun(@(x) exist(x,'file'), processedFiles); 
+    if expList(i).excluded
+        cellfun(@delete, processedFiles(x.processedFiles)); continue;
     end
     
     warning('off', 'MATLAB:load:variableNotFound'); 
@@ -28,19 +31,17 @@ for i = 1:size(expList,1)
     end
     warning('on', 'MATLAB:load:variableNotFound');
     
-    varIdx = contains({'blk', 'flu'}, ['ignore'; whoD]);
-    
-    if any([~varIdx(2) rebuildProcessed(2)])
-        switch lower(x.rigNameType{2})
-            case 'twophoton'; conv2PData(x);            
-            case 'widefield'; conv2WidefieldData(x);
-        end
+    varIdx = contains({'blk', 'flu'}, whoD);
+    if 
+    switch lower(x.rigNameType{2})
+    case 'twophoton'; if varIdx(1) || rebuildProcessed(2); conv2PData(x); end
+        
     end
     
     if ~exist(x.blockHelper, 'file'); continue; end
-    if any([~varIdx(1) rebuildProcessed(1)]); convBlockFile(x); end
+    if any([varIdx(1) rebuildProcessed(1)]); convBlockFile(x); end
 end
-if all(existDirectories); syncfolder(pathFinder('sharedFolder'), pathFinder('processedFoler'), 0); end
+if all(existDirectories); syncfolder(pathFinder('sharedData'), pathFinder('processedData'), 0); end
 end
 
 function convBlockFile(x)
@@ -72,10 +73,10 @@ blk.sessionNum = x.sessionNum;
 blk.trialStart = single(b.events.newTrialTimes(x.validTrials)');
 blk.trialEnd = b.events.endTrialTimes(x.validTrials)';
 
-repeatPoints = [strfind(diff([0,b.inputs.wheelValues])~=0, [0 0]) ...
+delP = [strfind(diff([0,b.inputs.wheelValues])~=0, [0 0]) ...
     strfind(abs(diff([0,b.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
-wheelValue = b.inputs.wheelValues(setdiff(1:end, repeatPoints))';
-wheelTime = b.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
+wheelValue = b.inputs.wheelValues(setdiff(1:end, delP))';
+wheelTime = b.inputs.wheelTimes(setdiff(1:end, delP))';
 blk.rawWheelTimeValue = single([wheelTime wheelValue]); 
 
 prm.totalTrials = length(b.events.endTrialTimes);

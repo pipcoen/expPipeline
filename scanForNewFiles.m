@@ -90,10 +90,10 @@ duplicates = unique(folderList(setdiff(1:length(folderList),uIdx)));
 for i = 1:length(duplicates)
     tDat = expList((strcmp(folderList,duplicates{i}).*([expList.excluded]'==0))>0);
     if length(tDat) < 2; continue; end
-    if strcmp(tDat(1).rigNameType{1}, 'training')
+    if strcmp(tDat(1).rigNameType{2}, 'training')
         fprintf('Multiple training files for %s %s. Keeping largest\n', tDat(1).subject, tDat(1).expDate);
-        mIdx = num2cell([tDat.expDuration] ~= max([tDat.expDuration]));
-        [tDat.excluded] = mIdx{:};
+        maxDurationIdx = num2cell([tDat.expDuration] ~= max([tDat.expDuration]));
+        [tDat.excluded] = maxDurationIdx{:};
         expList(tIdx) = tDat;
     elseif strcmp(tDat(1).rigNameType{1}, 'twophoton') && length(unique({tDat.out2})) > 1
         newFOV = cellfun(@isempty, (strfind({tDat.suite2POutput}', 'NewFOV')));

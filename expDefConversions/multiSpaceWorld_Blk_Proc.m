@@ -1,12 +1,12 @@
 function [blk, prm] = multiSpaceWorld_Blk_Proc(x, b, blk, prm)
 b.paramsValues = b.paramsValues;
 correctResponse = [b.paramsValues.correctResponse]';  %Correct Response
-audAmplitude = single(cell2mat({b.paramsValues.a
+audAmplitude = single(cell2mat({b.paramsValues.audAmplitude}'));
 audInitialAzimuth = [b.paramsValues.audInitialAzimuth]';
 visInitialAzimuth = [b.paramsValues.visInitialAzimuth]';
 
-
 audLeftRight = [audAmplitude.*double(audInitialAzimuth<0) audAmplitude.*double(audInitialAzimuth>0)];
+
 visContrast = single(cell2mat({b.paramsValues.visualContrast}')); 
 visLeftRight = [visContrast.*double(visInitialAzimuth<0) visContrast.*double(visInitialAzimuth>0)];
 vASg = [b.paramsValues.visualAltitudeSigma]';

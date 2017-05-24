@@ -64,7 +64,9 @@ end
 
 if isfield(e, 'stimStartTimes'); warning('Stopping for debug'); keyboard; end
 if ~isfield(v, 'visContrast')
-    if isfield(v, 'visualContrast'); v.visContrast = v.visualContrast;
+    if isfield(v, 'visualContrast')     
+        tDat = {v.visualContrast}'; [v.visContrast] = tDat{:};
+        p.visContrast = p.visualContrast;
     elseif isfield(v, 'stimulusContrast')
         tDat = {v.stimulusContrast}'; [v.visContrast] = tDat{:};
         p.visContrast = p.stimulusContrast;
@@ -91,9 +93,9 @@ elseif isfield(v, 'visualAltitudeSigma')
     tDat = cellfun(@(x) x(2), {v.visualAltitudeSigma}, 'uni', 0); [v.clickRate] = tDat{:};
     tDat = {v.audioAmplitude}'; [v.audAmplitude] = tDat{:};
     
-    p.audAmplitude = p.clickDurRate(1);
-    p.clickDuration = p.clickDurRate(2);
-    p.clickRate = p.clickRate(3);
+    p.audAmplitude = p.audioAmplitude;
+    p.clickDuration = p.clickDurRate(1);
+    p.clickRate = p.clickDurRate(2);
     p.visAltitude = p.visualAltitudeSigma(1);
     p.visSigma = p.visualAltitudeSigma(2:3);
 end
@@ -105,18 +107,16 @@ if ~isfield(p, 'audVisAzimuth') && (isfield(p, 'stimulusAzimuth') && isfield(e, 
     
     tDat = mat2cell([v.stimulusAzimuth]', ones(nTri,1));  
     [v.audInitialAzimuth] = tDat{:}; [v.visInitialAzimuth] = tDat{:};
-elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'iAziValues')
-    warning('DEBUG'); keyboard;
-    p.audioAzimuth = p.audVisAzimuth(1,:); 
-    p.visualAzimuth = p.audVisAzimuth(2,:);
+elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'iAziValues') && ~isfield(e, 'audInitialAzimuth')
+    p.audInitialAzimuth = p.audVisAzimuth(1,:); 
+    p.visInitialAzimuth = p.audVisAzimuth(2,:);
     tDat = num2cell([v.audVisAzimuth]');
-    [v.audioAzimuth] = tDat{:,1}; [v.visualAzimuth] = tDat{:,2};
-elseif isfield(p, 'audVisAzimuth')
-    warning('DEBUG'); keyboard;
-    p.audioAzimuth = p.audVisAzimuth(1,:);
-    p.visualAzimuth = p.audVisAzimuth(2,:);
+    [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
+elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'audInitialAzimuth')
+    p.audInitialAzimuth = p.audVisAzimuth(1,:);
+    p.visInitialAzimuth = p.audVisAzimuth(2,:);
     tDat = num2cell([e.iAziValues(1:2:end)' e.iAziValues(2:2:end)']);
-    [v.audioAzimuth] = tDat{:,1}; [v.visualAzimuth] = tDat{:,2};
+    [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
 end
 
 if isfield(e, 'corRValues'); tDat = num2cell(e.corRValues'); [v.correctResponse] = tDat{:};
