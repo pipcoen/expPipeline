@@ -82,10 +82,11 @@ classdef behaviorAnalysis
                 for j = 1:length(obj.gridIdx{i})
                     fracRightTurns(obj.gridIdx{i}(j)) = mean(responses(conditions==j)==2);
                 end
-                
+                obj.getAxes(obj.subjects{i});
             end
             rTyp = unique(cat(1,aBlk.cRes));
             if length(rTyp) > 2; error('Too many response types'); end
+            imsc(mean(rMat(:,:,:,1),3), [0,1], redblue, 'k');
             [rMat, aLab] = getRespMatrix(aBlk);
             
             axes(curA);
@@ -110,10 +111,10 @@ classdef behaviorAnalysis
             if ~iscell(subject); subject = {subject}; end
             screenRatio = get(0,'ScreenSize');
             screenRatio = round(screenRatio(3)/screenRatio(4));
-            numOfSubjects = length(unique(obj.subject));
+            numOfSubjects = length(unique(obj.subjects));
             numOfRows = find(((1:5)*screenRatio.*(1:5))>=numOfSubjects,1);
             numOfCols = ceil(numOfSubjects/numOfRows);
-            tightSubplot(numOfRows,numOfCols, find(contains(obj.subject,subject)), 0.02);
+            tightSubplot(numOfRows,numOfCols, find(contains(obj.subjects,subject)), 0.02);
         end
     end
 end
