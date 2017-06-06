@@ -72,40 +72,7 @@ classdef behaviorAnalysis
                 [~, obj.gridIdx{i,1}] = ismember(uniqueConditions, [visGridConditions(:) audGridConditions(:)], 'rows');
                 
                 arrayfun(@(x,y) find(all([x,y]==uniqueConditions),1), obj.gridConditions{i,1}(:,:,1), obj.gridConditions{i,1}(:,:,1))
-                obj.uniqueConditions{i,1} = uniqueConditions;
-                
-                
-%                 if length(unique(abs(obj.uniqueConditions(:,end-1:end))))
-                audAmplitudeDiff = diff(vertcat(selectedBlocks.audLeftRight), [], 2);
-                visContrastDiff = diff(vertcat(selectedBlocks.visLeftRight), [], 2);
-                audInitialAzimuth = vertcat(selectedBlocks.audInitialAzimuth);
-                visInitialAzimuth = vertcat(selectedBlocks.visInitialAzimuth);
-                
-                uniqueAudAmplitudeDiff = unique(audAmplitudeDiff);
-                uniqueAudInitialAzimuth = unique(audInitialAzimuth);
-                uniqueVisContrastDiff = unique(visContrastDiff);
-                uniqueVisInitialAzimuth = unique(visInitialAzimuth);
-                
-                if length(uniqueAudInitialAzimuth)>2 && length(uniqueAudAmplitudeDiff)>3
-                    fprintf('Warning: skipping %s because too many audio parameters', obj.subjects{i});
-                elseif length(uniqueAudInitialAzimuth)>2
-                    yAxisLabel = 'Audio Azimuth'; uniqueAudConditions = uniqueVisInitialAzimuth;
-                    audConditions(:,1) = uniqueConditions(:,5);
-                elseif length(uniqueAudAmplitudeDiff)>3
-                    yAxisLabel = 'Audio Amplitude'; uniqueAudConditions = uniqueAudAmplitudeDiff;
-                    audConditions(:,1) = diff(uniqueConditions(:,1:2),[],2);
-                end
-                
-                if length(uniqueVisInitialAzimuth)>2 && length(uniqueVisContrastDiff)>3
-                    fprintf('Warning: skipping %s because too many visual parameters', obj.subjects{i});
-                elseif length(uniqueVisInitialAzimuth)>2
-                    xAxisLabel = 'Visual Contrast'; uniqueVisConditions = uniqueVisInitialAzimuth;
-                    visConditions(:,1) = uniqueConditions(:,5);
-                elseif length(uniqueVisContrastDiff)>3
-                    xAxisLabel = 'Visual Contrast'; uniqueVisConditions = uniqueVisContrastDiff;
-                    visConditions(:,1) = diff(uniqueConditions(:,1:2),[],2);
-                end
-            end
+                obj.uniqueConditions{i,1} = uniqueConditions
         end
         
         function viewBoxPlots(obj)
