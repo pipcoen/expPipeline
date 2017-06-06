@@ -1,8 +1,9 @@
-function [b, p] = standardBlkNames(b, p)
+function [standardizedBlock, standardizedParams] = standardBlkNames(block, params)
 % All trials are valid trials if there are no repeats.
-nTri = length(b.paramsValues);
-e = b.events;
-v = b.paramsValues;
+b = block;
+e = block.events;
+v = block.paramsValues;
+p = params;
 
 f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFunction'; 'experimentIdx'; 'correctResponse';...
     'servicesDescription'; 'clickAmpDurRate'; 'vStimAltitude'; 'stimulusAzimuth'; 'audVisAzimuth'; 'vStimSigma'; ...
@@ -16,20 +17,24 @@ f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFun
     'visInitialAzimuthValues'; 'visInitialAzimuthTimes'; 'audInitialAzimuthValues'; 'audInitialAzimuthTimes';...
     'preStimQuiescentDurationValues'; 'preStimQuiescentDurationTimes'; 'aPosValues'; 'aPosTimes'; 'vPosValues'; 'vPosTimes';...
     'iAziTimes'; 'iAziValues'; 'aViCValues'; 'aViCTimes'; 'visCValues'; 'visCTimes'; 'audCValues'; 'audCTimes'; ...
-    'aViMTimes'; 'aViMValues'; 'corRValues'; 'corRTimes'};
+    'aViMTimes'; 'aViMValues'; 'corRValues'; 'corRTimes'; 'sPreTimes'; 'sPreValues'};
 
 if isfield(e, 'fBckTimes'); e.feedbackTimes = e.fBckTimes; e.feedbackValues = e.fBckValues; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if isfield(p, 'backNoiseAmp'); p.backgroundNoiseAmplitude = p.backNoiseAmp; end
 
-if isfield(e, 'sSrtTimes')
-    e.stimPeriodOnOffTimes = zeros(1,length(e.sSrtTimes)+length(e.endTrialTimes)); 
-    e.stimPeriodOnOffTimes(1:2:end) = e.sSrtTimes; 
-    e.stimPeriodOnOffTimes(2:2:end) = e.feedbackTimes; 
+if isfield(e, 'sPreValues')
+    e.stimPeriodOnOffTimes = e.sPreTimes;
+    e.stimPeriodOnOffValues = e.sPreValues;
+elseif isfield(e, 'sSrtTimes')
+    if isfield(e, 'feedbackTimes'); tDat = e.feedbackTimes; else; tDat = e.endTrialTimes; end
+    e.stimPeriodOnOffTimes = zeros(1,length(e.sSrtTimes)+length(tDat));
+    e.stimPeriodOnOffTimes(1:2:end) = e.sSrtTimes;
+    e.stimPeriodOnOffTimes(2:2:end) = tDat;
     
-    e.stimPeriodOnOffValues = zeros(1,length(e.sSrtTimes)+length(e.endTrialTimes)); 
-    e.stimPeriodOnOffValues(1:2:end) = 1; 
+    e.stimPeriodOnOffValues = zeros(1,length(e.sSrtTimes)+length(tDat));
+    e.stimPeriodOnOffValues(1:2:end) = 1;
 end
 if isfield(e, 'intOTimes')
     e.closedLoopOnOffTimes = zeros(1,length(e.intOTimes)+length(e.feedbackTimes)); 
@@ -107,7 +112,7 @@ if ~isfield(p, 'audVisAzimuth') && (isfield(p, 'stimulusAzimuth') && isfield(e, 
     e.visAzimuthValues = e.sPosValues; e.visAzimuthTimes = e.sPosTimes;
     
     
-    tDat = mat2cell([v.stimulusAzimuth]', ones(nTri,1));  
+    tDat = mat2cell([v.stimulusAzimuth]', ones(length(e.newTrialTimes),1));  
     [v.audInitialAzimuth] = tDat{:}; [v.visInitialAzimuth] = tDat{:};
 elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'iAziValues') && ~isfield(e, 'audInitialAzimuth')
     p.audInitialAzimuth = p.audVisAzimuth(1,:); 
@@ -139,30 +144,30 @@ for i = 1:length(fieldList); eval(['b.inputs.' fieldList{i} ' = b.inputs.' field
 if isfield(p, 'interactPunishDelays')
     p.openLoopDuration = p.interactPunishDelays(1);
     p.delayAfterIncorrect = p.interactPunishDelays(2);
-else; warning('DEBUG'); keyboard;
+elseif isfield(p, 'correctResponse'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'interactSigOnDurAmp')
     p.closedLoopOnsetToneAmplitude = p.interactSigOnDurAmp(3);
-else; warning('DEBUG'); keyboard;
+elseif isfield(p, 'correctResponse'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'rewardDurSize')
     p.delayAfterCorrect = p.rewardDurSize(1);
     p.rewardSize = p.rewardDurSize(2);
-else; warning('DEBUG'); keyboard;
+elseif isfield(p, 'correctResponse'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'noiseBurstAmpDur')
     p.noiseBurstAmplitude = p.noiseBurstAmpDur(1);
     p.noiseBurstDuration = p.noiseBurstAmpDur(2);
-else; warning('DEBUG'); keyboard;
+elseif isfield(p, 'correctResponse'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'stimulusDurRep')
     p.stimDuration = p.stimulusDurRep(1);
     p.stimContinuous = p.stimulusDurRep(2);
-else; warning('DEBUG'); keyboard;
+elseif isfield(p, 'correctResponse'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'preStimQuiRangeThr')
@@ -174,11 +179,10 @@ elseif isfield(e, 'preStimQuiescentDurationValues')
     tDat = num2cell(e.preStimQuiescentDurationValues)'; [v.preStimQuiescentDuration] = tDat{:};
 end
 
-p = chkThenRemoveFields(p, f2Re);
-v = chkThenRemoveFields(v, f2Re(~contains(f2Re, 'correctResponse')));
-e = chkThenRemoveFields(e, f2Re);
-b.paramsTimes = b.paramsTimes+totalTimeOffset;
-b.events = e;
-b.paramsValues = v;
+standardizedParams = chkThenRemoveFields(p, f2Re);
+standardizedBlock = b;
+standardizedBlock.paramsValues = chkThenRemoveFields(v, f2Re(~contains(f2Re, 'correctResponse')));
+standardizedBlock.events = chkThenRemoveFields(e, f2Re);
+standardizedBlock.paramsTimes = b.paramsTimes+totalTimeOffset;
 end
 

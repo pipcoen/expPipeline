@@ -1,11 +1,11 @@
-function blkTConv = alignBlockTimes(b, t)
-diodeChannel = t.hw.inputs(strcmp({t.hw.inputs.name},'photoDiode')).arrayColumn;
-diodeSamples = t.rawDAQData(:,diodeChannel);
-timeSamples = t.rawDAQTimestamps';
+function blkTConv = alignBlockTimes(block, timeline)
+diodeChannel = timeline.hw.inputs(strcmp({timeline.hw.inputs.name},'photoDiode')).arrayColumn;
+diodeSamples = timeline.rawDAQData(:,diodeChannel);
+timeSamples = timeline.rawDAQTimestamps';
 [~, diodeThreshold] = kmeans(diodeSamples, 2); diodeThreshold = mean(diodeThreshold);
 diodeFlipPnts = abs(diff(diodeSamples > diodeThreshold)) > 0; % look for the flips
 diodeFlipPnts = mean([timeSamples([false; diodeFlipPnts]) timeSamples([diodeFlipPnts; false])], 2);
-blockFlipPnts = b.stimWindowUpdateTimes;
+blockFlipPnts = block.stimWindowUpdateTimes;
 
 if length(blockFlipPnts)-length(diodeFlipPnts) > 10
     warning('Missed some flips on Photodiode. Will try to compensate');

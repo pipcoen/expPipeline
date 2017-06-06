@@ -3,15 +3,21 @@ if ~exist('substractStartTime', 'var'); substractStartTime =0*prmValues(1,:); en
 trialStart = blk.trialStart;
 trialEnd = blk.trialEnd;
 
-trialIdx = arrayfun(@(x) x+0*prmTimes(prmTimes>=trialStart(x) & prmTimes<=trialEnd(x)), 1:length(trialEnd), 'uni', 0)';
-trialIdx = cell2mat(trialIdx);
+[eventCount, ~, trialIdx] = histcounts(prmTimes, sort([trialStart;trialEnd+realmin]));
+outOfBounds = trialIdx==0;
+prmValues(outOfBounds,:) = []; trialIdx(outOfBounds) = [];
 
-sortedByTrial = cell(max(trialIdx),1);
+idxBounds = [find(diff([-10;trialIdx])>0) find(diff([trialIdx;1e6])>0)];
+idxBounds(mod(unique(trialIdx),2)==0,:) = [];
+eventCount(2:2:end) = [];
+
+uniqueIdx = unique(trialIdx(mod(trialIdx,2)>0));
+sortedByTrial = cell(length(uniqueIdx),1);
 for i = 1:length(sortedByTrial)
-    subtractValues = repmat(substractStartTime, sum(trialIdx==i), 1);
+    subtractValues = repmat(substractStartTime, eventCount(i), 1);
     if any(substractStartTime); subtractValues = blk.stimPeriodStart(i)*subtractValues; end
 
-    sortedByTrial{i} = prmValues(trialIdx==i,:);
+    sortedByTrial{i} = prmValues(idxBounds(i,1):idxBounds(i,2),:);
     if isempty(sortedByTrial{i}); continue; end
     sortedByTrial{i} = sortedByTrial{i} - subtractValues;
 end

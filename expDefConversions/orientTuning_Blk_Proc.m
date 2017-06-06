@@ -1,16 +1,18 @@
-function [blk, prm] = orientTuning_Blk_Proc(~, b, blk, prm)
-pVals = b.paramsValues;
-gSTD = [pVals(1).gratingSF pVals(1).gratingTF pVals(1).stimulusDuration];
-gOri = [pVals.gratingOrient]';
-vCon = pVals(1).visualContrast;
+function [newBlock, newParams] = orientTuning_Blk_Proc(x)
+v = x.standardizedBlock.paramsValues;
+e = x.standardizedBlock.events;
+n = x.newBlock;
+p = x.standardizedParams;
 
-stmV = sigOnOffTimes(b.events.sPreValues, b.events.sPreTimes);
-blk.stmV = indexByTrial(blk, stmV(:,1), stmV, [1,1]);
+n.gratingSpatialFreq = v(1).gratingSF;
+n.gratingTemporalFreq = v(1).gratingTF;
+n.stimulusDuration = v(1).stimulusDuration;
+n.gratingOrientation = [v.gratingOrient]';
+n.visContrast = v(1).visContrast;
 
-whTV = indexByTrial(blk, blk.wrTV(:,1), blk.wrTV, [1,2]);
+n.stimPeriodOnOff = indexByTrial(n, e.stimPeriodOnOffTimes', [e.stimPeriodOnOffTimes' e.stimPeriodOnOffValues']);
+n.wheelTimeValue = indexByTrial(n, n.rawWheelTimeValue(:,1), n.rawWheelTimeValue);
 
-blk.gSTD = gSTD;
-blk.gOri = gOri;
-blk.vCon = vCon;
-blk.whTV = whTV;
+newParams = p;
+newBlock = n;
 end

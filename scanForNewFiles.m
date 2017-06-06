@@ -21,7 +21,10 @@ end
 tDat = struct;
 for i = 1:length(newBlocks)
     load([newBlocks(i).folder '/' newBlocks(i).name]); b = block;
-    [subject, expDate, sessionNum] = mouseDetFromFolder(newBlocks(i).folder);
+    splitStr = regexp(newBlocks(i).folder,'[\\/]','split');
+    sessionNum = splitStr{end};
+    expDate = splitStr{end-1};
+    subject = splitStr{end-2};
     fprintf('Adding recording %s %s %s\n', expDate, subject, sessionNum);
     
     if ~contains(b.rigName, rigList(:,1)); error([b.rigName ' not recognized']); end

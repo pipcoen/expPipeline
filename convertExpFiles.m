@@ -1,25 +1,30 @@
-function [expList] = convertExpFiles(rebuildProcessed)
-if ~exist('rebuildProcessed', 'var') || isempty(rebuildProcessed); rebuildProcessed = [0 0]; end
+function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
+if ~exist('redoBlocks', 'var') || isempty(redoBlocks); redoBlocks = 0; end
+if ~exist('redoSuite2P', 'var') || isempty(redoSuite2P); redoSuite2P = 0; end
+if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'}; end
 
 existDirectories = pathFinder('directoryCheck'); 
 if all(existDirectories); syncfolder(pathFinder('sharedFolder'), pathFinder('processedFolder'), 0); end
 
-[expList] = scanForNewFiles;
+expList = scanForNewFiles;
 if all(existDirectories==[0,1])
     newPathList = {expList.sharedData}'; 
     [expList.processedData] = newPathList{:}; 
 end
-
+processedFiles = [{expList.processedData}', {expList.sharedData}'];
+existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0;
 for i = 1:size(expList,1)
+%     disp(i)
+    if ~contains(expList(i).subject, selectedMice); continue; end
+    if contains(expList(i).subject, {'PC008'}); continue; end
     x = expList(i); x.expList = expList;
-    processedFiles = {x.processedData, x.sharedData}';
-    
-    x.existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0; 
-    if expList(i).excluded; cellfun(@delete, processedFiles(x.existProcessed)); continue;
-    end
+   
+    x.existProcessed = existProcessed(i,:); 
+    if expList(i).excluded; cellfun(@delete, processedFiles(x.existProcessed)); continue; end
     
     warning('off', 'MATLAB:load:variableNotFound'); 
-    if x.existProcessed(1); load(x.processedData, 'whoD');
+    if x.existProcessed(1)
+        load(x.processedData, 'whoD');
         if ~exist('whoD', 'var')
             whoD = who('-file', x.processedData);
            save(x.processedData, 'whoD', '-append');
@@ -30,7 +35,7 @@ for i = 1:size(expList,1)
     
     varIdx = contains({'blk', 'flu'}, ['ignore'; whoD]);
     
-    if any([~varIdx(2) rebuildProcessed(2)])
+    if any([~varIdx(2) redoSuite2P])
         switch lower(x.rigNameType{2})
             case 'twophoton'; conv2PData(x);            
             case 'widefield'; continue; %convWidefieldData(x);
@@ -38,56 +43,57 @@ for i = 1:size(expList,1)
     end
     
     if ~exist(x.blockHelper, 'file'); continue; end
-    if any([~varIdx(1) rebuildProcessed(1)]); convBlockFile(x); end
+    if any([~varIdx(1) redoBlocks]); convBlockFile(x); end
 end
-if all(existDirectories); syncfolder(pathFinder('sharedFolder'), pathFinder('processedFoler'), 0); end
+if all(existDirectories); syncfolder(pathFinder('sharedFolder'), pathFinder('processedFolder'), 0); end
 end
 
 function convBlockFile(x)
 fprintf('Converting block file for %s %s\n', x.expDate,x.subject);
-b = load(x.rawBlock); b = b.block;
-p = load(x.rawParams); p = p.parameters;
+x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
+x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 
 if ~strcmp(x.rigNameType{2}, 'training')
-    t = load(x.rawTimeline); t=t.Timeline;
-    b.blockTimeOffset = alignBlockTimes(b, t);
+    x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
+    x.oldBlock.blockTimeOffset = alignBlockTimes(x.oldBlock, x.timeline);
 end
-[b, prm] = standardBlkNames(b, p);
+[x.standardizedBlock, x.standardizedParams] = standardBlkNames(x.oldBlock, x.oldParams);
 
-x.validTrials = b.events.repeatNumValues(1:length(b.events.endTrialTimes))==1;
+x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;
 
-if isfield(b.events, 'feedbackValues')
-    repeatIdx = diff([b.events.repeatNumValues(1:length(x.validTrials)) 1])<0;
-    x.repeatNum = int8([b.paramsValues(x.validTrials).maxRepeatIncorrect]>0 & b.events.feedbackValues(x.validTrials)<0);
+if isfield(x.standardizedBlock.events, 'feedbackValues')
+    repeatIdx = diff([x.standardizedBlock.events.repeatNumValues(1:length(x.validTrials)) 1])<0;
+    x.repeatNum = int8([x.standardizedBlock.paramsValues(x.validTrials).maxRepeatIncorrect]>0 ...
+        & x.standardizedBlock.events.feedbackValues(x.validTrials)<0);
     if x.repeatNum(end) == 1 && x.validTrials(end)==1; x.repeatNum(end) = 0; end
-    x.repeatNum(x.repeatNum>0) = b.events.repeatNumValues(repeatIdx)-1;
+    x.repeatNum(x.repeatNum>0) = x.standardizedBlock.events.repeatNumValues(repeatIdx)-1;
 end
 
-blk.subject = x.subject;
-blk.expDate = x.expDate;
-blk.sessionNum = x.sessionNum;
-blk.trialStart = single(b.events.newTrialTimes(x.validTrials)');
-blk.trialEnd = b.events.endTrialTimes(x.validTrials)';
+x.newBlock.subject = x.subject;
+x.newBlock.expDate = x.expDate;
+x.newBlock.sessionNum = x.sessionNum;
+x.newBlock.trialStart = single(x.standardizedBlock.events.newTrialTimes(x.validTrials)');
+x.newBlock.trialEnd = x.standardizedBlock.events.endTrialTimes(x.validTrials)';
 
-if isfield(b.events, 'stimPeriodOnOffTimes')
-    stimPeriodStart = b.events.stimPeriodOnOffTimes(b.events.stimPeriodOnOffValues == 1)';
-    stimPeriodStart = indexByTrial(blk, stimPeriodStart, stimPeriodStart, 0);
-    blk.stimPeriodStart = single(cell2mat(stimPeriodStart));
+if isfield(x.standardizedBlock.events, 'stimPeriodOnOffTimes')
+    stimPeriodStart = x.standardizedBlock.events.stimPeriodOnOffTimes(x.standardizedBlock.events.stimPeriodOnOffValues == 1)';
+    stimPeriodStart = indexByTrial(x.newBlock, stimPeriodStart, stimPeriodStart, 0);
+    x.newBlock.stimPeriodStart = single(cell2mat(stimPeriodStart));
 end
 
-repeatPoints = [strfind(diff([0,b.inputs.wheelValues])~=0, [0 0]) ...
-    strfind(abs(diff([0,b.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
-wheelValue = b.inputs.wheelValues(setdiff(1:end, repeatPoints))';
-wheelTime = b.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
-blk.rawWheelTimeValue = single([wheelTime wheelValue]); 
+repeatPoints = [strfind(diff([0,x.standardizedBlock.inputs.wheelValues])~=0, [0 0]) ...
+    strfind(abs(diff([0,x.standardizedBlock.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
+wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
+wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
+x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue]); 
 
-prm.totalTrials = length(b.events.endTrialTimes);
-prm.validTrials = sum(x.validTrials);
-prm.minutesOnRig = round((b.experimentEndedTime-b.experimentInitTime)/60);
+x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
+x.standardizedParams.validTrials = sum(x.validTrials);
+x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
 x.blockFunciton = str2func(x.blockHelper(1:end-2));
-[blk, prm] = x.blockFunciton(x, b, blk, prm); %#ok
 
+[blk, prm] = x.blockFunciton(x); %#ok
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~x.existProcessed(1); whoD = {'blk'; 'prm'}; save(x.processedData, 'blk', 'prm', 'whoD'); %#ok
 else; whoD = unique([who('-file', x.processedData); 'blk'; 'prm']); save(x.processedData, 'blk', 'prm', 'whoD', '-append'); %#ok
