@@ -68,20 +68,20 @@ classdef behaviorAnalysis
                     uniqueConditions = uniqueConditions(:,1:2);
                 end
                 obj.axisTicks{i,1} = {unique(uniqueConditions(:,1)) unique(uniqueConditions(:,2))};
-                [visGridConditions, audGridConditions] = meshgrid(obj.axisTicks{1}{1}, obj.axisTicks{1}{2});
-                [~, obj.gridIdx{i,1}] = ismember(uniqueConditions, [visGridConditions(:) audGridConditions(:)], 'rows');
-                
-                arrayfun(@(x,y) find(all([x,y]==uniqueConditions),1), obj.gridConditions{i,1}(:,:,1), obj.gridConditions{i,1}(:,:,1))
-                obj.uniqueConditions{i,1} = uniqueConditions
+                [visGridConditions, audGridConditions] = meshgrid(obj.axisTicks{1}{2}, obj.axisTicks{1}{1});
+                [~, obj.gridIdx{i,1}] = ismember(uniqueConditions, [audGridConditions(:) visGridConditions(:)], 'rows');
+                obj.uniqueConditions{i,1} = uniqueConditions;
+            end
         end
         
         function viewBoxPlots(obj)
             for i  = 1:length(obj.subjects)
-                selectedBlocks = obj.blocks(strcmp({obj.blocks.subject}', obj.subjects{i}));
-                uniqueConditions = selectedBlocks(1).uniqueConditions;
-                audVis = unique(diff(vertcat(obj.blocks.audLeftRight)));
-                
-                
+                responses = vertcat(obj.blocks{i}(:).response);
+                conditions = vertcat(obj.blocks{i}(:).conditions);
+                fracRightTurns = nan*ones(length(obj.axisTicks{i}{1}), length(obj.axisTicks{i}{2}));
+                for j = 1:length(obj.gridIdx{i})
+                    fracRightTurns(obj.gridIdx{i}(j)) = mean(responses(conditions==j)==2);
+                end
                 
             end
             rTyp = unique(cat(1,aBlk.cRes));

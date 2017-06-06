@@ -14,7 +14,7 @@ end
 processedFiles = [{expList.processedData}', {expList.sharedData}'];
 existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0;
 for i = 1:size(expList,1)
-%     disp(i)
+    disp(i)
     if ~contains(expList(i).subject, selectedMice); continue; end
     if contains(expList(i).subject, {'PC008'}); continue; end
     x = expList(i); x.expList = expList;

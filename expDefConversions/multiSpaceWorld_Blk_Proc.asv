@@ -31,7 +31,7 @@ n.feedback = e.feedbackValues(x.validTrials)'>0;
 n.correctResponse = uint8(correctResponse(x.validTrials)>0)+1;
 
 response = double(n.correctResponse);
-response(n.feedback==0) = uint8(-1*(response(n.feedback==0)-2)+1);
+response(n.feedback==0) = -1*(response(n.feedback==0)-2)+1;
 
 n.response = uint8(response);
 n.repeatNum = uint8(x.repeatNum');
