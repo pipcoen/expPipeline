@@ -13,8 +13,13 @@ if all(existDirectories==[0,1])
 end
 processedFiles = [{expList.processedData}', {expList.sharedData}'];
 existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0;
-for i = 1:size(expList,1)
-    disp(i)
+listNotExcluded = ~[expList.excluded]';
+if ~any([redoBlocks redoSuite2P])
+    processList = find(listNotExcluded & ~all(existProcessed, 2));
+else, processList = find(listNotExcluded | any(existProcessed, 2));
+end
+
+for i = processList'
     if ~contains(expList(i).subject, selectedMice); continue; end
     if contains(expList(i).subject, {'PC008'}); continue; end
     x = expList(i); x.expList = expList;
