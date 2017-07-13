@@ -144,6 +144,7 @@ for i = 1:length(fieldList); eval(['b.inputs.' fieldList{i} ' = b.inputs.' field
 if isfield(p, 'interactPunishDelays')
     p.openLoopDuration = p.interactPunishDelays(1);
     p.delayAfterIncorrect = p.interactPunishDelays(2);
+    if length(p.interactPunishDelays) == 3; p.laserDuration = p.interactPunishDelays(3); end
 elseif isfield(p, 'correctResponse'); warning('DEBUG'); keyboard;
 end
 
@@ -178,6 +179,34 @@ if isfield(p, 'preStimQuiRangeThr')
 elseif isfield(e, 'preStimQuiescentDurationValues')
     tDat = num2cell(e.preStimQuiescentDurationValues)'; [v.preStimQuiescentDuration] = tDat{:};
 end
+
+if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)
+    b.galvoLog = struct;
+    e.galvoTypeValues = 0*e.newTrialValues+1;
+    e.laserTypeValues = 0*e.newTrialValues;
+    e.laserPowerValues = 0*e.newTrialValues;
+    e.galvoAndLaserEndTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1)+1.5;
+    e.galvoCoordsValues = [0 0];
+    e.galvoPosValues = 0*e.newTrialValues+1;
+    p.galvoType = 1;
+    p.laserPower = 0;
+    p.laserTypeProportions = [1 0 0];
+    b.galvoLog.trialNum = 1:length(e.newTrialTimes);
+    e.laserInitialisationTimes = b.galvoLog.trialNum*0;
+end
+if ~isfield(e, 'galvoTTLTimes')
+    e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
+    [v.laserDuration] = deal(1.5);
+    p.laserDuration = 1.5;
+end
+if ~isfield(b.galvoLog, 'tictoc')
+    e.laserInitialisationTimes = deal(0);
+else
+    if any(isnan(b.galvoLog.delay_issueLaser(b.galvoLog.laserType>0))); keyboard; end
+    e.laserInitialisationTimes = b.galvoLog.tictoc;
+end
+e.laserTypeValues(~ismember(1:length(e.newTrialTimes), b.galvoLog.trialNum'))=0;
+p.rewardTotal = sum(p.rewardSize*e.feedbackValues>0);
 
 standardizedParams = chkThenRemoveFields(p, f2Re);
 standardizedBlock = b;

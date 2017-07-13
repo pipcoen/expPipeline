@@ -26,7 +26,7 @@
 function h = imsc(varargin)
 
 % Check for x, y as first two inputs
-if nargin > 2 && isvector(varargin{1}) && numel(varargin{1}) > 1 && isvector(varargin{2}) && numel(varargin{2}) > 1
+if nargin > 2 && isvector(varargin{1}) && numel(varargin{1}) > 1 && isvector(varargin{2}) && numel(varargin{2}) > 1 && ~(size(varargin{3},2)==3 && size(varargin{3},1)==64)
     % Render
     [I, clim, map] = sc(varargin{3:end});
     % Display
