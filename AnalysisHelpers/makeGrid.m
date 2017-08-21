@@ -1,5 +1,6 @@
 function grid = makeGrid(blocks, data, operation, sortFlag, selectedSessions)
-%%
+%Make grid is a function for separating trials into a grid of audiovisual conditions. It operates on the output of concatenate blocks.
+
 if ~exist('data', 'var'); error('Need data to sort into grid'); end
 if ~exist('blocks', 'var'); error('Need block information to sort into grid'); end
 if ~exist('operation', 'var'); operation = @sum; end

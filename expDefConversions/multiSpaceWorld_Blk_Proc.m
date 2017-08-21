@@ -79,6 +79,7 @@ n.galvoType = int8(e.galvoTypeValues(tIdx)');
 n.galvoPosition = galvoPosition;
 n.laserType = int8(e.laserTypeValues(tIdx)');
 n.laserPower = single(e.laserPowerValues(tIdx)');
+n.laserSession = sum(unique(n.laserType))+(n.laserPower*0);
 n.laserOnOff = [e.galvoTTLTimes(tIdx)' e.galvoAndLaserEndTimes(tIdx)']-n.trialStart;
 
 

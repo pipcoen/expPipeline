@@ -1,20 +1,24 @@
 classdef behaviorAnalysis
+% behaviorAnalysis object that extracts beahvioral information for a specified animal or set of animals. The resulting object has a set of methods
+% that can be used to plot various aspects of animal behavior.
+% NOTE: This function is designed to operate on the output of convertExpFiles and most methods are specific to multisensoty spatial integration plots.
+    
     properties (Access=public)
-        subjects;                %Mouse names--optional input
-        expDate;                 %Recording dates to use--optional input
-        blocks;
-        params;
-        uniqueConditions;
-        audValues;
-        visValues;
-        audType;
-        currentAxes;
+        subjects;                %Cell containing subject names--optional input ({'PC005';'PC006';'PC010';'PC011';'PC012';'PC013';'PC015'; 'PC016'});
+        expDate;                 %Recording dates to use--optional input ('last')
+        blocks;                  %Block files loaded for each subject (one cell per subject)
+        params;                  %Parameter files loaded for each subject (one cell per subject)
+        uniqueConditions;        %The unique conditions presented to each subject (one cell per subject)
+        audValues;               %List of auditory values (amplitude or azimuth changes) pesented (one cell per subject)
+        visValues;               %List of visual values pesented (one cell per subject)
+        audType;                 %Azimuthal changes or auditory changes (one cell per subject)
+        currentAxes;             %Handle to current axis being used for plotting
     end
     
     methods
         function obj = behaviorAnalysis(subjects, expDate)
             if ~exist('subjects', 'var') || isempty(subjects)
-                subjects = {'PC005';'PC006';'PC010';'PC011';'PC012';'PC013';'PC015'; 'PC016'};
+                subjects = {'PC011';'PC012';'PC013';'PC015'; 'PC017'};
             elseif strcmpi(subjects(1:2), 'in'); subjects = {'PC010';'PC012';'PC013'};
             end
             if ~exist('expDate', 'var'); expDate = 'last'; end
@@ -24,7 +28,7 @@ classdef behaviorAnalysis
             
             obj.subjects = subjects;
             obj.expDate = expDate;
-            [obj.blocks, obj.params]  = cellfun(@(x,y) getFilesFromDates(x, y, 'bloprm'), subjects, expDate, 'uni', 0);
+            [obj.blocks, obj.params]  = cellfun(@(x) getFilesFromDates(x, expDate, 'bloprm'), subjects, 'uni', 0);
             obj.blocks = vertcat(obj.blocks{:});
             obj.params = vertcat(obj.params{:});
             
@@ -50,7 +54,7 @@ classdef behaviorAnalysis
             obj.params = arrayfun(@(x) obj.params(subjectIdx==x), 1:length(subjects), 'uni', 0)';
             if length(obj.subjects)~=length(subjects); fprintf('WARNING: No valid data found for some subjects\n'); end
             
-            for i = 1:length(subjects)
+            for i = 1:length(obj.subjects)
                 blocks = concatinateBlocks(obj.blocks{i});
                 uniqueConditions = double(blocks.uniqueConditions);
                 if size(unique(uniqueConditions, 'rows'),1) < size(blocks.uniqueConditions,1)
@@ -83,17 +87,21 @@ classdef behaviorAnalysis
         end
         
         function viewBoxPlots(obj, plotType)
-            if ~exist('plotType', 'var'); plotType = 'res'; end
             figure;
+            if ~exist('plotType', 'var'); plotType = 'response'; end 
             maxGrid = max(cellfun(@length, [obj.audValues obj.visValues]), [], 1);
             for i  = 1:length(obj.subjects)
                 colorYTick = [0 1];
                 colorMap = redblue(64);
                 colorDirection = 'normal';
                 axisLimits = [0 1];
-                switch(plotType(1:3))
+                switch lower(plotType(1:3))
+                    case 'res'
+                        blk = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserType)==0);
+                        plotData = makeGrid(blk, blk.response==2, @mean, 1);
+                        colorLabel = 'Fraction of right turns';
                     case 'rea'
-                        blk = concatinateBlocks(obj.blocks{i}, 'nolaser');
+                        blk = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserType)==0);
                         plotData = makeGrid(blk, blk.reactionTime, @median, 1)*1000;
                         axisLimits = [round(min(plotData(:))-5,-1) round(max(plotData(:))+5,-1)];
                         colorLabel = 'Median rection time';
@@ -101,13 +109,29 @@ classdef behaviorAnalysis
                         colorMap = flipud(colorMap);
                         colorDirection = 'reverse';
                     case 'las'
-                        blk = concatinateBlocks(obj.blocks{i}, 'none');
-                        plotData = arrayfun(@(x) mean(laserType(conditions==x)>0));
+                        blk = concatinateBlocks(obj.blocks{i},  vertcat(obj.blocks{i}.laserSession)==1);
+                        plotData =  makeGrid(blk, blk.laserType>0, @mean, 1);
                         colorLabel = 'Fraction laser trials';
-                    case 'res'
-                        blk = concatinateBlocks(obj.blocks{i}, 'nolaser');
-                        plotData = makeGrid(blk, blk.response==2, @mean, 1);
-                        colorLabel = 'Fraction of right turns';
+                    case {'uni'; 'bil'}
+                        if strcmpi(plotType(1:3), 'uni'); selectedLaserType = 1; else;  selectedLaserType = 2; end
+                         
+                        laserType = vertcat(obj.blocks{i}.laserType);
+                        conditions = vertcat(obj.blocks{i}.conditions);
+                        laserSessions = vertcat(obj.blocks{i}.laserSession);
+                        selectedLaserSession = mode(laserSessions(laserType == selectedLaserType));                        
+                        
+                        blkOn = concatinateBlocks(obj.blocks{i}, laserSessions==selectedLaserSession & laserType==selectedLaserType);
+                        blkOff = concatinateBlocks(obj.blocks{i}, laserSessions==selectedLaserSession & laserType==0);
+                        
+                        if strcmpi(plotType(1:3), 'bil')
+                            blkOff.galvoPosition(:,1) = abs(blkOff.galvoPosition(:,1));
+                            blkOn.galvoPosition(:,1) = abs(blkOn.galvoPosition(:,1));
+                        end
+                        galvoGrid = unique(blkOn.galvoPosition, 'rows');
+                        blkOn.response(blkOn.reactionTime>diff(blkOn.laserOnOff, [], 2)) = 0;
+                        blkOff.response(blkOff.reactionTime>diff(blkOff.laserOnOff, [], 2)) = 0;
+                        
+                        blkOn.conditionsInGrid
                 end
                 
                 obj.getAxes(obj.subjects{i}, [60 30], maxGrid(2)/(1.3*maxGrid(1)), [50 50], [50 100]);
@@ -135,34 +159,45 @@ classdef behaviorAnalysis
             figure;
             PF = @PAL_Logistic;
             searchGrid.alpha = -20:1:20;
-            searchGrid.beta = 0:0.05:5;
+            searchGrid.beta = 0:0.01:2;
             searchGrid.gamma = 0:.01:.1;
             searchGrid.lambda = 0:.01:.1;
             
             for i  = 1:length(obj.subjects)
-                criterion = vertcat(obj.blocks{i}.laserPower);
+                reactionTimes = vertcat(obj.blocks{i}.reactionTime) < diff(vertcat(obj.blocks{i}.laserOnOff), [], 2);
+                blkOff = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserSession)~=0 & vertcat(obj.blocks{i}.laserType)==0 & reactionTimes);
+                blkNorm = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserSession)==0);
                 
-                blkOff = concatinateBlocks(obj.blocks{i}, 'noLaser');
-                blkOn = concatinateBlocks(obj.blocks{i}, {'onlyLaser'; 'visCortexGalvo'});
+                if strcmpi(plotType(1:3), 'abs') || (~strcmpi(plotType(1:3), 'las') && length(blkNorm.response) > length(blkOff.response))
+                    blkOff = blkNorm;
+                end
+                corticalLocations = vertcat(obj.blocks{i}.galvoPosition);
+                %                 if stcmpi(plotType(1:3), 'uni');
+%                 visTrials = ((corticalLocations(:,1))>0.5 & corticalLocations(:,2) <= -2);
+                m2Trials = ((corticalLocations(:,1)) == 1 & corticalLocations(:,2) == 2);
+                
+%                 blkOnVis = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserType)==2 & visTrials);
+                blkOnVis = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserType)==1 & m2Trials & reactionTimes);
+                
                 obj.getAxes(obj.subjects{i}, [200 40], [], [60 80], [60 20]); hold on; box off;
-                visGrid = blkOn.visGrid*100;
+                visGrid = blkOff.visGrid*100;
                 colorOpt = 'bkr';
                 xlim([min(visGrid(:))-5, max(visGrid(:))+5]);
                 for j = 1:length(obj.audValues{i})
-                    if j == 1 && ~strcmp(plotType(1:3), 'rea');
+                    if j == 1 && ~strcmp(plotType(1:3), 'rea')
                         yL = ylim; hold on; plot([0 0],yL, '--k', 'linewidth', 1.5);
                         xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
                     end
                     numTrials = makeGrid(blkOff, blkOff.feedback*0+1, @sum, 1);
                     trialType = makeGrid(blkOff, blkOff.trialType, @mean, 1);
-                    tkIdx = numTrials>0 & blkOn.audGrid == obj.audValues{i}(j);
+                    tkIdx = numTrials>0 & blkOff.audGrid == obj.audValues{i}(j);
                     if sum(tkIdx(:)) < 3; continue; end
                     conflicts = tkIdx.*trialType==4;
-                    nonConflict = (visGrid.*blkOn.audGrid)>=0 & (tkIdx);
+                    nonConflict = (visGrid.*blkOff.audGrid)>=0 & (tkIdx);
                     useColor =colorOpt(sign(obj.audValues{i}(j))+2);
                     
                     switch lower(plotType(1:3))
-                        case {'res'; 'las'}
+                        case {'res'; 'las'; 'abs'}
                             StimLevelsFineGrain = min(visGrid(tkIdx)):(max(visGrid(tkIdx))/1000):max(visGrid(tkIdx));
                             fracRightTurns = makeGrid(blkOff, blkOff.response==2, @mean, 1);
                             numRightTurns = makeGrid(blkOff, blkOff.response==2, @sum, 1);
@@ -176,8 +211,9 @@ classdef behaviorAnalysis
                             plot(visGrid(nonConflict),fracRightTurns(nonConflict),'o','markerfacecolor', useColor, 'markeredgecolor', useColor);
                             %%
                             if strcmpi(plotType(1:3), 'las')
-                                fracRightTurns = makeGrid(blkOn, blkOn.response==2, @mean, 1);
-                                plot(visGrid(tkIdx),fracRightTurns(tkIdx),'-', 'color', useColor, 'linewidth', 3);
+                                fracRightTurns = makeGrid(blkOnVis, blkOnVis.response==2, @mean, 1);
+                                noNanIdx = (tkIdx.*~isnan(fracRightTurns))>0;
+                                plot(visGrid(noNanIdx),fracRightTurns(noNanIdx),'.-', 'color', useColor, 'linewidth', 3);
                             end
                             yAxLabel = 'Fraction of right turns';
                         case 'rea'
@@ -200,9 +236,10 @@ classdef behaviorAnalysis
         end
         
         function viewJitterPlot(obj, plotType)
+            if ~exist('plotType', 'var'); plotType = 'per'; end
+            chosenSubjects = 1:length(obj.subjects);
             switch lower(plotType(1:3))
                 case 'amp'
-                    chosenSubjects = 1:length(obj.subjects);
                     maxPlotLength = max(ceil(cellfun(@length, obj.audValues)/2));
                     mainTitle = '\fontsize{16} Effect of auditory amplitude on performance';
                     mainYLabel = '\fontsize{16} Fraction correct';
@@ -216,31 +253,36 @@ classdef behaviorAnalysis
                     mainTitle = ['\fontsize{16} Effect of rig on ' plotType(4:end) '  performance'];
                     mainYLabel = '\fontsize{16} Fraction correct';
                     mainXLabel = '\fontsize{16} Rig Name';
+                case 'per'
+                    mainTitle = '\fontsize{16} Percentage correct by condition';
+                    mainYLabel = '\fontsize{16} Fraction correct';
+                    mainXLabel = '\fontsize{16} COndition';
+                    sigPlot = 0;
             end
             
             figure;
             for i  = chosenSubjects
                 switch lower(plotType(1:3))
                     case 'amp'
-                        blkOff = concatinateBlocks(obj.blocks{i}, 'noLaser');
-                        percentCorrect = makeGrid(blkOff, blkOff.feedback>0, @mean, 2);
-                        xData = blkOff.audGrid(blkOff.audGrid>=0 & blkOff.visGrid==0);
-                        yData = percentCorrect(blkOff.audGrid>=0 & blkOff.visGrid==0);
+                        blk = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserType)==0);
+                        percentCorrect = makeGrid(blk, blk.feedback>0, @mean, 2);
+                        xData = blk.audGrid(blk.audGrid>=0 & blk.visGrid==0);
+                        yData = percentCorrect(blk.audGrid>=0 & blk.visGrid==0);
                         [~, pVal] = cellfun(@(x) ttest(x-0.5), yData);
                         plotColors = repmat('k', length(pVal),1);
                         plotColors(pVal<0.05) = 'k';
                         
                     case 'rig'
-                        blkOff = concatinateBlocks(obj.blocks{i}, 'noLaser');
-                        [rigsUsed,~,rigIdx] = unique(blkOff.rigName);
+                        blk = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserType)==0);
+                        [rigsUsed,~,rigIdx] = unique(blk.rigName);
                         for j = 1:length(rigsUsed)
-                            percentCorrect = makeGrid(blkOff, blkOff.feedback>0, @mean, 2, find(rigIdx==j));
+                            percentCorrect = makeGrid(blk, blk.feedback>0, @mean, 2, find(rigIdx==j));
                             if strcmpi(plotType(4:end), 'vis')
                                 visTest = obj.visValues{i}(find(obj.visValues{i}>0, 3));
-                                yData{j,1} = cell2mat(percentCorrect(blkOff.audGrid==0 & blkOff.visGrid==visTest(end)));
+                                yData{j,1} = cell2mat(percentCorrect(blk.audGrid==0 & blk.visGrid==visTest(end)));
                             else
                                 audTest = obj.audValues{i}(find(obj.audValues{i}>0, 1));
-                                yData{j,1} = cell2mat(percentCorrect(blkOff.audGrid==audTest & blkOff.visGrid==0));
+                                yData{j,1} = cell2mat(percentCorrect(blk.audGrid==audTest & blk.visGrid==0));
                             end
                         end
                         xData = rigsUsed;
@@ -250,6 +292,22 @@ classdef behaviorAnalysis
                         testedPairs = ttestCombos(significance<0.05);
                         significance = significance(significance<0.05);
                         plotColors = 'kr'; plotColors = plotColors(:);
+                        
+                    case 'per'
+                        blk = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserType)==0);
+                        trialType = makeGrid(blk, blk.trialType, @mean, 3);
+                        percentCorrect = makeGrid(blk, blk.feedback>0, @mean, 2);
+                        numTrials = makeGrid(blk, blk.feedback*0+1, @sum, 3);
+                        tkIdx = numTrials>0 & trialType~=4;
+                        if sum(tkIdx(:)) < 3; continue; end
+                        
+                        blk = concatinateBlocks(obj.blocks{i}, vertcat(obj.blocks{i}.laserType)==0);
+                        percentCorrect = makeGrid(blk, blk.feedback>0, @mean, 2);
+                        xData = blk.audGrid(blk.audGrid>=0 & blk.visGrid==0);
+                        yData = percentCorrect(blk.audGrid>=0 & blk.visGrid==0);
+                        [~, pVal] = cellfun(@(x) ttest(x-0.5), yData);
+                        plotColors = repmat('k', length(pVal),1);
+                        plotColors(pVal<0.05) = 'k';
                 end
                 obj.getAxes(obj.subjects{i}, [80 70], maxPlotLength/5, [70 70], [60 20], obj.subjects(chosenSubjects)); hold on; box off;
                 jitterPlot(yData, 'edgC', plotColors, 'curA', 1);
@@ -270,34 +328,34 @@ classdef behaviorAnalysis
             suplabel(mainXLabel, 'x', mainAxes);
         end
         
-        function viewPerfomanceVsTime(obj)
-            %%
-            for i  = 1:length(obj.subjects)
-                audValues = unique(abs(obj.audValues{i}));
-                percentCorrect = cell(length(audValues),1);
-                for j = audValues(:)'
-                    feedback = cellfun(@(x,y,z) x((y==0 | y==1) & z == j), ...
-                        {obj.blocks{i}(:).feedback}', {obj.blocks{i}(:).trialType}', {obj.blocks{i}(:).audAmplitude}', 'uni', 0);
-                    percentCorrect{audValues==j} = cellfun(@mean, feedback);
-                end
-                obj.getAxes(obj.subjects{i}, [80 70], length(audValues)/5, [70 70], [60 20]); hold on; box off;
-                [~, pVal] = cellfun(@(x) ttest(x-0.5), percentCorrect);
-                plotColors = ('kkk')'; plotColors(pVal<0.05) = 'r';
-                jitterPlot(percentCorrect, 'edgC', plotColors, 'curA', 1);
-                [~, sigDiff] = ttest(percentCorrect{end-1},percentCorrect{end});
-                if sigDiff < 0.05; sigstar({[2,3]}, sigDiff); end
-                
-                set(gca, 'xTickLabels', audValues);
-                title(sprintf('%s: %d Sessions', obj.subjects{i}, length(percentCorrect{1})));
-                ylim([0 1]);
-                xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
-            end
-            figureSize = get(gcf, 'position');
-            mainAxes = [60./figureSize(3:4) 1-2*(50./figureSize(3:4))];
-            suplabel('\fontsize{16} Effect of auditory amplitude on performance', 't', mainAxes);
-            suplabel('\fontsize{16} Percentage correct', 'y', mainAxes);
-            suplabel('\fontsize{16} Audio amplitude', 'x', mainAxes);
-        end
+%         function viewPerfomanceVsTime(obj)
+%             %%
+%             for i  = 1:length(obj.subjects)
+%                 audValues = unique(abs(obj.audValues{i}));
+%                 percentCorrect = cell(length(audValues),1);
+%                 for j = audValues(:)'
+%                     feedback = cellfun(@(x,y,z) x((y==0 | y==1) & z == j), ...
+%                         {obj.blocks{i}(:).feedback}', {obj.blocks{i}(:).trialType}', {obj.blocks{i}(:).audAmplitude}', 'uni', 0);
+%                     percentCorrect{audValues==j} = cellfun(@mean, feedback);
+%                 end
+%                 obj.getAxes(obj.subjects{i}, [80 70], length(audValues)/5, [70 70], [60 20]); hold on; box off;
+%                 [~, pVal] = cellfun(@(x) ttest(x-0.5), percentCorrect);
+%                 plotColors = ('kkk')'; plotColors(pVal<0.05) = 'r';
+%                 jitterPlot(percentCorrect, 'edgC', plotColors, 'curA', 1);
+%                 [~, sigDiff] = ttest(percentCorrect{end-1},percentCorrect{end});
+%                 if sigDiff < 0.05; sigstar({[2,3]}, sigDiff); end
+%                 
+%                 set(gca, 'xTickLabels', audValues);
+%                 title(sprintf('%s: %d Sessions', obj.subjects{i}, length(percentCorrect{1})));
+%                 ylim([0 1]);
+%                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
+%             end
+%             figureSize = get(gcf, 'position');
+%             mainAxes = [60./figureSize(3:4) 1-2*(50./figureSize(3:4))];
+%             suplabel('\fontsize{16} Effect of auditory amplitude on performance', 't', mainAxes);
+%             suplabel('\fontsize{16} Percentage correct', 'y', mainAxes);
+%             suplabel('\fontsize{16} Audio amplitude', 'x', mainAxes);
+%         end
         
         function viewInactivationEffects(obj, UniOrBilateral, individualFlies)
             imgBWOuline=imread('BrainOutlineBW.png');
@@ -313,7 +371,7 @@ classdef behaviorAnalysis
                     for i  = 1:length(obj.subjects)
                         laserBlocks{i,1} = obj.blocks{i}(arrayfun(@(x) any(all([x.laserType>0 x.galvoType==galvoType],2)), obj.blocks{i}));
                     end
-                    blkOff = concatinateBlocks(cat(1,laserBlocks{:}), {'noLaser', 'laserConditions'});
+                    blkOff = concatinateBlocks(cat(1,laserBlocks{:}), {vertcat(obj.blocks{i}.laserType)==0});
                     blkOn = concatinateBlocks(cat(1,laserBlocks{:}), 'onlyLaser');
                     
                     if UniOrBilateral==2

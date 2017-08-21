@@ -2,8 +2,7 @@ function [expList] = scanForNewFiles(rebuildList)
 if ~exist('rebuildList', 'var'); rebuildList = false; end
 %#ok<*AGROW>
 expInfo = pathFinder('expInfo');
-includedMice = {'PC005'; 'PC006'; 'PC010'; 'PC011'; ...
-    'PC012'; 'PC013'; 'PC015'; 'PC016'; 'PC017'};
+includedMice = {'PC006'; 'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC016'; 'PC017'};
 if rebuildList; expList = []; else; load(pathFinder('expList')); end
 lastWeek = datestr(floor(now)-6:datenum(floor(now)), 'yyyy-mm-dd');
 %%
@@ -70,7 +69,7 @@ for i = 1:length(newBlocks)
     if isfield(b, 'expDef'); [~, tDat(i,1).expDef] = fileparts(b.expDef); end
     tDat(i,1).rigName = b.rigName;
     tDat(i,1).rigType = rigList{strcmp(b.rigName, rigList(:,1)),2};
-    if isfield(b, 'duration'); tDat(i,1).expDuration = b.duration; end
+    if isfield(b, 'duration'); tDat(i,1).expDuration = b.duration; else, tDat(i,1).expDuration = 0; end
     tDat(i,1).blockHelper = [tDat(i,1).expDef '_Blk_Proc.m'];
     tDat(i,1).blockFunction = str2func(tDat(i,1).blockHelper);
     tDat(i,1).rawFolder = newBlocks(i).folder;

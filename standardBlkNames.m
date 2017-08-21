@@ -144,7 +144,7 @@ for i = 1:length(fieldList); eval(['b.inputs.' fieldList{i} ' = b.inputs.' field
 if isfield(p, 'interactPunishDelays')
     p.openLoopDuration = p.interactPunishDelays(1);
     p.delayAfterIncorrect = p.interactPunishDelays(2);
-    if length(p.interactPunishDelays) == 3; p.laserDuration = p.interactPunishDelays(3); end
+    if length(p.interactPunishDelays) > 2; p.laserDuration = p.interactPunishDelays(3); end
 elseif isfield(p, 'correctResponse'); warning('DEBUG'); keyboard;
 end
 
@@ -193,10 +193,15 @@ if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)
     p.laserTypeProportions = [1 0 0];
     b.galvoLog.trialNum = 1:length(e.newTrialTimes);
     e.laserInitialisationTimes = b.galvoLog.trialNum*0;
+    p.laserDuration = 0;
+    e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
+    [v.laserDuration] = deal(0);
 end
 if ~isfield(e, 'galvoTTLTimes')
     e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
-    [v.laserDuration] = deal(1.5);
+end
+if ~isfield(e, 'galvoAndLaserEndTimes')
+    e.galvoAndLaserEndTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1)+e.laserDurationValues(1:sum(e.stimPeriodOnOffValues==1));
     p.laserDuration = 1.5;
 end
 if ~isfield(b.galvoLog, 'tictoc')
