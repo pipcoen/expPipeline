@@ -1,8 +1,12 @@
 function [blk, prm] = multiTemporalPassive_Blk_Proc(~, b, blk, prm)
-pVals = b.paramsValues;
-ckAD = pVals(1).clickAmpDur';     %Click Duration and Rate
-AVIx = [pVals.audVisIndex]';     %Click Duration and Rate
-vCon = pVals(1).visualContrast; 
+v = x.standardizedBlock.paramsValues;
+e = x.standardizedBlock.events;
+n = x.newBlock;
+p = x.standardizedParams;
+
+ckAD = v(1).clickAmpDur';     %Click Duration and Rate
+AVIx = [v.audVisIndex]';     %Click Duration and Rate
+vCon = v(1).visualContrast; 
 
 stmV = sigOnOffTimes(b.events.stmVValues, b.events.stmVTimes);
 blk.stmV = indexByTrial(blk, stmV(:,1), stmV, [1,1]);

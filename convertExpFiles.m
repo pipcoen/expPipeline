@@ -1,107 +1,158 @@
-function [eLst] = convertExpFiles(RorS, oneM)
-if ~exist('RorS', 'var') || isempty(RorS); RorS = [0 0]; end
-if ~exist('oneM', 'var') || isempty(oneM); oneM = 'PC'; end
+function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
+%% A funciton process experimental recodings into more concise, matching, local copies for future analysis.
 
-sLoc = cellfun(@(x) exist(x, 'file')>0, savePath('botheLst'));
-if all(sLoc); syncfolder(savePath('labL'), savePath('savL'), 0);
-elseif ~any(sLoc); error('No access to experimental directories'); 
+% Inputs(default values)
+% redoBlocks(0)------A tag to redo all block files
+% redoSuite2P(0)-----A tag to redo all 2P files
+% selectedMice('0')-Run for a specific mouse, or group of mice containing this string
+
+% Outputs
+% An output files is generated for each experiment in the form subject_yymmdd_sessionNumProc.mat These files will contain the following
+% "blk" is a structure comprising a reduced, processed block file which contains all essential information. Fields common to all experiments are:
+    %.subject-----------Name of the mouse
+    %.expDate-----------Date that the experiment was recorded
+    %.sessionNum--------Session number for experiment
+    %.rigName-----------Name of the rig where the experiment took place
+    %.rigType-----------Type of the rig where the experiment took place
+    %.trialStart--------nx1 vector of trial start times relative to the start of the experiment (s)
+    %.trialEnd----------nx1 vector of trial end times relative to the start of the experiment (s)
+    %.????????----------Additional fields are specified in the helper function for each experimental definition
+    
+% "prm" is a structure comprising a reduced, processed parameters file which contains all essential information. Fields common to all experiments are:
+    %.subject-----------Name of the mouse
+    %.expDate-----------Date that the experiment was recorded
+    %.sessionNum--------Session number for experiment
+    %.rigName-----------Name of the rig where the experiment took place
+    %.rigType-----------Type of the rig where the experiment took place
+    %.minutesOnRig------Number of minutes spent on the rig
+    %.numRepeats--------1xn vector of (max) number of repeats for each parameter conditions.
+    %.????????----------Additional fields are specified in the helper function for each experimental definition
+    
+% "raw" is a structure comprising potentially useful raw data (such as wheel movement and timeline data) which is not used for a lot of analyses and
+% so should only be loaded if necessary (as it is large).
+
+% "whoD" is simply a list of which variables are in the file. It is much faster to load this when processing rather than check the file contents.
+
+%% Set default values, load experimental list, check which processed files already exist, etc.
+if ~exist('redoBlocks', 'var') || isempty(redoBlocks); redoBlocks = 0; end
+if ~exist('redoSuite2P', 'var') || isempty(redoSuite2P); redoSuite2P = 0; end
+if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'}; end
+
+existDirectories = pathFinder('directoryCheck'); 
+if all(existDirectories); syncfolder(pathFinder('processedFolder'), pathFinder('sharedFolder'), 2); end
+
+expList = scanForNewFiles;
+if all(existDirectories==[0,1])
+    newPathList = {expList.sharedData}'; 
+    [expList.processedData] = newPathList{:}; 
+end
+processedFiles = [{expList.processedData}', {expList.sharedData}'];
+existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0;
+listNotExcluded = ~[expList.excluded]';
+if ~any([redoBlocks redoSuite2P])
+    processList = find(listNotExcluded & ~all(existProcessed, 2));
+else, processList = find(listNotExcluded | any(existProcessed, 2));
 end
 
-[eLst] = scanForNewFiles;
-if all(sLoc==[0,1]); newF = {eLst.labB}'; [eLst.finD] = newF{:}; end
+deleteList = find(~listNotExcluded & any(existProcessed, 2));
+for i = deleteList'
+    cellfun(@delete, processedFiles(i,existProcessed(i,:)));
+end
 
-for i = 1:size(eLst,1)
-    if eLst(i).excF && (~exist(eLst(i).finD, 'file') || ~all(sLoc)); continue;
-    elseif eLst(i).excF; delete(eLst(i).finD); 
-        if exist(eLst(i).labB, 'file'); delete(eLst(i).labB); end
-        continue
-    end
-    if isempty(strfind(eLst(i).mNam, oneM)); continue; end
-    x = eLst(i); x.eLst = eLst;
-    x.fSep = filesep;                     
 
-    warning('off', 'MATLAB:load:variableNotFound');
-    if exist(x.finD, 'file'); load(x.finD, 'whoD');
-        if ~exist('whoD', 'var'); whoD = who('-file', x.finD);
-           save(x.finD, 'whoD', '-append');
+files2Run = processList(processList>0)';
+srtIdx = 250;
+for i = files2Run(files2Run>srtIdx)
+    if ~contains(expList(i).subject, selectedMice); continue; end
+    if contains(expList(i).subject, {'PC008'}); continue; end
+    x = expList(i); x.expList = expList;
+    
+    x.existProcessed = existProcessed(i,:);
+    warning('off', 'MATLAB:load:variableNotFound'); 
+    if x.existProcessed(1)
+        load(x.processedData, 'whoD');
+        if ~exist('whoD', 'var')
+            whoD = who('-file', x.processedData);
+           save(x.processedData, 'whoD', '-append');
         end
-    else; whoD = []; 
+    else; whoD = [];
     end
     warning('on', 'MATLAB:load:variableNotFound');
     
-    if (~any(strcmp(whoD, 'blk')) || RorS(1) == 1) && ...
-            exist([x.eDef '_Blk_Proc.m'], 'file') && RorS(1)<2
-        convBlockFile(x)
+    varIdx = contains({'blk', 'flu'}, ['ignore'; whoD]);
+    
+    if any([~varIdx(2) redoSuite2P])
+        switch lower(x.rigType)
+            case 'twophoton'; conv2PData(x);            
+            case 'widefield'; continue; %convWidefieldData(x);
+        end
     end
-    if strcmp(x.rTyp, 'twoR') && ...
-            (~any(strcmp(whoD, 'flu')) || RorS(2) == 1) && RorS(2)<2
-        conv2PData(x);
+    
+    if ~exist(func2str(x.blockFunction), 'file'); continue; end
+    if any([~varIdx(1) redoBlocks])
+        fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
+        convBlockFile(x); 
     end
-    clear whoD
 end
-if all(sLoc); syncfolder(savePath('labL'), savePath('savL'), 0); end
+cellfun(@updateParamChangeSpreadsheet, uniquecell({expList(files2Run).subject}'));
+if all(existDirectories); syncfolder(pathFinder('processedFolder'), pathFinder('sharedFolder'), 2); end
 end
 
 function convBlockFile(x)
-fprintf('Converting block file for %s %s\n', x.rDat,x.mNam);
-b = load(x.blkR); b = b.block;
+x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
+x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 
-if ~strcmp(x.rTyp, 'trnR')
-    t = load(x.timR); t=t.Timeline;
-    b.be2t = alignBlockTimes(b, t);
+if ~strcmpi(x.rigType, 'training')
+    x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
+    x.oldBlock.blockTimeOffset = alignBlockTimes(x.oldBlock, x.timeline);
 end
-p = load(x.parF);
-[b, prm] = standardBlkNames(b, p.parameters);
-x.vTri = b.events.repeatNumValues(1:length(b.events.endTrialTimes))==1;
+if x.gavloLog~=0; x.gavloLog = load(x.gavloLog); end
+x.oldBlock.galvoLog = x.gavloLog;
+[x.standardizedBlock, x.standardizedParams] = standardBlkNames(x.oldBlock, x.oldParams);
+x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;
 
-if isfield(b.events, 'fBckValues')
-    rIdx = diff([b.events.repeatNumValues(1:length(x.vTri)) 1])<0;
-    x.rNum = int8([b.paramsValues(x.vTri).maxRetryIfIncorrect]>0 & ...
-        b.events.fBckValues(x.vTri)<0);
-    if x.rNum(end) == 1 && x.vTri(end)==1; x.rNum(end) = 0; end
-    x.rNum(x.rNum>0) = b.events.repeatNumValues(rIdx)-1;
-end
-if isfield(b.events, 'sSrtTimes')
-    blk.sSrt = single(b.events.sSrtTimes(x.vTri)');
-end
+x.newBlock.subject = x.subject;
+x.newBlock.expDate = x.expDate;
+x.newBlock.sessionNum = x.sessionNum;
+x.newBlock.rigName = x.rigName;
+x.newBlock.rigType = x.rigType;
 
-blk.mNam = x.mNam;
-blk.rDat = x.rDat;
-blk.sNum = x.sNum;
-blk.stEn = single([b.events.newTrialTimes(x.vTri)' b.events.endTrialTimes(x.vTri)']);
+x.standardizedParams.subject = x.subject;
+x.standardizedParams.expDate = x.expDate;
+x.standardizedParams.sessionNum = x.sessionNum;
+x.standardizedParams.rigName = x.rigName;
+x.standardizedParams.rigType = x.rigType;
 
-delP = [strfind(diff([0,b.inputs.wheelValues])~=0, [0 0]) ...
-    strfind(abs(diff([0,b.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
-wPos = b.inputs.wheelValues(setdiff(1:end, delP))';
-wTim = b.inputs.wheelTimes(setdiff(1:end, delP))';
-blk.wrTV = single([wTim wPos]); 
+repeatPoints = [strfind(diff([0,x.standardizedBlock.inputs.wheelValues])~=0, [0 0]) ...
+    strfind(abs(diff([0,x.standardizedBlock.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
+wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
+wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
+x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue]); 
 
-prm.totalTrials = length(b.events.endTrialTimes);
-prm.validTrials = sum(x.vTri);
-prm.minutesOnRig = round((b.experimentEndedTime-b.experimentInitTime)/60);
+x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
+x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
-[blk, prm] = eval([x.eDef '_Blk_Proc(x, b, blk, prm)']);
-
-if ~exist(fileparts(x.finD), 'dir'); mkdir(fileparts(x.finD)); end
-if ~exist(x.finD, 'file'); whoD = {'blk'; 'prm'}; save(x.finD, 'blk', 'prm', 'whoD');
-else; whoD = unique([who('-file', x.finD); 'blk'; 'prm']); save(x.finD, 'blk', 'prm', 'whoD', '-append'); 
+[blk, prm, raw] = x.blockFunction(x); %#ok
+if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
+if ~x.existProcessed(1); whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw'); %#ok
+else; whoD = unique([who('-file', x.processedData); 'blk'; 'prm']); save(x.processedData, 'blk', 'prm', 'whoD', 'raw', '-append'); %#ok
 end
 end
 
 function conv2PData(x)
-fprintf('Converting 2P data file for %s %s\n', x.rDat,x.mNam);
+fprintf('Converting 2P data file for %s %s\n', x.expDate,x.subject);
 if  ~exist(x.out2, 'dir') || isempty(dirP([x.out2 '*\\F*Plane*']))
-    fprintf('Running Suite2P for %s %s\n', x.rDat,x.mNam);
-    sFOV = str2double({x.eLst(strcmp(x.out2, {x.eLst.out2}')).sNum});
+    fprintf('Running Suite2P for %s %s\n', x.expDate,x.subject);
+    sFOV = str2double({x.expList(strcmp(x.out2, {x.expList.out2}')).sessionNum});
     runSuite2P(x, sFOV);
 end
 fLst = dirP([x.out2 '*\\F*proc.mat']);
 if exist(x.out2, 'dir') && isempty(fLst)
-    fprintf('NOTE: Correct 2P data for %s %s Skipping...\n', x.rDat,x.mNam);
+    fprintf('NOTE: Correct 2P data for %s %s Skipping...\n', x.expDate,x.subject);
     return;
 end
-t = load(savePath('rawtime', x.mNam, x.rDat, x.sNum)); t = t.Timeline;
-idx = find(strcmp(x.sNum, x.idxC));
+t = load(pathFinder('rawtime', x.subject, x.expDate, x.sessionNum)); t = t.Timeline;
+idx = find(strcmp(x.sessionNum, x.idxC));
 for i = 1:length(fLst)
     fprintf('Processing plane %d of %d...\n', i,length(fLst));
     load([fLst(i).folder x.fSep fLst(i).name]);
@@ -154,18 +205,18 @@ flu.pImg = permute(flu.pImg, [2,3,1]);
 
 flu.spkA = fun.map(@(x,y) x(y<=minF), cellflat(tmp2.spkA), cellflat(tmp2.spkT));
 flu.spkT = fun.map(@(x) x(x<=minF), cellflat(tmp2.spkT));
-flu.mNam = x.mNam;
-flu.rDat = x.rDat;
-flu.sNam = x.sNum;
+flu.subject = x.subject;
+flu.expDate = x.expDate;
+flu.sNam = x.sessionNum;
 
-if ~exist(fileparts(x.finD), 'dir'); mkdir(fileparts(x.finD)); end
-if ~exist(x.finD, 'file'); whoD = {'flu'}; save(x.finD, 'flu', 'whoD');
-else; whoD = [who('-file', x.finD); 'flu']; save(x.finD, 'flu', 'whoD', '-append'); 
+if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
+if ~exist(x.processedData, 'file'); whoD = {'flu'}; save(x.processedData, 'flu', 'whoD');
+else; whoD = [who('-file', x.processedData); 'flu']; save(x.processedData, 'flu', 'whoD', '-append'); 
 end
 end
 
 function runSuite2P(x, expts)
-db(1).mouse_name    = x.mNam;   db(1).date          = x.rDat;
+db(1).mouse_name    = x.subject;   db(1).date          = x.expDate;
 db(1).expts         = expts;    db(1).nchannels     = 1;
 db(1).gchannel      = 1;        db(1).nplanes       = 4;
 db(1).expred        = [];       db(1).nchannels_red = [];
