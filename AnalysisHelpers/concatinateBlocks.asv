@@ -1,6 +1,6 @@
 function concatenatedBlocks = concatinateBlocks(blocks, criterion)
 %% Function to concate block files.
-%
+
 
 if ~exist('criterion', 'var'); criterion = vertcat(blocks(:).conditions)*0+1; end
 if isempty(criterion); criterion = 'none'; end

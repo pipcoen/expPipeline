@@ -1,4 +1,39 @@
 function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
+%% A funciton process experimental recodings into more concise, matching, local copies for future analysis.
+
+% Inputs(default values)
+% redoBlocks(0)------A tag to redo all block files
+% redoSuite2P(0)-----A tag to redo all 2P files
+% selectedMice('0')-Run for a specific mouse, or group of mice containing this string
+
+% Outputs
+% An output files is generated for each experiment in the form subject_yymmdd_sessionNumProc.mat These files will contain the following
+% "blk" is a structure comprising a reduced, processed block file which contains all essential information. Fields common to all experiments are:
+    %.subject-----------Name of the mouse
+    %.expDate-----------Date that the experiment was recorded
+    %.sessionNum--------Session number for experiment
+    %.rigName-----------Name of the rig where the experiment took place
+    %.rigType-----------Type of the rig where the experiment took place
+    %.trialStart--------nx1 vector of trial start times relative to the start of the experiment (s)
+    %.trialEnd----------nx1 vector of trial end times relative to the start of the experiment (s)
+    %.????????----------Additional fields are specified in the helper function for each experimental definition
+    
+% "prm" is a structure comprising a reduced, processed parameters file which contains all essential information. Fields common to all experiments are:
+    %.subject-----------Name of the mouse
+    %.expDate-----------Date that the experiment was recorded
+    %.sessionNum--------Session number for experiment
+    %.rigName-----------Name of the rig where the experiment took place
+    %.rigType-----------Type of the rig where the experiment took place
+    %.minutesOnRig------Number of minutes spent on the rig
+    %.numRepeats--------1xn vector of (max) number of repeats for each parameter conditions.
+    %.????????----------Additional fields are specified in the helper function for each experimental definition
+    
+% "raw" is a structure comprising potentially useful raw data (such as wheel movement and timeline data) which is not used for a lot of analyses and
+% so should only be loaded if necessary (as it is large).
+
+% "whoD" is simply a list of which variables are in the file. It is much faster to load this when processing rather than check the file contents.
+
+%% Set default values, load experimental list, check which processed files already exist, etc.
 if ~exist('redoBlocks', 'var') || isempty(redoBlocks); redoBlocks = 0; end
 if ~exist('redoSuite2P', 'var') || isempty(redoSuite2P); redoSuite2P = 0; end
 if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'}; end
@@ -19,17 +54,20 @@ if ~any([redoBlocks redoSuite2P])
 else, processList = find(listNotExcluded | any(existProcessed, 2));
 end
 
+deleteList = find(~listNotExcluded & any(existProcessed, 2));
+for i = deleteList'
+    cellfun(@delete, processedFiles(i,existProcessed(i,:)));
+end
+
+
 files2Run = processList(processList>0)';
-srtIdx = 0;
+srtIdx = 250;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedMice); continue; end
     if contains(expList(i).subject, {'PC008'}); continue; end
     x = expList(i); x.expList = expList;
-   
-    x.existProcessed = existProcessed(i,:); 
-    if expList(i).excluded; cellfun(@delete, processedFiles(i,x.existProcessed)); 
-        continue; end
     
+    x.existProcessed = existProcessed(i,:);
     warning('off', 'MATLAB:load:variableNotFound'); 
     if x.existProcessed(1)
         load(x.processedData, 'whoD');
@@ -50,12 +88,13 @@ for i = files2Run(files2Run>srtIdx)
         end
     end
     
-    if ~exist(x.blockHelper, 'file'); continue; end
+    if ~exist(func2str(x.blockFunction), 'file'); continue; end
     if any([~varIdx(1) redoBlocks])
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x); 
     end
 end
+cellfun(@updateParamChangeSpreadsheet, uniquecell({expList(files2Run).subject}'));
 if all(existDirectories); syncfolder(pathFinder('processedFolder'), pathFinder('sharedFolder'), 2); end
 end
 
@@ -78,6 +117,12 @@ x.newBlock.sessionNum = x.sessionNum;
 x.newBlock.rigName = x.rigName;
 x.newBlock.rigType = x.rigType;
 
+x.standardizedParams.subject = x.subject;
+x.standardizedParams.expDate = x.expDate;
+x.standardizedParams.sessionNum = x.sessionNum;
+x.standardizedParams.rigName = x.rigName;
+x.standardizedParams.rigType = x.rigType;
+
 repeatPoints = [strfind(diff([0,x.standardizedBlock.inputs.wheelValues])~=0, [0 0]) ...
     strfind(abs(diff([0,x.standardizedBlock.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
@@ -87,9 +132,7 @@ x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue]);
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
-x.blockFunciton = str2func(x.blockHelper(1:end-2));
-
-[blk, prm, raw] = x.blockFunciton(x); %#ok
+[blk, prm, raw] = x.blockFunction(x); %#ok
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~x.existProcessed(1); whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw'); %#ok
 else; whoD = unique([who('-file', x.processedData); 'blk'; 'prm']); save(x.processedData, 'blk', 'prm', 'whoD', 'raw', '-append'); %#ok

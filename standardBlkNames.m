@@ -9,7 +9,7 @@ f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFun
     'servicesDescription'; 'clickAmpDurRate'; 'vStimAltitude'; 'stimulusAzimuth'; 'audVisAzimuth'; 'vStimSigma'; ...
     'interactPunishDelays'; 'stimulusDurRep'; 'noiseBurstAmpDur'; 'rewardDurSize'; 'interactSigOnDurAmp'; 'audVisThreshold'; ...
     'stimulusContrast'; 'maxRetryIfIncorrect'; 'backNoiseAmp'; 'preStimQuiRangeThr'; 'interTrialDelay'; ...
-    'audioAmplitude'; 'clickDurRate'; 'visualAltitudeSigma'; 'visualContrast';  'numRepeats'; 'reflectAzimuthAndCorr'; ...
+    'audioAmplitude'; 'clickDurRate'; 'visualAltitudeSigma'; 'visualContrast'; 'reflectAzimuthAndCorr'; ...
     ...
     ...
     'sPosTimes'; 'sPosValues'; 'stimStartTimes'; 'stimStartValues'; 'sSrtTimes'; 'sSrtValues'; 'stmVValues'; 'stmVTimes'; ...
@@ -17,7 +17,7 @@ f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFun
     'visInitialAzimuthValues'; 'visInitialAzimuthTimes'; 'audInitialAzimuthValues'; 'audInitialAzimuthTimes';...
     'preStimQuiescentDurationValues'; 'preStimQuiescentDurationTimes'; 'aPosValues'; 'aPosTimes'; 'vPosValues'; 'vPosTimes';...
     'iAziTimes'; 'iAziValues'; 'aViCValues'; 'aViCTimes'; 'visCValues'; 'visCTimes'; 'audCValues'; 'audCTimes'; ...
-    'aViMTimes'; 'aViMValues'; 'corRValues'; 'corRTimes'; 'sPreTimes'; 'sPreValues'};
+    'aViMTimes'; 'aViMValues'; 'corRValues'; 'corRTimes'; 'sPreTimes'; 'sPreValues'; 'stimContinuous'};
 
 if isfield(e, 'fBckTimes'); e.feedbackTimes = e.fBckTimes; e.feedbackValues = e.fBckValues; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
@@ -82,10 +82,10 @@ if isfield(v, 'clickAmpDurRate')
     tDat = {v.vStimSigma}'; [v.visSigma] = tDat{:};
 
     
-    p.audAmplitude = p.clickAmpDurRate(1);
-    p.clickDuration = p.clickAmpDurRate(2);
-    p.clickRate = p.clickAmpDurRate(3);
-    p.visAltitude = p.vStimAltitude(1);
+    p.audAmplitude = p.clickAmpDurRate(1,:);
+    p.clickDuration = p.clickAmpDurRate(2,:);
+    p.clickRate = p.clickAmpDurRate(3,:);
+    p.visAltitude = p.vStimAltitude(1,:);
     p.visSigma = p.vStimSigma;
 elseif isfield(v, 'clickDurRate')
     tDat = cellfun(@(x) x(1), {v.clickDurRate}, 'uni', 0); [v.clickDuration] = tDat{:};
@@ -114,6 +114,7 @@ if ~isfield(p, 'audVisAzimuth') && (isfield(p, 'stimulusAzimuth') && isfield(e, 
     
     tDat = mat2cell([v.stimulusAzimuth]', ones(length(e.newTrialTimes),1));  
     [v.audInitialAzimuth] = tDat{:}; [v.visInitialAzimuth] = tDat{:};
+    p.audInitialAzimuth = p.stimulusAzimuth; p.visInitialAzimuth = p.stimulusAzimuth;
 elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'iAziValues') && ~isfield(e, 'audInitialAzimuth')
     p.audInitialAzimuth = p.audVisAzimuth(1,:); 
     p.visInitialAzimuth = p.audVisAzimuth(2,:);
@@ -190,7 +191,7 @@ if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)
     e.galvoPosValues = 0*e.newTrialValues+1;
     p.galvoType = 1;
     p.laserPower = 0;
-    p.laserTypeProportions = [1 0 0];
+    p.laserTypeProportions = [1 0 0]';
     b.galvoLog.trialNum = 1:length(e.newTrialTimes);
     e.laserInitialisationTimes = b.galvoLog.trialNum*0;
     p.laserDuration = 0;
@@ -210,8 +211,58 @@ else
     if any(isnan(b.galvoLog.delay_issueLaser(b.galvoLog.laserType>0))); keyboard; end
     e.laserInitialisationTimes = b.galvoLog.tictoc;
 end
+if ~isfield(p, 'laserDuration'); p.laserDuration = 1.5; end
 e.laserTypeValues(~ismember(1:length(e.newTrialTimes), b.galvoLog.trialNum'))=0;
 p.rewardTotal = sum(p.rewardSize*e.feedbackValues>0);
+
+paramFields = fields(p);
+validConditions = p.numRepeats~=0;
+for i = 1:numel(paramFields)
+    if strcmp(paramFields{i}, 'type'); continue; end
+    if size(p.(paramFields{i}),2) > 1
+         p.(paramFields{i}) = p.(paramFields{i})(:,validConditions);
+    end
+end
+
+if isfield(p, 'reflectAzimuthAndCorr') && p.reflectAzimuthAndCorr == 1
+    flippedIdx = max([p.visContrast;p.audioAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
+    p.numRepeats = [p.numRepeats, p.numRepeats(flippedIdx)];
+end
+
+if p.stimContinuous == 1; p.stimDuration = inf; end
+
+for i = 1:numel(paramFields)
+    if strcmp(paramFields{i}, 'type'); continue; end
+    if size(p.(paramFields{i}),2) > 1
+        if isfield(p, 'reflectAzimuthAndCorr') && p.reflectAzimuthAndCorr == 1
+            if contains(paramFields{i}, 'InitialAzimuth') || contains(paramFields{i}, 'correctResponse')
+                p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)*-1];
+            elseif ~strcmp(paramFields{i}, 'numRepeats')
+                p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)];
+            end
+            p.(paramFields{i}) = p.(paramFields{i})(:,p.numRepeats>0);
+        end
+        if size(unique(p.(paramFields{i})', 'rows'), 1) == 1 && ~strcmp(paramFields{i}, 'numRepeats')
+            p.(paramFields{i}) = unique(p.(paramFields{i})', 'rows')';
+        end
+    end
+end
+if ~isfield(e, 'rewardAvailable')
+    e.rewardAvailableValues = 0*e.newTrialValues+1;    
+end
+
+if sum(sum(p.laserTypeProportions(2:3,:))) == 0
+    e.galvoTypeValues = 0*e.newTrialValues+1;
+    e.laserTypeValues = 0*e.newTrialValues;
+    e.laserPowerValues = 0*e.newTrialValues;
+    e.galvoCoordsValues = [0 0];
+    e.galvoPosValues = 0*e.newTrialValues+1;
+    p.laserPower = 0;
+    p.laserDuration = 0;
+    e.laserInitialisationTimes = b.galvoLog.trialNum*0;
+    e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
+    [v.laserDuration] = deal(0);
+end
 
 standardizedParams = chkThenRemoveFields(p, f2Re);
 standardizedBlock = b;

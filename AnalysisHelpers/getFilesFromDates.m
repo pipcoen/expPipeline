@@ -1,4 +1,11 @@
 function [blk, prm, raw] = getFilesFromDates(subject, requestedDates, dataType)
+%% Function to load proessed files from dates. Works with files from the convertExpFiles funciton.
+% Inputs(defaults)
+% subject(required)------String of subjects name
+% requestedDates('all')--Requested dates to load. Can be a single date, an cell array of dates, a range, 'lastXXX' etc.
+% dataType('all')--------Indicates types of data to load. A string containing one or more of 'blo', 'prm', and 'raw'
+
+
 if ~exist('subject', 'var'); error('Must specify subject'); end
 if ~exist('requestedDates', 'var') || isempty(requestedDates); requestedDates = {'last'}; end
 if ~exist('dataType', 'var'); dataType = 'all'; end
@@ -40,6 +47,7 @@ end
 if contains(lower(dataType), {'prm'; 'par'; 'all'})
     selectedParams = cellfun(@(x) load(x, 'prm'), selectedFiles, 'uni', 0);
     prm = [selectedParams{:}]'; prm = [prm(:).prm]';
+    if length(dataType) <6; blk = prm; end
 end
 if contains(lower(dataType), {'raw'; 'all'})
     selectedParams = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
