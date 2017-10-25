@@ -1,0 +1,250 @@
+﻿
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+# On branch master
+# Your branch is up-to-date with 'origin/master'.
+#
+# Changes to be committed:
+#	renamed:    Palamedes/History.m -> +fit/+palamedes/History.m
+#	renamed:    Palamedes/PAL_AMPM_CreateLUT.m -> +fit/+palamedes/PAL_AMPM_CreateLUT.m
+#	renamed:    Palamedes/PAL_AMPM_PosteriorTplus1.m -> +fit/+palamedes/PAL_AMPM_PosteriorTplus1.m
+#	renamed:    Palamedes/PAL_AMPM_expectedEntropy.m -> +fit/+palamedes/PAL_AMPM_expectedEntropy.m
+#	renamed:    Palamedes/PAL_AMPM_setupPM.m -> +fit/+palamedes/PAL_AMPM_setupPM.m
+#	renamed:    Palamedes/PAL_AMPM_updatePM.m -> +fit/+palamedes/PAL_AMPM_updatePM.m
+#	renamed:    Palamedes/PAL_AMRF_pdfDescriptives.m -> +fit/+palamedes/PAL_AMRF_pdfDescriptives.m
+#	renamed:    Palamedes/PAL_AMRF_pdfUpdate.m -> +fit/+palamedes/PAL_AMRF_pdfUpdate.m
+#	renamed:    Palamedes/PAL_AMRF_setupRF.m -> +fit/+palamedes/PAL_AMRF_setupRF.m
+#	renamed:    Palamedes/PAL_AMRF_updateRF.m -> +fit/+palamedes/PAL_AMRF_updateRF.m
+#	renamed:    Palamedes/PAL_AMUD_analyzeUD.m -> +fit/+palamedes/PAL_AMUD_analyzeUD.m
+#	renamed:    Palamedes/PAL_AMUD_setupUD.m -> +fit/+palamedes/PAL_AMUD_setupUD.m
+#	renamed:    Palamedes/PAL_AMUD_updateUD.m -> +fit/+palamedes/PAL_AMUD_updateUD.m
+#	renamed:    Palamedes/PAL_Contrasts.m -> +fit/+palamedes/PAL_Contrasts.m
+#	renamed:    Palamedes/PAL_CumulativeNormal.m -> +fit/+palamedes/PAL_CumulativeNormal.m
+#	renamed:    Palamedes/PAL_Entropy.m -> +fit/+palamedes/PAL_Entropy.m
+#	renamed:    Palamedes/PAL_ExampleFunction.m -> +fit/+palamedes/PAL_ExampleFunction.m
+#	renamed:    Palamedes/PAL_GoodnessOfFitZeroDF.m -> +fit/+palamedes/PAL_GoodnessOfFitZeroDF.m
+#	renamed:    Palamedes/PAL_Gumbel.m -> +fit/+palamedes/PAL_Gumbel.m
+#	renamed:    Palamedes/PAL_HyperbolicSecant.m -> +fit/+palamedes/PAL_HyperbolicSecant.m
+#	renamed:    Palamedes/PAL_LLfixed.m -> +fit/+palamedes/PAL_LLfixed.m
+#	renamed:    Palamedes/PAL_Logistic.m -> +fit/+palamedes/PAL_Logistic.m
+#	renamed:    Palamedes/PAL_MLDS_Bootstrap.m -> +fit/+palamedes/PAL_MLDS_Bootstrap.m
+#	renamed:    Palamedes/PAL_MLDS_Fit.m -> +fit/+palamedes/PAL_MLDS_Fit.m
+#	renamed:    Palamedes/PAL_MLDS_GenerateStimList.m -> +fit/+palamedes/PAL_MLDS_GenerateStimList.m
+#	renamed:    Palamedes/PAL_MLDS_GroupTrialsbyX.m -> +fit/+palamedes/PAL_MLDS_GroupTrialsbyX.m
+#	renamed:    Palamedes/PAL_MLDS_SimulateObserver.m -> +fit/+palamedes/PAL_MLDS_SimulateObserver.m
+#	renamed:    Palamedes/PAL_MLDS_negLL.m -> +fit/+palamedes/PAL_MLDS_negLL.m
+#	renamed:    Palamedes/PAL_MeanSDSSandSE.m -> +fit/+palamedes/PAL_MeanSDSSandSE.m
+#	renamed:    Palamedes/PAL_PFBA_Fit.m -> +fit/+palamedes/PAL_PFBA_Fit.m
+#	renamed:    Palamedes/PAL_PFBA_Fit_OldStyle.m -> +fit/+palamedes/PAL_PFBA_Fit_OldStyle.m
+#	renamed:    Palamedes/PAL_PFLR_ModelComparison.m -> +fit/+palamedes/PAL_PFLR_ModelComparison.m
+#	renamed:    Palamedes/PAL_PFLR_TLR.m -> +fit/+palamedes/PAL_PFLR_TLR.m
+#	renamed:    Palamedes/PAL_PFLR_setupMC.m -> +fit/+palamedes/PAL_PFLR_setupMC.m
+#	renamed:    Palamedes/PAL_PFML_BootstrapNonParametric.m -> +fit/+palamedes/PAL_PFML_BootstrapNonParametric.m
+#	renamed:    Palamedes/PAL_PFML_BootstrapNonParametricMultiple.m -> +fit/+palamedes/PAL_PFML_BootstrapNonParametricMultiple.m
+#	renamed:    Palamedes/PAL_PFML_BootstrapParametric.m -> +fit/+palamedes/PAL_PFML_BootstrapParametric.m
+#	renamed:    Palamedes/PAL_PFML_BootstrapParametricMultiple.m -> +fit/+palamedes/PAL_PFML_BootstrapParametricMultiple.m
+#	renamed:    Palamedes/PAL_PFML_BruteForceFit.m -> +fit/+palamedes/PAL_PFML_BruteForceFit.m
+#	renamed:    Palamedes/PAL_PFML_CustomDefine.m -> +fit/+palamedes/PAL_PFML_CustomDefine.m
+#	renamed:    Palamedes/PAL_PFML_DevianceGoF.m -> +fit/+palamedes/PAL_PFML_DevianceGoF.m
+#	renamed:    Palamedes/PAL_PFML_Fit.m -> +fit/+palamedes/PAL_PFML_Fit.m
+#	renamed:    Palamedes/PAL_PFML_FitMultiple.m -> +fit/+palamedes/PAL_PFML_FitMultiple.m
+#	renamed:    Palamedes/PAL_PFML_GoodnessOfFit.m -> +fit/+palamedes/PAL_PFML_GoodnessOfFit.m
+#	renamed:    Palamedes/PAL_PFML_GoodnessOfFitMultiple.m -> +fit/+palamedes/PAL_PFML_GoodnessOfFitMultiple.m
+#	renamed:    Palamedes/PAL_PFML_GroupTrialsbyX.m -> +fit/+palamedes/PAL_PFML_GroupTrialsbyX.m
+#	renamed:    Palamedes/PAL_PFML_IndependentFit.m -> +fit/+palamedes/PAL_PFML_IndependentFit.m
+#	renamed:    Palamedes/PAL_PFML_LLsaturated.m -> +fit/+palamedes/PAL_PFML_LLsaturated.m
+#	renamed:    Palamedes/PAL_PFML_PtoT.m -> +fit/+palamedes/PAL_PFML_PtoT.m
+#	renamed:    Palamedes/PAL_PFML_TtoP.m -> +fit/+palamedes/PAL_PFML_TtoP.m
+#	renamed:    Palamedes/PAL_PFML_negLL.m -> +fit/+palamedes/PAL_PFML_negLL.m
+#	renamed:    Palamedes/PAL_PFML_negLLMultiple.m -> +fit/+palamedes/PAL_PFML_negLLMultiple.m
+#	renamed:    Palamedes/PAL_PFML_negLLNonParametric.m -> +fit/+palamedes/PAL_PFML_negLLNonParametric.m
+#	renamed:    Palamedes/PAL_PFML_paramsTry.m -> +fit/+palamedes/PAL_PFML_paramsTry.m
+#	renamed:    Palamedes/PAL_PFML_rangeTries.m -> +fit/+palamedes/PAL_PFML_rangeTries.m
+#	renamed:    Palamedes/PAL_PFML_setupParameterizationStruct.m -> +fit/+palamedes/PAL_PFML_setupParameterizationStruct.m
+#	renamed:    Palamedes/PAL_PFML_setupParametrizationStruct.m -> +fit/+palamedes/PAL_PFML_setupParametrizationStruct.m
+#	renamed:    Palamedes/PAL_PF_SimulateObserverNonParametric.m -> +fit/+palamedes/PAL_PF_SimulateObserverNonParametric.m
+#	renamed:    Palamedes/PAL_PF_SimulateObserverParametric.m -> +fit/+palamedes/PAL_PF_SimulateObserverParametric.m
+#	renamed:    Palamedes/PAL_PtoZ.m -> +fit/+palamedes/PAL_PtoZ.m
+#	renamed:    Palamedes/PAL_Quick.m -> +fit/+palamedes/PAL_Quick.m
+#	renamed:    Palamedes/PAL_SDT_1AFC_DPtoPHF.m -> +fit/+palamedes/PAL_SDT_1AFC_DPtoPHF.m
+#	renamed:    Palamedes/PAL_SDT_1AFC_PHFtoDP.m -> +fit/+palamedes/PAL_SDT_1AFC_PHFtoDP.m
+#	renamed:    Palamedes/PAL_SDT_1AFCsameDiff_DiffMod_DPtoPH.m -> +fit/+palamedes/PAL_SDT_1AFCsameDiff_DiffMod_DPtoPH.m
+#	renamed:    Palamedes/PAL_SDT_1AFCsameDiff_DiffMod_DPtoPHF.m -> +fit/+palamedes/PAL_SDT_1AFCsameDiff_DiffMod_DPtoPHF.m
+#	renamed:    Palamedes/PAL_SDT_1AFCsameDiff_DiffMod_PHFtoDP.m -> +fit/+palamedes/PAL_SDT_1AFCsameDiff_DiffMod_PHFtoDP.m
+#	renamed:    Palamedes/PAL_SDT_1AFCsameDiff_IndMod_DPtoPHF.m -> +fit/+palamedes/PAL_SDT_1AFCsameDiff_IndMod_DPtoPHF.m
+#	renamed:    Palamedes/PAL_SDT_1AFCsameDiff_IndMod_PHFtoDP.m -> +fit/+palamedes/PAL_SDT_1AFCsameDiff_IndMod_PHFtoDP.m
+#	renamed:    Palamedes/PAL_SDT_2AFC_DPtoPC.m -> +fit/+palamedes/PAL_SDT_2AFC_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_2AFC_DPtoPHF.m -> +fit/+palamedes/PAL_SDT_2AFC_DPtoPHF.m
+#	renamed:    Palamedes/PAL_SDT_2AFC_PCtoDP.m -> +fit/+palamedes/PAL_SDT_2AFC_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_2AFC_PHFtoDP.m -> +fit/+palamedes/PAL_SDT_2AFC_PHFtoDP.m
+#	renamed:    Palamedes/PAL_SDT_2AFCmatchSample_DiffMod_DPtoPC.m -> +fit/+palamedes/PAL_SDT_2AFCmatchSample_DiffMod_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_2AFCmatchSample_DiffMod_DPtoPHF.m -> +fit/+palamedes/PAL_SDT_2AFCmatchSample_DiffMod_DPtoPHF.m
+#	renamed:    Palamedes/PAL_SDT_2AFCmatchSample_DiffMod_PCtoDP.m -> +fit/+palamedes/PAL_SDT_2AFCmatchSample_DiffMod_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_2AFCmatchSample_DiffMod_PHFtoDP.m -> +fit/+palamedes/PAL_SDT_2AFCmatchSample_DiffMod_PHFtoDP.m
+#	renamed:    Palamedes/PAL_SDT_2AFCmatchSample_IndMod_DPtoPC.m -> +fit/+palamedes/PAL_SDT_2AFCmatchSample_IndMod_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_2AFCmatchSample_IndMod_DPtoPHF.m -> +fit/+palamedes/PAL_SDT_2AFCmatchSample_IndMod_DPtoPHF.m
+#	renamed:    Palamedes/PAL_SDT_2AFCmatchSample_IndMod_PCtoDP.m -> +fit/+palamedes/PAL_SDT_2AFCmatchSample_IndMod_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_2AFCmatchSample_IndMod_PHFtoDP.m -> +fit/+palamedes/PAL_SDT_2AFCmatchSample_IndMod_PHFtoDP.m
+#	renamed:    Palamedes/PAL_SDT_2AFCsameDiff_DPtoPC.m -> +fit/+palamedes/PAL_SDT_2AFCsameDiff_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_2AFCsameDiff_PCtoDP.m -> +fit/+palamedes/PAL_SDT_2AFCsameDiff_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_3AFCoddity_IndMod_DPtoPC.m -> +fit/+palamedes/PAL_SDT_3AFCoddity_IndMod_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_3AFCoddity_IndMod_DPtoPCpartFuncA.m -> +fit/+palamedes/PAL_SDT_3AFCoddity_IndMod_DPtoPCpartFuncA.m
+#	renamed:    Palamedes/PAL_SDT_3AFCoddity_IndMod_DPtoPCpartFuncB.m -> +fit/+palamedes/PAL_SDT_3AFCoddity_IndMod_DPtoPCpartFuncB.m
+#	renamed:    Palamedes/PAL_SDT_3AFCoddity_IndMod_PCtoDP.m -> +fit/+palamedes/PAL_SDT_3AFCoddity_IndMod_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_AS_2uneqSLtoPC.m -> +fit/+palamedes/PAL_SDT_AS_2uneqSLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_AS_PCto2uneqSL.m -> +fit/+palamedes/PAL_SDT_AS_PCto2uneqSL.m
+#	renamed:    Palamedes/PAL_SDT_AS_PCtoSL.m -> +fit/+palamedes/PAL_SDT_AS_PCtoSL.m
+#	renamed:    Palamedes/PAL_SDT_AS_SLtoPC.m -> +fit/+palamedes/PAL_SDT_AS_SLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_AS_uneqSLtoPC.m -> +fit/+palamedes/PAL_SDT_AS_uneqSLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_MAFC_DPtoPC.m -> +fit/+palamedes/PAL_SDT_MAFC_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_MAFC_DPtoPCpartFunc.m -> +fit/+palamedes/PAL_SDT_MAFC_DPtoPCpartFunc.m
+#	renamed:    Palamedes/PAL_SDT_MAFC_PCtoDP.m -> +fit/+palamedes/PAL_SDT_MAFC_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_MAFCmatchSample_DiffMod_DPtoPC.m -> +fit/+palamedes/PAL_SDT_MAFCmatchSample_DiffMod_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_MAFCmatchSample_DiffMod_PCtoDP.m -> +fit/+palamedes/PAL_SDT_MAFCmatchSample_DiffMod_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_MAFCoddity_DPtoPC.m -> +fit/+palamedes/PAL_SDT_MAFCoddity_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_MAFCoddity_DiffMod_DPtoPC.m -> +fit/+palamedes/PAL_SDT_MAFCoddity_DiffMod_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_MAFCoddity_DiffMod_PCtoDP.m -> +fit/+palamedes/PAL_SDT_MAFCoddity_DiffMod_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_MAFCoddity_IndMod_DPtoPC.m -> +fit/+palamedes/PAL_SDT_MAFCoddity_IndMod_DPtoPC.m
+#	renamed:    Palamedes/PAL_SDT_MAFCoddity_IndMod_PCtoDP.m -> +fit/+palamedes/PAL_SDT_MAFCoddity_IndMod_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_MAFCoddity_PCtoDP.m -> +fit/+palamedes/PAL_SDT_MAFCoddity_PCtoDP.m
+#	renamed:    Palamedes/PAL_SDT_PCtoSL.m -> +fit/+palamedes/PAL_SDT_PCtoSL.m
+#	renamed:    Palamedes/PAL_SDT_PFML_BootstrapParametric.m -> +fit/+palamedes/PAL_SDT_PFML_BootstrapParametric.m
+#	renamed:    Palamedes/PAL_SDT_PFML_Fit.m -> +fit/+palamedes/PAL_SDT_PFML_Fit.m
+#	renamed:    Palamedes/PAL_SDT_PFML_GoodnessOfFit.m -> +fit/+palamedes/PAL_SDT_PFML_GoodnessOfFit.m
+#	renamed:    Palamedes/PAL_SDT_PFML_negLL.m -> +fit/+palamedes/PAL_SDT_PFML_negLL.m
+#	renamed:    Palamedes/PAL_SDT_PF_SimulateObserverParametric.m -> +fit/+palamedes/PAL_SDT_PF_SimulateObserverParametric.m
+#	renamed:    Palamedes/PAL_SDT_PS_2uneqSLtoPC.m -> +fit/+palamedes/PAL_SDT_PS_2uneqSLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_PS_DPtoPCpartFunc.m -> +fit/+palamedes/PAL_SDT_PS_DPtoPCpartFunc.m
+#	renamed:    Palamedes/PAL_SDT_PS_MonteCarlo_SLtoPC.m -> +fit/+palamedes/PAL_SDT_PS_MonteCarlo_SLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_PS_MonteCarlo_uneqSLtoPC.m -> +fit/+palamedes/PAL_SDT_PS_MonteCarlo_uneqSLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_PS_PCto2uneqSL.m -> +fit/+palamedes/PAL_SDT_PS_PCto2uneqSL.m
+#	renamed:    Palamedes/PAL_SDT_PS_PCtoSL.m -> +fit/+palamedes/PAL_SDT_PS_PCtoSL.m
+#	renamed:    Palamedes/PAL_SDT_PS_SLtoPC.m -> +fit/+palamedes/PAL_SDT_PS_SLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_PS_uneqDPtoPCpartFunc.m -> +fit/+palamedes/PAL_SDT_PS_uneqDPtoPCpartFunc.m
+#	renamed:    Palamedes/PAL_SDT_PS_uneqDPtoPCpartFunc2.m -> +fit/+palamedes/PAL_SDT_PS_uneqDPtoPCpartFunc2.m
+#	renamed:    Palamedes/PAL_SDT_PS_uneqSLtoPC.m -> +fit/+palamedes/PAL_SDT_PS_uneqSLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_ROCML_BootstrapParametric.m -> +fit/+palamedes/PAL_SDT_ROCML_BootstrapParametric.m
+#	renamed:    Palamedes/PAL_SDT_ROCML_Fit.m -> +fit/+palamedes/PAL_SDT_ROCML_Fit.m
+#	renamed:    Palamedes/PAL_SDT_ROCML_GoodnessOfFit.m -> +fit/+palamedes/PAL_SDT_ROCML_GoodnessOfFit.m
+#	renamed:    Palamedes/PAL_SDT_ROCML_RatioSDcomparison.m -> +fit/+palamedes/PAL_SDT_ROCML_RatioSDcomparison.m
+#	renamed:    Palamedes/PAL_SDT_ROCML_negLL.m -> +fit/+palamedes/PAL_SDT_ROCML_negLL.m
+#	renamed:    Palamedes/PAL_SDT_ROCML_negLLNonParametric.m -> +fit/+palamedes/PAL_SDT_ROCML_negLLNonParametric.m
+#	renamed:    Palamedes/PAL_SDT_ROC_SimulateObserverParametric.m -> +fit/+palamedes/PAL_SDT_ROC_SimulateObserverParametric.m
+#	renamed:    Palamedes/PAL_SDT_SLtoPC.m -> +fit/+palamedes/PAL_SDT_SLtoPC.m
+#	renamed:    Palamedes/PAL_SDT_Summ_MultiplePFML_BootstrapParametric.m -> +fit/+palamedes/PAL_SDT_Summ_MultiplePFML_BootstrapParametric.m
+#	renamed:    Palamedes/PAL_SDT_Summ_MultiplePFML_Fit.m -> +fit/+palamedes/PAL_SDT_Summ_MultiplePFML_Fit.m
+#	renamed:    Palamedes/PAL_SDT_Summ_MultiplePFML_GoodnessOfFit.m -> +fit/+palamedes/PAL_SDT_Summ_MultiplePFML_GoodnessOfFit.m
+#	renamed:    Palamedes/PAL_SDT_Summ_MultiplePFML_negLL.m -> +fit/+palamedes/PAL_SDT_Summ_MultiplePFML_negLL.m
+#	renamed:    Palamedes/PAL_SDT_Summ_MultiplePF_SimulateObserverParametric.m -> +fit/+palamedes/PAL_SDT_Summ_MultiplePF_SimulateObserverParametric.m
+#	renamed:    Palamedes/PAL_SDT_cumulateHF.m -> +fit/+palamedes/PAL_SDT_cumulateHF.m
+#	renamed:    Palamedes/PAL_Scale0to1.m -> +fit/+palamedes/PAL_Scale0to1.m
+#	renamed:    Palamedes/PAL_Weibull.m -> +fit/+palamedes/PAL_Weibull.m
+#	renamed:    Palamedes/PAL_ZtoP.m -> +fit/+palamedes/PAL_ZtoP.m
+#	renamed:    Palamedes/PAL_findMax.m -> +fit/+palamedes/PAL_findMax.m
+#	renamed:    Palamedes/PAL_info.m -> +fit/+palamedes/PAL_info.m
+#	renamed:    Palamedes/PAL_inverseCumulativeNormal.m -> +fit/+palamedes/PAL_inverseCumulativeNormal.m
+#	renamed:    Palamedes/PAL_inverseGumbel.m -> +fit/+palamedes/PAL_inverseGumbel.m
+#	renamed:    Palamedes/PAL_inverseHyperbolicSecant.m -> +fit/+palamedes/PAL_inverseHyperbolicSecant.m
+#	renamed:    Palamedes/PAL_inverseLogistic.m -> +fit/+palamedes/PAL_inverseLogistic.m
+#	renamed:    Palamedes/PAL_inverseWeibull.m -> +fit/+palamedes/PAL_inverseWeibull.m
+#	renamed:    Palamedes/PAL_isIdentity.m -> +fit/+palamedes/PAL_isIdentity.m
+#	renamed:    Palamedes/PAL_isOrthogonal.m -> +fit/+palamedes/PAL_isOrthogonal.m
+#	renamed:    Palamedes/PAL_isRowOnes.m -> +fit/+palamedes/PAL_isRowOnes.m
+#	renamed:    Palamedes/PAL_logQuick.m -> +fit/+palamedes/PAL_logQuick.m
+#	renamed:    Palamedes/PAL_minimize.m -> +fit/+palamedes/PAL_minimize.m
+#	renamed:    Palamedes/PAL_nansum.m -> +fit/+palamedes/PAL_nansum.m
+#	renamed:    Palamedes/PAL_pdfNormal.m -> +fit/+palamedes/PAL_pdfNormal.m
+#	renamed:    Palamedes/PAL_randomizeArray.m -> +fit/+palamedes/PAL_randomizeArray.m
+#	renamed:    Palamedes/PAL_spreadPF.m -> +fit/+palamedes/PAL_spreadPF.m
+#	renamed:    Palamedes/PAL_sqDistanceYfuncX.m -> +fit/+palamedes/PAL_sqDistanceYfuncX.m
+#	renamed:    Palamedes/PAL_unpackParamsPF.m -> +fit/+palamedes/PAL_unpackParamsPF.m
+#	renamed:    Palamedes/PAL_version.m -> +fit/+palamedes/PAL_version.m
+#	renamed:    Palamedes/PAL_whatIs.m -> +fit/+palamedes/PAL_whatIs.m
+#	new file:   +fit/@GLMmulti/GLMmulti.m
+#	new file:   +fit/@GLMmulti/Q.m
+#	new file:   +fit/@GLMmulti/SimulateGLM.m
+#	new file:   +fit/@GLMmulti/bGLM.m
+#	new file:   +fit/@GLMmulti/laserGLM.m
+#	new file:   +fit/@GLMmulti/loadData.m
+#	new file:   +fit/@GLMmulti/nestedLogit.m
+#	new file:   +fit/@GLMmulti/neurGLM.m
+#	new file:   +fit/@GLMmulti/omnibusLaserGLM.m
+#	new file:   +fit/psychoCurve.m
+#	new file:   +plt/getAxes.m
+#	renamed:    Plotting/redblue.m -> +plt/redblue.m
+#	new file:   +plt/selectRedBlueColors.m
+#	renamed:    sigstar.m -> +plt/sigstar.m
+#	renamed:    suplabel.m -> +plt/suplabel.m
+#	renamed:    Plotting/tightSubplot.m -> +plt/tightSubplot.m
+#	renamed:    expDefConversions/multiSpaceWorld_Blk_Proc.m -> +prc/+expDef/multiSpaceWorld.m
+#	new file:   +prc/+expDef/multiSpaceWorldNewNames.m
+#	renamed:    expDefConversions/multiTemporalPassive_Blk_Proc.m -> +prc/+expDef/multiTemporalPassive.m
+#	renamed:    expDefConversions/orientTuning_Blk_Proc.m -> +prc/+expDef/orientTuning.m
+#	renamed:    expDefConversions/helpers/alignBlockTimes.m -> +prc/alignBlockTimes.m
+#	new file:   +prc/combineBlocks.m
+#	new file:   +prc/combineParams.m
+#	renamed:    convertExpFiles.m -> +prc/convertExpFiles.m
+#	renamed:    AnalysisHelpers/getFilesFromDates.m -> +prc/getFilesFromDates.m
+#	renamed:    expDefConversions/helpers/indexByTrial.m -> +prc/indexByTrial.m
+#	renamed:    AnalysisHelpers/makeGrid.m -> +prc/makeGrid.m
+#	renamed:    expDefConversions/helpers/mouseDetFromFolder.m -> +prc/mouseDetFromFolder.m
+#	renamed:    pathFinder.m -> +prc/pathFinder.m
+#	renamed:    scanForNewFiles.m -> +prc/scanForNewFiles.m
+#	renamed:    standardBlkNames.m -> +prc/standardBlkNames.m
+#	renamed:    updateParamChangeSpreadsheet.m -> +prc/updateParamChangeSpreadsheet.m
+#	deleted:    AnalysisHelpers/concatinateBlocks.asv
+#	deleted:    AnalysisHelpers/concatinateBlocks.m
+#	new file:   Temp/Backup.m
+#	renamed:    FiguresForDataClub.m -> Temp/FiguresForDataClub.m
+#	renamed:    Plotting/BrainBW.PNG -> Temp/Plotting/BrainBW.PNG
+#	renamed:    Plotting/BrainOutlineBW.png -> Temp/Plotting/BrainOutlineBW.png
+#	renamed:    Plotting/colorMaps/.gitignore -> Temp/Plotting/colorMaps/.gitignore
+#	renamed:    Plotting/colorMaps/LICENSE -> Temp/Plotting/colorMaps/LICENSE
+#	renamed:    Plotting/colorMaps/README.md -> Temp/Plotting/colorMaps/README.md
+#	renamed:    Plotting/colorMaps/autumn.m -> Temp/Plotting/colorMaps/autumn.m
+#	renamed:    Plotting/colorMaps/bled.m -> Temp/Plotting/colorMaps/bled.m
+#	renamed:    Plotting/colorMaps/bone.m -> Temp/Plotting/colorMaps/bone.m
+#	renamed:    Plotting/colorMaps/bone2.m -> Temp/Plotting/colorMaps/bone2.m
+#	renamed:    Plotting/colorMaps/bright.m -> Temp/Plotting/colorMaps/bright.m
+#	renamed:    Plotting/colorMaps/cache.m -> Temp/Plotting/colorMaps/cache.m
+#	renamed:    Plotting/colorMaps/cold.m -> Temp/Plotting/colorMaps/cold.m
+#	renamed:    Plotting/colorMaps/cool.m -> Temp/Plotting/colorMaps/cool.m
+#	renamed:    Plotting/colorMaps/copper.m -> Temp/Plotting/colorMaps/copper.m
+#	renamed:    Plotting/colorMaps/copper2.m -> Temp/Plotting/colorMaps/copper2.m
+#	renamed:    Plotting/colorMaps/dawn.m -> Temp/Plotting/colorMaps/dawn.m
+#	renamed:    Plotting/colorMaps/disco.m -> Temp/Plotting/colorMaps/disco.m
+#	renamed:    Plotting/colorMaps/disparity.m -> Temp/Plotting/colorMaps/disparity.m
+#	renamed:    Plotting/colorMaps/dusk.m -> Temp/Plotting/colorMaps/dusk.m
+#	renamed:    Plotting/colorMaps/earth.m -> Temp/Plotting/colorMaps/earth.m
+#	renamed:    Plotting/colorMaps/gray.m -> Temp/Plotting/colorMaps/gray.m
+#	renamed:    Plotting/colorMaps/hicontrast.m -> Temp/Plotting/colorMaps/hicontrast.m
+#	renamed:    Plotting/colorMaps/hot.m -> Temp/Plotting/colorMaps/hot.m
+#	renamed:    Plotting/colorMaps/hsv.m -> Temp/Plotting/colorMaps/hsv.m
+#	renamed:    Plotting/colorMaps/hsv2.m -> Temp/Plotting/colorMaps/hsv2.m
+#	renamed:    Plotting/colorMaps/imdisp.m -> Temp/Plotting/colorMaps/imdisp.m
+#	renamed:    Plotting/colorMaps/imsc.m -> Temp/Plotting/colorMaps/imsc.m
+#	renamed:    Plotting/colorMaps/imseq.m -> Temp/Plotting/colorMaps/imseq.m
+#	renamed:    Plotting/colorMaps/imstream.m -> Temp/Plotting/colorMaps/imstream.m
+#	renamed:    Plotting/colorMaps/jet.m -> Temp/Plotting/colorMaps/jet.m
+#	renamed:    Plotting/colorMaps/pastel.m -> Temp/Plotting/colorMaps/pastel.m
+#	renamed:    Plotting/colorMaps/pink.m -> Temp/Plotting/colorMaps/pink.m
+#	renamed:    Plotting/colorMaps/pink2.m -> Temp/Plotting/colorMaps/pink2.m
+#	renamed:    Plotting/colorMaps/private/colormap_helper.m -> Temp/Plotting/colorMaps/private/colormap_helper.m
+#	renamed:    Plotting/colorMaps/private/rescale.m -> Temp/Plotting/colorMaps/private/rescale.m
+#	renamed:    Plotting/colorMaps/real2rgb.m -> Temp/Plotting/colorMaps/real2rgb.m
+#	renamed:    Plotting/colorMaps/sc.m -> Temp/Plotting/colorMaps/sc.m
+#	renamed:    Plotting/colorMaps/sepia.m -> Temp/Plotting/colorMaps/sepia.m
+#	renamed:    Plotting/colorMaps/spring.m -> Temp/Plotting/colorMaps/spring.m
+#	renamed:    Plotting/colorMaps/str2color.m -> Temp/Plotting/colorMaps/str2color.m
+#	renamed:    Plotting/colorMaps/summer.m -> Temp/Plotting/colorMaps/summer.m
+#	renamed:    Plotting/colorMaps/temp.m -> Temp/Plotting/colorMaps/temp.m
+#	renamed:    Plotting/colorMaps/thermal.m -> Temp/Plotting/colorMaps/thermal.m
+#	renamed:    Plotting/colorMaps/whed.m -> Temp/Plotting/colorMaps/whed.m
+#	renamed:    Plotting/colorMaps/winter.m -> Temp/Plotting/colorMaps/winter.m
+#	renamed:    behaviorAnalysis.m -> Temp/behaviorAnalysis.m
+#	new file:   Temp/separateBlockIntoInactivationSites.m
+#	deleted:    paramViewer.asv
+#	new file:   spatialAnalysis.asv
+#	new file:   spatialAnalysis.m
+#
+
