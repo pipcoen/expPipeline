@@ -1,0 +1,15 @@
+function gridSplitByRows(dataGrid, audValues, lineSpec)
+if ~exist('lineSpec', 'var'); lineSpec = '-'; end
+if size(dataGrid,1) ~= length(audValues); error('Must provide an auditory value for each row'); end
+colorChoices = plt.selectRedBlueColors(audValues);
+
+for j =  = audValues(:)'
+    idx = find(block.grids.audValues==audVal & numTrials>0);
+    err = [prob(idx)-lowBound(idx), highBound(idx) - prob(idx)];
+    if errorOn == 1
+        errorbar(block.grids.visValues(idx),prob(idx),err(:,1),err(:,2),'.','MarkerSize',20, 'Color', colorChoices(audValues==audVal,:));
+    else
+        plot(block.grids.visValues(idx),prob(idx),'.','MarkerSize',20, 'Color', colorChoices(audValues==audVal,:));
+    end
+    hold on;
+end
