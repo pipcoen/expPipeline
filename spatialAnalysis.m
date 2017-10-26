@@ -33,66 +33,48 @@ classdef spatialAnalysis
             figure;
             if ~exist('plotType', 'var'); plotType = 'res'; end
             maxGrid = max(cell2mat(cellfun(@(x) [length(x.audValues) length(x.visValues)], obj.blocks, 'uni', 0)), [], 1);
-            colorYTick = [0 1]; colorMap = plt.redblue(64); colorDirection = 'normal'; axisLimits = [0 1]; colorLabel = 'Fraction of right turns';
-                        
+            boxPlot.colorMap = plt.redblue(64);
+            boxPlot.axisLimits = [0 1];
+            
+            colorBar.colorLabel = 'Fraction of right turns';
+            colorBar.colorYTick = [0 1];
+            colorBar.colorDirection = 'normal';
+            
             for i  = 1:length(obj.subjects)
-                if contains(plotType(1:3), {'las'; 'ina'}) || mode(obj.blocks{i}.laserSession>0)==1
-                    laserOff = prc.combineBlocks(obj.blocks{i}, obj.blocks{i}.laserSession~=0 & obj.blocks{i}.laserType==0);
-                else, laserOff = prc.combineBlocks(obj.blocks{i}, obj.blocks{i}.laserSession==0);
-                end
-                
+                normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
+                boxPlot.subject = obj.subjects{i};
+                boxPlot.trialNumber = length(normBlock.response);
+                boxPlot.nSessions = obj.blocks{i}.nSessions;
+                boxPlot.xyValues = {normBlock.visValues*100; normBlock.audValues};
+                boxPlot.xyLabel = {normBlock.audType; 'VisualContrast'};
                 switch lower(plotType(1:3))
                     case 'res'
-                        plotData = prc.makeGrid(laserOff, obj.splits.maxNoLaser{i}.response==2, @mean, 1);
-                        trialNumber = length(laserOff.response);
+                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.response==2, @mean, 1);
                     case {'svd'; 'mod'}
                         if ~isempty(obj.expDate)
                             obj.runMouseReplicate({'Original'; 'Model'; 'Difference'}, ['viewBoxPlots(''' plotType ''')']); 
                             return;
                         end
-                        numRightTurns = prc.makeGrid(laserOff, laserOff.response==2, @sum, 1);
-                        numTrials = prc.makeGrid(laserOff, laserOff.response~=-1, @sum, 1);
-                        responseData = numRightTurns./numTrials;
-                        if strcmp(plotType, 'svd')
-                            obj.blocks{i}.visValues = obj.blocks{i}.visValues(~any(isnan(responseData)));
-                            responseData = responseData(:,~any(isnan(responseData),1));
-                            [U,S,V] = svd(responseData, 'econ');
-                            modelData = U(:,1)*V(:,1)'*S(1,1);
-                        elseif strcmp(plotType, 'mod')
-                            audIdx = obj.blocks{1}.grids.visValues==0;
-                            visIdx = obj.blocks{1}.grids.audValues==0;
-                            modelData = sqrt((numRightTurns(audIdx)*numRightTurns(visIdx)')./(numTrials(audIdx)*numTrials(visIdx)'));
-                            modelData(isnan(responseData)) = nan;
-                        end
-                        
-                        axisLimits = [-0.25 1.25];
-                        trialNumber = length(laserOff.response);
-                        if i == 1; plotData = responseData; end
-                        if i == 2; plotData = modelData; end
-                        if i == 3; plotData = responseData - modelData; axisLimits = [-0.25 0.25]; end
+                        results = fit.outerProduct(normBlock);
+                        if contains(plotType, 'svd'); results = results.svd; else; results = results.mul; end         
+                        boxPlot.xyValues{1} = results.visValues;
+                        boxPlot.axisLimits = [-0.25 1.25];
+                        boxPlot.plotData = results.model{i};
+                        if i == 3; boxPlot.axisLimits = [-0.25 0.25]; end
                 end
-                plotIdx = ~all(isnan(plotData));
                 plt.getAxes(i, length(obj.subjects), [], maxGrid(2)/(1.3*maxGrid(1)), [100 80 60 100], [100 40]);
-                plotData = plotData(:,plotIdx);
-                imsc(plotData, axisLimits, colorMap, 'k');
-                [xPnts, yPnts] = meshgrid(1:size(plotData,2), 1:size(plotData,1));
-                arrayfun(@(x,y,z) text(x,y, num2str(round(z*100)/100), 'horizontalalignment', 'center'), xPnts, yPnts, plotData) 
-                daspect([1 1 1]); axis xy;
-                title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, trialNumber, obj.blocks{i}.nSessions));
-                set(gca, 'xTick', 1:size(plotData,2), 'xTickLabel', obj.blocks{i}.visValues(plotIdx)*100, 'fontsize', 14)
-                set(gca, 'yTick', 1:size(plotData,1), 'yTickLabel', obj.blocks{i}.audValues, 'fontsize', 14, 'TickLength', [0, 0])
-                ylabel(obj.blocks{i}.audType);
-                xlabel('Visual Contast');
-                box off;
+                plt.boxPlot(boxPlot);
+                colorBar.colorYTick = {'Min'; 'Max'};
             end
             currentAxisPotision = get(gca, 'position');
-            colorBar = colorbar;
-            set(colorBar,'Ticks', get(colorBar, 'Limits'), 'TickLabels', colorYTick, 'YDir', colorDirection);
-            set(gca, 'position', currentAxisPotision);
             figureSize = get(gcf, 'position');
-            colorLabel = ylabel(colorBar, colorLabel);
-            set(colorLabel, 'position', [1 mean(get(colorBar, 'Limits')) 0], 'FontSize', 14)
-            set(colorBar, 'position', [1-75/figureSize(3), 0.2, 30/figureSize(3), 0.6])
+            
+            colorBar.handle = colorbar;
+            set(colorBar.handle, 'Ticks', get(colorBar.handle, 'Limits'), 'TickLabels', colorBar.colorYTick, 'YDir', colorBar.colorDirection);
+            set(gca, 'position', currentAxisPotision);
+            colorBar.textHandle = ylabel(colorBar.handle, colorBar.colorLabel);
+            set(colorBar.textHandle, 'position', [1 mean(get(colorBar.handle, 'Limits')) 0], 'FontSize', 14)
+            set(colorBar.handle, 'position', [1-75/figureSize(3), 0.2, 30/figureSize(3), 0.6])
         end
         
         function viewGLMFit(obj, modelString)
@@ -111,24 +93,13 @@ classdef spatialAnalysis
             if ~exist('plotType', 'var'); plotType = 'res'; end
             figure;
             for i  = 1:length(obj.subjects)
-                audValues = obj.blocks{i}.audValues;
-                colorChoices = plt.selectRedBlueColors(audValues);
-                visGrid = obj.blocks{i}.grids.visValues;
-                audGrid = obj.blocks{i}.grids.audValues;
+                normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
                 switch plotType(1:3)
                     case 'res'
-                        obj.currentAxes = plt.getAxes(i, length(obj.subjects), [], [], [60 80 60 20], [200 40]); 
-                        hold on; box off;
-                        numTrials = prc.makeGrid(obj.blocks{i}, obj.blocks{i}.laserPower==0, @length, 1);
-                        numRightTurns = prc.makeGrid(obj.blocks{i}, obj.blocks{i}.laserPower==0 & obj.blocks{i}.response==2, @sum, 1);
-                        for j = 1:length(audValues)
-                            idx = audGrid==audValues(j) & numTrials>0;
-                            StimLevelsFineGrain = min(visGrid(:)):(range(visGrid(:))/1000):max(visGrid(:));
-                            [paramsValues, fittingFunction] = fit.psychoCurve(visGrid(idx)', numRightTurns(idx), numTrials(idx));
-                            plot(StimLevelsFineGrain, fittingFunction(paramsValues, StimLevelsFineGrain),'LineWidth',1.1, 'color', colorChoices(j,:));
-                            plot(visGrid(idx), numRightTurns(idx)./numTrials(idx), '.', 'color', colorChoices(j,:));
-                        end
-                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, trialEst, laserOff.nSessions));
+                        obj.currentAxes = plt.getAxes(i, length(obj.subjects), [], [], [60 80 60 20], [200 40]);
+                        plt.psychoFits(normBlock);
+                        plt.dataWithErrorBars(normBlock, 0)
+                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(normBlock.response), normBlock.nSessions));
                         set(gca, 'XTick', -45:15:45);
                 end
             end
@@ -184,13 +155,11 @@ classdef spatialAnalysis
         end
     end
     
-    methods (Static)
-        function [areaNames, galvoSites, laserType] = getSpecificGalvoParadigm(siteReference)
-            switch lower(siteReference)
-                case 'ina3'
-                    areaNames = {'Left Visual';'Both Visual';'Right Visual';'Left M2';'Both M2';'Right M2';'Left Control';'Both Control';'Right Control'};
-                    galvoSites = {[-2.5,-3]; [2.5,-3]; [2.5,-3]; [-1,2]; [1,2]; [1,2]; [-1.5,0]; [1.5,0]; [1.5,0]};
-                    laserType = repmat([1;2;1],3,1);
+    methods (Static)       
+        function normBlock = getMaxNumberOfNormalTrials(block)
+            if mode(block.laserSession>0)==1
+                normBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType==0);
+            else, normBlock = prc.combineBlocks(block, block.laserSession==0);
             end
         end
     end
