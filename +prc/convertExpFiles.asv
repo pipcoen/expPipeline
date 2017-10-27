@@ -61,7 +61,7 @@ end
 
 
 files2Run = processList(processList>0)';
-srtIdx = 840;
+srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedMice); continue; end
     if contains(expList(i).subject, {'PC008'}); continue; end
@@ -134,13 +134,12 @@ x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTi
 
 [blk, prm, raw] = x.blockFunction(x); %#ok
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
-if ~exist(fileparts(strrep(x.processedData,'dData','dDataLite')), 'dir'); mkdir(fileparts(strrep(x.processedData,'dData','dDataLite'))); end
 if ~x.existProcessed(1)
     whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw'); %#ok
-    save(strrep(x.processedData,'dData','dDataLite'), 'blk', 'prm');
+    save([x.processedData 'Lite'], 'blk', 'prm');
 else
     whoD = unique([who('-file', x.processedData); 'blk'; 'prm'; 'raw']); save(x.processedData, 'blk', 'prm', 'whoD', 'raw', '-append');  %#ok
-    save(strrep(x.processedData,'dData','dDataLite'), 'blk', 'prm');
+    save(strrep(str,old,new), 'blk', 'prm', '-append');
 end
 end
 

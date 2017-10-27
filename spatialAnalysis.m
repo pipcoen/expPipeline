@@ -98,11 +98,12 @@ classdef spatialAnalysis
                     case {'svd'; 'mul'}
                         results = fit.outerProduct(normBlock);
                         if contains(plotType, 'svd'); results = results.svd; else; results = results.mul; end
-                        plt.dataWithErrorBars(normBlock, 0)
-                        boxPlot.xyValues{1} = results.visValues;
-                        boxPlot.axisLimits = [-0.25 1.25];
-                        boxPlot.plotData = results.model{i};
-                        if i == 3; boxPlot.axisLimits = [-0.25 0.25]; end
+                        results.model{1}(isnan(results.model{2})) = nan;
+                        results.model{1}(isnan(results.model{1})) = nan;
+                        plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = 'none';
+                        plt.gridSplitByRows(results.model{1}, results.visValues/100, normBlock.audValues, plotOpt);
+                        plotOpt.Marker = '^'; plotOpt.MarkerSize = 5; plotOpt.lineWidth = 1.5; plotOpt.lineStyle = '-';
+                        plt.gridSplitByRows(results.model{2}, results.visValues/100, normBlock.audValues, plotOpt);
                 end
             end
         end

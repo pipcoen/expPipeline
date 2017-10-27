@@ -122,7 +122,7 @@ if sum(tIdx) > 100
     repeatNum(newVTrials(tIdx==1)==2) = [];
     tIdx = newVTrials==1;
 end
-tIdx(x.standardizedBlock.events.newTrialTimes' > stimPeriodStart) = 0;
+tIdx(x.standardizedBlock.events.newTrialTimes(1:length(stimPeriodStart))' > stimPeriodStart) = 0;
 n.trialStart = (x.standardizedBlock.events.newTrialTimes(tIdx)');
 n.trialEnd = (x.standardizedBlock.events.endTrialTimes(tIdx)');
 
