@@ -12,3 +12,6 @@ for j = 1:length(audValues)
     [paramsValues, fittingFunction] = fit.psychoCurve(blk.grids.visValues(idx)', numRightTurns(idx), numTrials(idx));
     plot(StimLevelsFineGrain, fittingFunction(paramsValues, StimLevelsFineGrain),plotOpts);
 end
+xL = xlim; yL = ylim;
+plot([0,0], yL, '--k', 'linewidth', 1.5);
+plot(xL, [0.5,0.5], '--k', 'linewidth', 1.5);

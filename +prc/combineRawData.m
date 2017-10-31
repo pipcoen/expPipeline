@@ -1,7 +1,9 @@
-function combinedBlocks = combineBlocks(blocks, criterion, rawData)
+function combinedBlocks = combineRawData(raw, blocks, criterion)
 %% Function to combine and filter block files.
-if exist('rawData', 'var'); blocks = prc.catstruct(blocks, rawData); end
-if ~exist('criterion', 'var') || isempty(criterion); criterion = vertcat(blocks(:).conditions)*0+1; end
+%Inputs(default)
+r.visAzimuthTimeValue = prc.indexByTrial(n, e.visAzimuthTimes', [e.visAzimuthTimes' e.visAzimuthValues'], [1 0]);
+
+if ~exist('criterion', 'var'); criterion = vertcat(blocks(:).conditions)*0+1; end
 nTrials = sum(arrayfun(@(x) size(x.trialStart,1), blocks));
 
 if length(blocks) == 1 
@@ -22,19 +24,18 @@ if ~any(tkIdx); combinedBlocks = []; return; end
 fieldNames = fields(blocks);
 combinedBlocks.sessionIdx = combinedBlocks.sessionIdx;
 combinedBlocks.nSessions = length(unique(combinedBlocks.sessionIdx));
-for i = fieldNames'
-    field = i{1};
-    if strcmp(field, 'sessionNum'); continue; end
-    if strcmp(field, 'nSessions'); continue; end
-    tDat = vertcat(blocks(:).(field));
+for i = 1:length(fieldNames)
+    if strcmp(fieldNames{i}, 'sessionNum'); continue; end
+    if strcmp(fieldNames{i}, 'nSessions'); continue; end
+    tDat = eval(['vertcat(blocks(:).' fieldNames{i} ');']);
     if size(tDat,1) == nTrials; tDat = tDat(tkIdx,:); end
 
-    if iscell(tDat) && all(cellfun(@ischar, tDat)) && length(unique(tDat))==1
-        combinedBlocks.(field) = unique(tDat);
+    if iscell(tDat) && length(unique(tDat))==1
+        eval(['combinedBlocks.' fieldNames{i} ' = unique(tDat);']);
     elseif iscell(tDat) || size(tDat,1) == sum(tkIdx)
-       combinedBlocks.(field) = tDat;
+        eval(['combinedBlocks.' fieldNames{i} ' = tDat;']);
     elseif ~unableToMerge
-        combinedBlocks.(field) = blocks(1).(field);
-    else, combinedBlocks.(field) = [];
+        eval(['combinedBlocks.' fieldNames{i} '=blocks(1).' fieldNames{i} ';']);
+    else, eval(['combinedBlocks.' fieldNames{i} '=[];']);
     end
 end

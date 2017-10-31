@@ -7,4 +7,5 @@ fractionalPosition = inputValues./maxLength;
 colorChoices(inputValues>0,:) = allColors(128-(round(fractionalPosition(inputValues>0)*127)),:);
 colorChoices(inputValues<0,:) = allColors(128+(round(fractionalPosition(inputValues<0)*-127)),:);
 colorChoices(inputValues==0,:) = zeroTag;
+colorChoices = flip(colorChoices, 1);
 end

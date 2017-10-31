@@ -150,6 +150,10 @@ visDiff = visContrast.*(visInitialAzimuth>0)-visContrast.*(visInitialAzimuth<0);
 
 r.visStimOnOff = prc.indexByTrial(n, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues'], [1 0]);
 r.audStimOnOff = prc.indexByTrial(n, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], [1 0]);
+r.wheelTimeValue = prc.indexByTrial(n, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], [1 1]);
+r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)-x(1,2)], r.wheelTimeValue, 'uni', 0);
+
+n = rmfield(n, 'rawWheelTimeValue');
 
 r.visAzimuthTimeValue = prc.indexByTrial(n, e.visAzimuthTimes', [e.visAzimuthTimes' e.visAzimuthValues'], [1 0]);
 r.audAzimuthTimeValue = prc.indexByTrial(n, e.audAzimuthTimes', [e.audAzimuthTimes' e.audAzimuthValues'], [1 0]);
@@ -214,8 +218,6 @@ coflictTrial = sign(n.visInitialAzimuth.*n.audInitialAzimuth)<0 & n.audAmplitude
 blankTrial = (n.audAmplitude == 0 | n.audInitialAzimuth == 0) & (n.visContrast == 0 | n.visInitialAzimuth == 0);
 n.trialType = (~blankTrial.*(audTrial+visTrial*2+coherentTrial*3+coflictTrial*4));
 
-r.rawWheelTimeValue = n.rawWheelTimeValue;
-n = rmfield(n, 'rawWheelTimeValue');
 n.uniqueConditions = (uniqueConditions);
 if length(unique(uniqueConditions(:,1)))==1
     uniqueDiff = [uniqueConditions(:,3) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
@@ -250,7 +252,7 @@ p.validTrials = sum(tIdx);
 x.validTrials = tIdx;
 newParams = p;
 newBlock = n;
-newRaw = r;
+for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.reactionTime>5) = {[]}; end
 
 %% Check that all expected fields exist
 blockFields = {'subject';'expDate';'sessionNum';'rigName';'rigType';'trialStart';'trialEnd';'stimPeriodStart';'closedLoopStart';'feedback'; 'conditionsIdx';  ...

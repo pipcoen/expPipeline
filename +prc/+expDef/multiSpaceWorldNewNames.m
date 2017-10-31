@@ -1,3 +1,3 @@
-function [newBlock, newParams, newRaw] = multiSpaceWorldNewNames_Blk_Proc(x)
-[newBlock, newParams, newRaw] = multiSpaceWorld_Blk_Proc(x);
+function [newBlock, newParams, newRaw] = multiSpaceWorldNewNames(x)
+[newBlock, newParams, newRaw] =  prc.expDef.multiSpaceWorld(x);
 end

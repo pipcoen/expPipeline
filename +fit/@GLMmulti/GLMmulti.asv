@@ -233,7 +233,7 @@ classdef GLMmulti
                 plot(gca, evalPoints(:,2)-evalPoints(:,1), pHat(:,2), 'Color', colorChoices(audValues==audVal,:), 'linewidth', 2);
             end
             xlim([-maxContrast maxContrast])
-            set(gca, 'xTick', (-maxContrast):(maxContrast/4):maxContrast, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100)); 
+            set(gca, 'xTick' unique(obj.data.visContrastmuthLeftRight(obj.data.audDiff==audVal,:), 'rows'), 
             title(obj.modelString);
             hold off;
             figureHand = gca;

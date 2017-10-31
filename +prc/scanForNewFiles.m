@@ -193,6 +193,6 @@ end
 %% Saving new version of expList in the shared and local directory
 expList = nestedSortStruct(expList, {'subject', 'expDate'});
 availableDirectories = prc.pathFinder('directoryCheck'); 
-if availableDirectories(1); save(prc.pathFinder('dropboxlist'), 'expList'); end 
+if availableDirectories(1); save(prc.pathFinder('dropboxlist'), 'expList'); save(strrep(prc.pathFinder('dropboxlist'),'dData','dDataLite'), 'expList'); end 
 if availableDirectories(1); save(prc.pathFinder('sharedlist'), 'expList'); end 
 end
