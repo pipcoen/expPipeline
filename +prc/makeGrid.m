@@ -7,7 +7,7 @@ if ~exist('operation', 'var'); operation = @sum; end
 if ~exist('sortFlag', 'var'); sortFlag = 0; end
 
 sessionIdx = blocks.sessionIdx;
-conditions = blocks.conditions;
+conditions = blocks.conditionLabel;
 sessions = unique(sessionIdx);
 gridIdx = blocks.grids.conditions;
 
