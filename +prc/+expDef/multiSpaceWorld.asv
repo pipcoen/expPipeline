@@ -210,9 +210,7 @@ uniqueConditions = unique([p.audAmplitude' p.visContrast' p.audInitialAzimuth' p
 leftInitialConditions = uniqueConditions(uniqueConditions(:,end-1)< 0 | ((isinf(uniqueConditions(:,end-1)) | ~(uniqueConditions(:,end-1))) & uniqueConditions(:,end)<0),:);
 if size(leftInitialConditions,1)~=floor(size(uniqueConditions,1)/2); warning('Why are half conditions not left conditions?'); end
 zeroConditions = uniqueConditions(all(uniqueConditions==0 | isinf(uniqueConditions),2),:);
-rightInitialConditions = [leftInitialConditions(:,1:2) leftInitialConditions(:,end-1:end)*-1];
-rightInitialConditions(isinf(rightInitialConditions)) = inf; 
-rightInitialConditions = [rightInitialConditions; uniqueConditions(~ismember(uniqueConditions, [zeroConditions; leftInitialConditions], 'rows'),:)];
+rightInitialConditions = uniqueConditions(~ismember(uniqueConditions, [zeroConditions; leftInitialConditions], 'rows'),:);
 uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialConditions];
 
 %For each trial, find which row of leftInitialConditions or rightInitialConditions it belongs to, and check that no rows belong to both. We generate a

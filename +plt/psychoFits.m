@@ -2,8 +2,8 @@ function psychoFits(blk, audValues)
 if ~exist('audValues', 'var'); audValues = blk.audValues; end
 colorChoices = plt.selectRedBlueColors(audValues);
 hold on; box off;
-numTrials = prc.makeGrid(blk, blk.response, @length, 1);
-numRightTurns = prc.makeGrid(blk, blk.response==2, @sum, 1);
+numTrials = prc.makeGrid(blk, blk.responseMade, @length, 1);
+numRightTurns = prc.makeGrid(blk, blk.responseMade==2, @sum, 1);
 StimLevelsFineGrain = min(blk.grids.visValues(:)):(range(blk.grids.visValues(:))/1000):max(blk.grids.visValues(:));
 plotOpts.Linewidth = 1.2;
 for j = 1:length(audValues)

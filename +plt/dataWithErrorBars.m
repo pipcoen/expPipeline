@@ -2,8 +2,8 @@ function dataWithErrorBars(block, errorOn, audValues)
 if ~exist('audValues', 'var'); audValues = block.audValues; end
 if ~exist('errorOn', 'var'); errorOn = 1; end
 colorChoices = plt.selectRedBlueColors(audValues);
-numTrials = prc.makeGrid(block, block.response, @length, 1);
-numRightTurns = prc.makeGrid(block, block.response==2, @sum, 1);
+numTrials = prc.makeGrid(block, block.responseMade, @length, 1);
+numRightTurns = prc.makeGrid(block, block.responseMade==2, @sum, 1);
 [prob,confInterval] = arrayfun(@(x,z) binofit(x, z, 0.05), numRightTurns, numTrials, 'uni', 0);
 centerPoints = cell2mat(cellfun(@(x) permute(x, [3,1,2]), prob, 'uni', 0));
 lowBound = cell2mat(cellfun(@(x) permute(x(:,1), [3,2,1]), confInterval, 'uni', 0));
