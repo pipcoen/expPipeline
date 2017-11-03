@@ -89,26 +89,34 @@ for i = files2Run(files2Run>srtIdx)
     else; whoD = [];
     end
     warning('on', 'MATLAB:load:variableNotFound');
-    
-    
+    %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
     varIdx = contains({'blk', 'flu'}, ['ignore'; whoD]);
+    
+    %Loop to run conv2PData on any 2P files that are missing the flu variable, or if redoSuite2P is set to 1
     if any([~varIdx(2) redoSuite2P])
         switch lower(x.rigType)
-            case 'twophoton'; conv2PData(x);            
+            case 'twophoton'
+                fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i); 
+                conv2PData(x);            
             case 'widefield'; continue; %convWidefieldData(x);
         end
     end
     
-%     if ~exist([func2str(x.blockFunction) '.m'], 'file'); continue; end %%% TO FIX ASAP
+    %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if redoBlocks is set to 1. First, check whether the processing
+    %function for the particular experiment definition file exists. If it does, process the block.
+    if isempty(which(func2str(x.blockFunction))); continue; end 
     if any([~varIdx(1) redoBlocks])
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x); 
     end
 end
-cellfun(@prc.updateParamChangeSpreadsheet, uniquecell({expList(files2Run).subject}'));
+
+%Run the prc.updateParamChangeSpreadsheet on all mice that have new files. This keeps track of when parameters have changed for the mice.
 if all(existDirectories); syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
+cellfun(@prc.updateParamChangeSpreadsheet, uniquecell({expList(files2Run).subject}'));
 end
 
+%% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
 function convBlockFile(x)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
@@ -155,6 +163,7 @@ else
 end
 end
 
+%%
 function conv2PData(x)
 fprintf('Converting 2P data file for %s %s\n', x.expDate,x.subject);
 if  ~exist(x.out2, 'dir') || isempty(dirP([x.out2 '*\\F*Plane*']))
