@@ -23,3 +23,4 @@ results.mul.model{2,1} = numeratorTurns./(numeratorTurns+denomenatorTurns);
 results.mul.model{2,1}(audIdx) = nan; results.mul.model{2,1}(visIdx) = nan;
 results.mul.model{3,1} = results.mul.model{1,1} - results.mul.model{2,1};
 results.mul.model{3,1}(isnan(responseData)) = nan;
+end

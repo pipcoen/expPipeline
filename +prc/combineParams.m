@@ -5,12 +5,14 @@ function combinedParams = combineParams(params)
 fieldNames = fields(params);
 combinedParams = struct;
 for i = 1:length(fieldNames)
-    tDat = eval(['{params(:).' fieldNames{i} '}'';']);
+    tDat = {params(:).(fieldNames{i})}';
+    sizeOftDat = cell2mat(cellfun(@(x) [size(x,1) size(x,2)], tDat, 'uni', 0));
     if length(uniquecell(tDat)) == 1
-        eval(['combinedParams.' fieldNames{i} ' = tDat{1};']);
-    elseif length(unique(cellfun(@(x) size(x,2), tDat))) == 1
-        eval(['combinedParams.' fieldNames{i} ' = cell2mat(tDat);']);
+        combinedParams.(fieldNames{i})=tDat{1};
+    elseif size(unique(sizeOftDat,'rows'),1) == 1 && sizeOftDat(1,2) == 1;
+        combinedParams.(fieldNames{i}) = cell2mat(tDat);
     else
-        eval(['combinedParams.' fieldNames{i} ' = tDat;']);
+        combinedParams.(fieldNames{i}) = tDat;
     end
+end
 end

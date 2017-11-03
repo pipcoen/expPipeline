@@ -19,7 +19,7 @@ end
 
 % get list of references and dates for subject
 selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'==0);
-if isempty(expList); warning(['No processed files matching ' subject]); blk = []; prm = []; raw = []; return; end
+if isempty(expList); warning(['No processed files matching ' subject]); blk = {}; prm = {}; raw = {}; return; end
 expDates = datenum(cell2mat({selectedFiles.expDate}'));
 
 switch lower(requestedDates{1}(1:3))
@@ -36,6 +36,7 @@ switch lower(requestedDates{1}(1:3))
 end
 
 % find paths to existing block files
+blk = {}; prm = {}; raw = {};
 selectedFiles = {selectedFiles(ismember(expDates, selectedDates)).processedData}';
 if isempty(selectedFiles); warning(['No processed files matching ' subject ' for requested dates']); return; end
 if contains(lower(dataType), {'blk'; 'blo'; 'all'})

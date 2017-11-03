@@ -60,7 +60,7 @@ classdef spatialAnalysis
                         boxPlot.plotData = results.model{i};
                         if i == 3; boxPlot.axisLimits = [-0.25 0.25]; end
                     case 'rea'
-                        boxPlot.plotData = prc.makeGrid(normBlock, round(normBlock.reactionTime*1000), @median, 1);
+                        boxPlot.plotData = prc.makeGrid(normBlock, round(normBlock.reactionTime*1e3), @median, 1);
                         boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
                 end
                 plt.getAxes(i, length(obj.subjects), [], maxGrid(2)/(1.3*maxGrid(1)), [100 80 60 100], [100 40]);
@@ -78,6 +78,50 @@ classdef spatialAnalysis
             set(colorBar.handle, 'position', [1-75/figureSize(3), 0.2, 30/figureSize(3), 0.6])
         end
         
+        function viewLearningRate(obj)
+            figure;
+            allPerformance = nan*ones(500,3,length(obj.subjects));
+            for i  = 1:length(obj.subjects)
+                tempObj = obj.changeMouse(obj.subjects(i), {'all'}, 'prm');
+                numSessions = length(tempObj.params{1}.mulPerformance);
+                srtIdx = find(~isnan(tempObj.params{1}.mulPerformance),1);
+                allPerformance(1:numSessions-srtIdx+1, 1, i) = tempObj.params{1}.audPerformance(srtIdx:end);
+                allPerformance(1:numSessions-srtIdx+1, 2, i) = tempObj.params{1}.visPerformance(srtIdx:end);
+                allPerformance(1:numSessions-srtIdx+1, 3, i) = tempObj.params{1}.mulPerformance(srtIdx:end);
+            end
+            plt.getAxes(1, 3, [], [], [80 100 80 40], [100 60]);
+            plot(1:25, squeeze(allPerformance(1:25,3,:))', 'color', [0.5 0.5 0.5]); hold on;
+            plot(1:25, mean(squeeze(allPerformance(1:25,3,:)),2), 'k', 'linewidth', 3)
+            box off;
+            ylim([40 100]); xlim([1 25])
+            plt.getAxes(2, 3, [], [], [80 100 80 40], [100 60]);
+            for i  = 1:length(obj.subjects)
+                tDat = allPerformance(~any(isnan(allPerformance(:,:,i)),2),:,i);
+                initialAudVis(1:25,:,i) = tDat(1:25,:);
+                for j = 1:3
+                    latestAudVis(1:50,j,i) = smooth(tDat(end-49:end,j),1);
+                end
+            end
+            ylim([40 100]); xlim([1 25])
+            
+            indiColor = [[0 0.5 0.5]; [0.5 0 0.5]; [0.5 0.5 0.5]];
+            mCol = 'cmk';
+            for i = 1:3
+                plot(1:size(initialAudVis,1), squeeze(initialAudVis(:,i,:))', 'color', indiColor(i,:)); hold on;
+                plot(1:size(initialAudVis,1), mean(squeeze(initialAudVis(:,i,:)),2), mCol(i), 'linewidth', 3)
+                box off;
+            end
+            ylim([40 100]); xlim([1 25])
+            
+            plt.getAxes(3, 3, [], [], [80 100 80 40], [100 60]);
+            for i = 1:3
+                plot(1:size(latestAudVis,1), squeeze(latestAudVis(:,i,3:5))', 'color', indiColor(i,:)); hold on;
+                plot(1:size(latestAudVis,1), mean(squeeze(latestAudVis(:,i,3:5)),2), mCol(i), 'linewidth', 3)
+                box off;
+            end
+            ylim([40 100]); xlim([1 50])
+        end
+        
         function viewGLMFit(obj, modelString)
             if ~exist('modelString', 'var'); modelString = 'C-subset-multiAud2'; end
             figure;
@@ -92,6 +136,36 @@ classdef spatialAnalysis
                 plt.dataWithErrorBars(normBlock);
                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
                 yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
+            end
+        end
+        
+        function viewDataWithoutFits(obj, plotType)
+            if ~exist('plotType', 'var'); plotType = 'mul'; end
+            figure;
+            for i  = 1:length(obj.subjects)
+                normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
+                plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
+                obj.currentAxes = plt.getAxes(i, length(obj.subjects), 500, [], [120 100 120 40], [100 60]);
+                switch plotType(1:3)
+                    case 'rea'
+                        gridData = prc.makeGrid(normBlock, round(normBlock.reactionTime*1e3), @median, 1);
+                        plt.gridSplitByRows(gridData, normBlock.visValues*100, normBlock.audValues, plotOpt);
+                    case {'svd'; 'mul'}
+                        results = fit.outerProduct(normBlock);
+                        if contains(plotType, 'svd'); results = results.svd; else; results = results.mul; end
+                        results.model{1}(isnan(results.model{2})) = nan;
+                        results.model{1}(isnan(results.model{1})) = nan;
+                        obj.currentAxes = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
+                        plotOpt.lineStyle = 'none';
+                        plt.gridSplitByRows(results.model{1}, results.visValues/100, normBlock.audValues, plotOpt);
+                        plotOpt.Marker = '^'; plotOpt.MarkerSize = 5; plotOpt.lineWidth = 1.5; plotOpt.lineStyle = '-';
+                        plt.gridSplitByRows(results.model{2}, results.visValues/100, normBlock.audValues, plotOpt);
+                        title(sprintf('%s: %d Sess', obj.subjects{i}, normBlock.nSessions));
+                end
+                figureSize = get(gcf, 'position');
+                mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
+                plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
+                plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
             end
         end
         
@@ -129,7 +203,7 @@ classdef spatialAnalysis
                 switch plotType(1:3)
                     case {'mov'}
                         timeSeg = -0.1:0.01:0.5;
-                        colorTake = 'rrkr';
+                        colorTake = 'rbck';
                         tmp.currentAxes = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
                         for tTyp = 1:4
                             for response = 1:2
@@ -247,21 +321,25 @@ classdef spatialAnalysis
             plt.suplabel(jPlot.mainXLabel, 'x', mainAxes);
         end
         
-        function obj = changeMouse(obj, subjects, expDate, includeRaw)
-            if ~exist('includeRaw', 'var'); includeRaw = 0; end
+        function obj = changeMouse(obj, subjects, expDate, dataType)
+            if ~exist('dataType', 'var'); dataType = 'bloprm'; end
             %Get block and parameter files for the requested dates.
-            if ~includeRaw; [obj.blocks, obj.params]  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, 'bloprm'), subjects, expDate, 'uni', 0); rawData = {};
-            else, [obj.blocks, obj.params, rawData]  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, 'bloprmraw'), subjects, expDate, 'uni', 0);
-            end
+            [obj.blocks, obj.params, rawData]  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, dataType), subjects, expDate, 'uni', 0);
             obj.blocks = vertcat(obj.blocks{:});
             obj.params = vertcat(obj.params{:});
             rawData = vertcat(rawData{:});
-            if ~includeRaw; rawData = cell(length(obj.params), 1); end
+            excessData = [isempty(obj.params), isempty(obj.blocks), isempty(rawData)];
+            
+            maxLength = max([length(obj.blocks) length(obj.params) length(rawData)]);
+            if excessData(1); obj.params = cell(maxLength, 1); end
+            if excessData(2); obj.blocks = cell(maxLength, 1); end
+            if excessData(3); rawData = cell(maxLength, 1); end
             obj.expDate = expDate;
             
             retainIdx = ones(length(obj.params),1)>0;
             %If there are multiple parameter sets in the requested date range for a mouse, use only the most common parameter set.
             for i = 1:length(subjects)
+                if excessData(2); continue; end
                 mouseIdx = strcmp({obj.blocks.subject}', subjects{i});
                 [conditionSets, ~, setIdx] = unique(cellfun(@(x) num2str(x(:)'),{obj.blocks(mouseIdx).uniqueConditions}','uni',0));
                 if length(conditionSets)>1
@@ -272,14 +350,20 @@ classdef spatialAnalysis
             obj.blocks = obj.blocks(retainIdx);
             obj.params = obj.params(retainIdx);
             rawData = rawData(retainIdx);
-            obj.subjects = unique({obj.blocks.subject}');
             
-            [~, subjectIdx] = ismember({obj.blocks.subject}', obj.subjects);
-            idx = 1:length(subjects);
-            if includeRaw; obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectIdx==x), [], rawData(subjectIdx==x)), idx, 'uni', 0)';
-            else, obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectIdx==x)), idx, 'uni', 0)';
+            if ~excessData(1)
+                obj.subjects = unique({obj.params.subject}');
+                [~, subjectIdx] = ismember({obj.params.subject}', obj.subjects);
+            elseif ~excessData(2)
+                obj.subjects = unique({obj.blocks.subject}');
+                [~, subjectIdx] = ismember({obj.blocks.subject}', obj.subjects);
             end
-            obj.params = arrayfun(@(x) prc.combineParams(obj.params(subjectIdx==x)), idx, 'uni', 0)';
+            
+            idx = 1:length(obj.subjects);
+            if ~any(excessData(2:3)); obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectIdx==x), [], rawData(subjectIdx==x)), idx, 'uni', 0)';
+            elseif ~excessData(2), obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectIdx==x)), idx, 'uni', 0)';
+            end
+            if ~excessData(1); obj.params = arrayfun(@(x) prc.combineParams(obj.params(subjectIdx==x)), idx, 'uni', 0)'; end
             obj.currentAxes = [];
             obj.currentFigure = [];
         end
