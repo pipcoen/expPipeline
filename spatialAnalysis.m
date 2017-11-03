@@ -41,13 +41,13 @@ classdef spatialAnalysis
             for i  = 1:length(obj.subjects)
                 normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
                 boxPlot.subject = obj.subjects{i};
-                boxPlot.trialNumber = length(normBlock.response);
+                boxPlot.trialNumber = length(normBlock.responseMade);
                 boxPlot.nSessions = obj.blocks{i}.nSessions;
                 boxPlot.xyValues = {normBlock.visValues*100; normBlock.audValues};
                 boxPlot.xyLabel = {normBlock.audType; 'VisualContrast'};
                 switch lower(plotType(1:3))
                     case 'res'
-                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.response==2, @mean, 1);
+                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean, 1);
                     case {'svd'; 'mul'}
                         if ~isempty(obj.expDate)
                             obj.runMouseReplicate({'Original'; 'Model'; 'Difference'}, ['viewBoxPlots(''' plotType ''')']);
@@ -207,7 +207,7 @@ classdef spatialAnalysis
                         tmp.currentAxes = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
                         for tTyp = 1:4
                             for response = 1:2
-                            blk = prc.combineBlocks(normBlock, normBlock.trialType==tTyp & normBlock.response == response & (abs(normBlock.visDiff) == abs(normBlock.visValues(3)) | tTyp == 1));
+                            blk = prc.combineBlocks(normBlock, normBlock.trialType==tTyp & normBlock.responseMade == response & (abs(normBlock.visDiff) == abs(normBlock.visValues(3)) | tTyp == 1));
                             wheelMove = cellfun(@double, blk.wheelTimeValue(~cellfun(@isempty, blk.wheelTimeValue)), 'uni', 0);
                             wheelMove = cell2mat(cellfun(@(x) interp1(x(:,1), x(:,2)/350, timeSeg, 'nearest'), wheelMove, 'uni', 0));
                             plot(timeSeg,nanmean(wheelMove), colorTake(tTyp), 'linewidth', 2);
@@ -242,7 +242,7 @@ classdef spatialAnalysis
                         obj.currentAxes = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
                         plt.psychoFits(normBlock);
                         plt.dataWithErrorBars(normBlock)
-                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(normBlock.response), normBlock.nSessions));
+                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(normBlock.responseMade), normBlock.nSessions));
                         xlim([min(normBlock.visValues), max(normBlock.visValues)]);
                     case 'vis'
                         if ~isempty(obj.expDate)
@@ -257,7 +257,7 @@ classdef spatialAnalysis
                         obj.currentAxes = plt.getAxes(i, length(obj.subjects), 500, 0.8, [80 100 80 40], [100 30]);
                         plt.psychoFits(prc.combineBlocks(normBlock, normReactionTimes));
                         plt.dataWithErrorBars(laserBlock)
-                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(laserBlock.response), normBlock.nSessions));
+                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(laserBlock.responseMade), normBlock.nSessions));
                         xlim([min(normBlock.visValues), max(normBlock.visValues)]);
                         %                         set(gca, 'XTick', min(normBlock.visValues):1:max(normBlock.visValues));
                 end

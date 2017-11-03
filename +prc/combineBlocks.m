@@ -1,8 +1,8 @@
 function combinedBlocks = combineBlocks(blocks, criterion, rawData)
 %% Function to combine and filter block files.
 if exist('rawData', 'var'); blocks = prc.catstruct(blocks, rawData); end
-if ~exist('criterion', 'var') || isempty(criterion); criterion = vertcat(blocks(:).conditions)*0+1; end
-nTrials = sum(arrayfun(@(x) size(x.trialStart,1), blocks));
+if ~exist('criterion', 'var') || isempty(criterion); criterion = vertcat(blocks(:).conditionLabel)*0+1; end
+nTrials = sum(arrayfun(@(x) size(x.trialStartEnd(:,1),1), blocks));
 
 if length(blocks) == 1 
     if ~isfield(blocks, 'sessionIdx'); combinedBlocks.sessionIdx = ones(nTrials, 1);

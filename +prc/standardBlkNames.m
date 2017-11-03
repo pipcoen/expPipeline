@@ -230,8 +230,8 @@ if isfield(p, 'reflectAzimuthAndCorr'); p.reflectAzimuthAndCorrectResponse = p.r
 if isfield(p, 'audioAmplitude'); p.audAmplitude = p.audioAmplitude; end
 if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
     flippedIdx = max([p.visContrast;p.audAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
+    if length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
     p.numRepeats = [p.numRepeats, p.numRepeats(flippedIdx)];
-    if length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.audInitialAzimuth*0+p.visInitialAzimuth; end
 end
 
 if p.stimContinuous == 1; p.stimDuration = inf; end

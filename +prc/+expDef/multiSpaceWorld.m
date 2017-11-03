@@ -141,23 +141,26 @@ feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
 responseTime = feedbackTimes-stimPeriodStart;
 
-%Galvo position is the position of the galvos on each tria. It is changed so that for bilateral trials, the ML axis is always positive
-laserTypeValues = e.laserTypeValues(vIdx)';
-galvoPosValues = galvoPosValues(vIdx)';
-galvoPosition = p.galvoCoords(abs(e.galvoPosValues(vIdx))',:);
-galvoPosition(:,1) = galvoPosition(:,1).*sign(e.galvoPosValues(vIdx))';
-galvoPosition(e.laserTypeValues(vIdx)'==2,1) = abs(galvoPosition(e.laserTypeValues(vIdx)'==2,1));
 
-audAmplitude = [v.audAmplitude]';               %Convert amplitudes to matrix. Assumes one value for each trial.
-visContrast = [v.visContrast]';                 %Convert amplitudes to matrix. Assumes one value for each trial.
-p.galvoCoords = unique(e.galvoCoordsValues, 'rows');            %Add galvoCoords to the parameter list
-correctResponse = [v.correctResponse]';         %Convert correctResponse on each trial to matrix. Assumes one value for each trial.
-audInitialAzimuth = [v.audInitialAzimuth]';     %Convert audInitialAzimuth on each trial to matrix. Assumes one value for each trial.
-audInitialAzimuth(audAmplitude==0) = inf;       %Change case when audAmplitude was 0 to have infinite azimuth (an indication it has no azimuth value)
-p.audInitialAzimuth(p.audAmplitude == 0) = inf; %Change case when audAmplitude was 0 to have infinite azimuth (an indication it has no azimuth value)
-visInitialAzimuth = [v.visInitialAzimuth]';     %Convert visInitialAzimuth on each trial to matrix. Assumes one value for each trial.
-visInitialAzimuth(visContrast==0) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication it has no azimuth value)
-p.visInitialAzimuth(p.visContrast == 0) = inf;  %Change case when visContrast was 0 to have infinite azimuth (an indication it has no azimuth value)
+audAmplitude = [v(vIdx).audAmplitude]';               %Convert amplitudes to matrix. Assumes one value for each trial.
+visContrast = [v(vIdx).visContrast]';                 %Convert amplitudes to matrix. Assumes one value for each trial.
+p.galvoCoords = e.galvoCoordsValues(:,1:2);           %Add galvoCoords to the parameter list (take first two columns in case it concatenated across trials)
+correctResponse = [v(vIdx).correctResponse]';         %Convert correctResponse on each trial to matrix. Assumes one value for each trial.
+audInitialAzimuth = [v(vIdx).audInitialAzimuth]';     %Convert audInitialAzimuth on each trial to matrix. Assumes one value for each trial.
+audInitialAzimuth(audAmplitude==0) = inf;             %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
+p.audInitialAzimuth(p.audAmplitude == 0) = inf; %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
+visInitialAzimuth = [v(vIdx).visInitialAzimuth]';     %Convert visInitialAzimuth on each trial to matrix. Assumes one value for each trial.
+visInitialAzimuth(visContrast==0) = inf;              %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
+p.visInitialAzimuth(p.visContrast == 0) = inf;  %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
+
+%Galvo position is the position of the galvos on each tria. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
+%trials are when the laserTypeValue for that trial was 2. Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
+%-ve index indicating the left himisphere). That's why we need to get the galvo posiiton on each trial by using the abs of this index and then
+%multiplying the ML coordinate by the sign of the original index.
+laserTypeValues = e.laserTypeValues(vIdx)';
+galvoPosValues = e.galvoPosValues(vIdx)';
+galvoPosition = p.galvoCoords(abs(galvoPosValues),:);
+galvoPosition(laserTypeValues~=2,1) = galvoPosition(laserTypeValues~=2,1).*sign(galvoPosValues(laserTypeValues~=2));
 
 %Get trial start/end times for valid trials
 trialStartTimes = e.newTrialTimes(vIdx)';
@@ -193,86 +196,97 @@ timeToWheelMove = double(cell2mat(cellfun(@(x) x(find(abs(x(:,2))>wheelToThresh/
 %Get the response the mouse made on each trial based on the correct response and then taking the opposite for incoorect trials. NOTE: this will not
 %work for a task with more than two response options.
 responseMade = double(correctResponse);
-responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0)-2)+1;
+responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
 
-n.feedback = feedbackValues>0;
-n.correctResponse = uint8(correctResponse(vIdx)>0)+1;
+%allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, and the
+%intial azimuth of aud and vis stimuli.
+%Unique conditions is baseed on the parameter set, and includes all possible conditions that the mouse could have experienced. We repeat audAmplitude
+%because in some cases it will only have one value, and in some cases it will have more;
+allConditions = [audAmplitude visContrast audInitialAzimuth visInitialAzimuth];
+if length(p.audAmplitude)==1; repeatedAudAmplitude = p.audInitialAzimuth*0+p.audAmplitude; else, repeatedAudAmplitude = p.audAmplitude; end
+uniqueConditions = unique([repeatedAudAmplitude' p.visContrast' p.audInitialAzimuth' p.visInitialAzimuth'], 'rows');
 
-n.trialStart = trialStartTimes;
-n.trialEnd = trialEndTimes;
-n.stimPeriodStart = stimPeriodStart;
+%Create a set of unique conditions, where each row is a condition in the order: [zero conditions; right conditions; left conditions]. NOTE: we assume
+%that for every left/right condition, it's opposite also exists.
+leftInitialConditions = uniqueConditions(uniqueConditions(:,end-1)< 0 | ((isinf(uniqueConditions(:,end-1)) | ~(uniqueConditions(:,end-1))) & uniqueConditions(:,end)<0),:);
+if size(leftInitialConditions,1)~=floor(size(uniqueConditions,1)/2); error('Why are half conditions not left conditions?'); end
+rightInitialConditions = [leftInitialConditions(:,1:2) leftInitialConditions(:,end-1:end)*-1];
+rightInitialConditions(isinf(rightInitialConditions)) = inf; 
+zeroConditions = uniqueConditions(~ismember(uniqueConditions, [rightInitialConditions; leftInitialConditions], 'rows'),:);
+uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialConditions];
+
+%For each trial, find which row of leftInitialConditions or rightInitialConditions it belongs to, and check that no rows belong to both. We generate a
+%condition index where each trial is positive if right, -ve if left, and the opposite of any conditionIdx is the inverse sign of that conditionIdx. We
+%also create uniqueConditionLabel which has the corresponding label for each row of uniqueConditions. Finally, we create conditionRowIdx which (for
+%every trial) inditcates which row of the uniqueConditions table that trial corresponds to.
+[~, rightConditionsIdx] = ismember(allConditions, rightInitialConditions, 'rows');
+[~, leftConditionsIdx] = ismember(allConditions, leftInitialConditions, 'rows');
+if any(all([rightConditionsIdx~=0, leftConditionsIdx~=0],2)); error('Detect same condition as being Left and Right'); end
+conditionLabel = rightConditionsIdx + -1*leftConditionsIdx;
+uniqueConditionLabel = [0*find(zeroConditions,1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
+[~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionLabel);
+
+%Create a "trialType" field which is 0,1,2,3,4 for blank, auditory, visual, coherent, and incoherent trials.
+audTrial = (visContrast==0 | visInitialAzimuth==0) & (audAmplitude>0 & audInitialAzimuth~=0);
+visTrial = (audAmplitude==0 | audInitialAzimuth==0) & (visContrast>0 & visInitialAzimuth~=0);
+coherentTrial = sign(visInitialAzimuth.*audInitialAzimuth)>0 & audAmplitude>0 & visContrast>0;
+coflictTrial = sign(visInitialAzimuth.*audInitialAzimuth)<0 & audAmplitude>0 & visContrast>0;
+trialType = (zeros(length(coflictTrial),1)+(audTrial+visTrial*2+coherentTrial*3+coflictTrial*4));
+
+%If statement to decide whether a particular session had amplitude variations in auditory, or visual, or neither. If there are auditory variations,
+%then audDiff will be (audAmplitude Right - audAmplitude Left), otherwise it will be (audAzimuth Right - audAzimuth Left). visDiff will always be
+%(visContrast Right - visContrast Left). In cases where there is only ever one aud/vis stimulus, this is equivalent to just multiplying the left
+%values be -1. uniqueDiff are the unique trials in this difference space (so two columns: [audDiff, visDiff];
+if numel(p.audAmplitude)==1
+    uniqueDiff = [uniqueConditions(:,3) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
+    audValueLeftRight = [abs(audInitialAzimuth.*double(audInitialAzimuth<0)) abs(audInitialAzimuth.*double(audInitialAzimuth>0))];
+    if any(uniqueConditions(:,1)); audType = 'Azimuth'; else; audType = 'None'; end
+else
+    uniqueDiff = [uniqueConditions(:,1).*sign(uniqueConditions(:,3)) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
+    audValueLeftRight = [abs(audAmplitude.*(audInitialAzimuth<0)) abs(audAmplitude.*(audInitialAzimuth>0))];
+    audType = 'Amplitude';
+end
+visValueLeftRight = [visContrast.*double(visInitialAzimuth<0), double(visContrast.*double(visInitialAzimuth>0))];
+audDiff = uniqueDiff(conditionRowIdx, 1);
+visDiff = uniqueDiff(conditionRowIdx, 2);
+%Create vetors that indicate the separated values for contrast and sudio azimuth on left and right (used for modeling) 
+
+%Populate n with all fields;
+n.trialStartEnd = [trialStartTimes trialEndTimes];
+n.StimPeriodStart = stimPeriodStart;
 n.closedLoopStart = closedLoopStart;
-n.response = response;
-n.totalRepeats = totalRepeats';
 n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
-n.responseTime = (responseTime(vIdx));
+n.correctResponse = (correctResponse>0)+1;
+n.feedback = feedbackValues>0;
+n.responseTime = responseTime;
 n.timeToWheelMove = timeToWheelMove;
-n.clickDuration = ([v(vIdx).clickDuration]');
-n.clickRate = ([v(vIdx).clickRate]');
-n.audAmplitude = audAmplitude(vIdx,:);
-n.visContrast = visContrast(vIdx,:);
-n.audDiff = [];
-n.visDiff = [];
-n.audInitialAzimuth = (audInitialAzimuth(vIdx));
-n.visInitialAzimuth = (visInitialAzimuth(vIdx));
-n.visAltitude = ([v(vIdx).visAltitude]');
-n.visSigma = ([v(vIdx).visSigma]');
-n.galvoType = int8(e.galvoTypeValues(vIdx)');
+n.responseMade = (responseMade>0)+1;
+n.trialType = trialType;
+n.audAmplitude = audAmplitude;
+n.audInitialAzimuth = audInitialAzimuth;
+n.audValueLeftRight = audValueLeftRight;
+n.audDiff = audDiff;
+n.audValues = (unique(uniqueDiff(:,1)));
+n.audType = audType;
+n.visContrast = visContrast;
+n.visInitialAzimuth = visInitialAzimuth;
+n.visValueLeftRight = visValueLeftRight;
+n.visDiff = visDiff;
+n.visValues = (unique(uniqueDiff(:,2)));
+n.visAltitude = [v(vIdx).visAltitude]';
+n.visSigma = [v(vIdx).visSigma]';
+n.galvotype = e.galvoTypeValues(vIdx)';
 n.galvoPosition = galvoPosition;
-n.laserType = int8(e.laserTypeValues(vIdx)');
+n.laserType = e.laserTypeValues(vIdx)';
 n.laserPower = (e.laserPowerValues(vIdx)');
 n.laserSession = sum(unique(n.laserType))+(n.laserPower*0);
-n.laserOnOff = [e.galvoTTLTimes(vIdx)' e.galvoAndLaserEndTimes(vIdx)']-n.trialStart;
-
-allConditions = [n.audAmplitude n.visContrast n.audInitialAzimuth n.visInitialAzimuth];
-uniqueConditions = unique([p.audAmplitude' p.visContrast' p.audInitialAzimuth' p.visInitialAzimuth'], 'rows');
-
-if mod(size(allConditions, 2),4) ~=0; error('Must be an initial azimuth for every amplitude and contrast'); end
-
-tempDat = uniqueConditions; tempDat(isinf(uniqueConditions)) = 0;
-rightInitialConditions = uniqueConditions(tempDat(:,end-1)> 0 | (tempDat(:,end-1)==0 & tempDat(:,end)>0),:);
-leftInitialConditions = [rightInitialConditions(:,1:2) rightInitialConditions(:,end-1:end)*-1];
-leftInitialConditions(isinf(leftInitialConditions)) = inf;
-
-[~, rightConditions] = ismember(allConditions, rightInitialConditions, 'rows');
-[~, leftConditions] = ismember(allConditions, leftInitialConditions, 'rows');
-if any(all([rightConditions~=0, leftConditions~=0],2)); error('Detect same condition as being Left and Right'); end
-if size(rightInitialConditions,1)~=size(leftInitialConditions,1); disp('WARNING: Seem to have asymmetical conditions'); end
-n.conditions = (rightConditions + -1*leftConditions);
-uniqueConditions = uniqueConditions(~ismember(uniqueConditions, [rightInitialConditions; leftInitialConditions], 'rows'),:);
-uniqueConditions = [uniqueConditions; rightInitialConditions; leftInitialConditions];
-
-audTrial = (n.visContrast==0 | n.visInitialAzimuth==0) & (n.audAmplitude>0 & n.audInitialAzimuth~=0);
-visTrial = (n.audAmplitude==0 | n.audInitialAzimuth==0) & (n.visContrast>0 & n.visInitialAzimuth~=0);
-coherentTrial = sign(n.visInitialAzimuth.*n.audInitialAzimuth)>0 & n.audAmplitude>0 & n.visContrast>0;
-coflictTrial = sign(n.visInitialAzimuth.*n.audInitialAzimuth)<0 & n.audAmplitude>0 & n.visContrast>0;
-blankTrial = (n.audAmplitude == 0 | n.audInitialAzimuth == 0) & (n.visContrast == 0 | n.visInitialAzimuth == 0);
-n.trialType = (~blankTrial.*(audTrial+visTrial*2+coherentTrial*3+coflictTrial*4));
-
-n.uniqueConditions = (uniqueConditions);
-if length(unique(uniqueConditions(:,1)))==1
-    uniqueDiff = [uniqueConditions(:,3) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
-    if any(uniqueConditions(:,1)); n.audType = 'Azimuth'; else; n.audType = 'None'; end
-else 
-    uniqueDiff = [uniqueConditions(:,1).*sign(uniqueConditions(:,3)) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
-    n.audType = 'Amplitude';
-end
-n.uniqueDiff = (uniqueDiff);
-n.uniqueConditionsIdx = ([0*find(~any(n.uniqueDiff,2)); (1:size(rightInitialConditions,1))';  -1*(1:size(leftInitialConditions,1))']);
-[~, n.conditionsIdx] = ismember(n.conditions, n.uniqueConditionsIdx);
-n.conditionsIdx = (n.conditionsIdx);
-
-n.visContrastLeftRight = [n.visContrast.*double(n.visInitialAzimuth<0), double(n.visContrast.*double(n.visInitialAzimuth>0))];
-n.audAzimuthLeftRight = [abs(n.audInitialAzimuth.*double(n.audInitialAzimuth<0)) abs(n.audInitialAzimuth.*double(n.audInitialAzimuth>0))];
-
-n.audDiff = n.uniqueDiff(n.conditionsIdx, 1);
-% add visDiff here!
-n.audValues = (unique(uniqueDiff(:,1)));
-n.visValues = (unique(uniqueDiff(:,2)));
-[n.grids.visValues, n.grids.audValues] = meshgrid(n.visValues, n.audValues);
-[~, gridIdx] = ismember(uniqueDiff, [n.grids.audValues(:) n.grids.visValues(:)], 'rows');
-n.grids.conditions = nan*ones(length(n.audValues), length(n.visValues));
-n.grids.conditions(gridIdx) = n.uniqueConditionsIdx;
+n.laserOnOff = [e.galvoTTLTimes(vIdx)' e.galvoAndLaserEndTimes(vIdx)']-trialStartTimes;
+n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
+n.totalRepeats = totalRepeats';
+n.uniqueConditions = uniqueConditions;
+n.uniqueDiff = uniqueDiff;
+n.conditionLabel = conditionLabel;
+n.conditionRowIdx = conditionRowIdx;
 
 p.maxRepeatIncorrect = max(p.maxRepeatIncorrect);
 p.numberConditions = length(unique([audAmplitude, visContrast audInitialAzimuth visInitialAzimuth], 'rows'));
@@ -284,13 +298,17 @@ p.validTrials = sum(vIdx);
 x.validTrials = vIdx;
 newParams = p;
 newBlock = n;
+
+%Remove fields of the raw data where the trial lasts longer than 5s. The data from there trials aren't likely to be useful (since the mouse stayed
+%still for a long time) and can take up a lot of space in the mat file.
 for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.responseTime>5) = {[]}; end
 
 %% Check that all expected fields exist
-blockFields = {'subject';'expDate';'sessionNum';'rigName';'rigType';'trialStart';'trialEnd';'stimPeriodStart';'closedLoopStart';'feedback'; 'conditionsIdx';  ...
-    'correctResponse';'responseMade';'repeatNum';'timeToWheelMove';'responseTime';'clickDuration';'clickRate';'audAmplitude';'visContrast';'audDiff';'visDiff'; 'visContrastLeftRight';...
-    'audInitialAzimuth';'visInitialAzimuth';'visAltitude';'visSigma';'galvoType';'galvoPosition';'laserType';'laserPower';'laserSession'; 'audAzimuthLeftRight';...
-    'laserOnOff';'conditions';'trialType';'uniqueConditions'; 'rewardAvailable'; 'visValues'; 'audValues'; 'grids'; 'uniqueDiff'; 'audType'};
+blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStartEnd';'StimPeriodStart';'closedLoopStart';'rewardAvailable'; ...
+    'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'trialType';'audAmplitude';'audInitialAzimuth';'audValueLeftRight';...
+    'audDiff';'audValues';'audType';'visContrast';'visInitialAzimuth';'visValueLeftRight';'visDiff';'visValues';'visAltitude';'visSigma';'galvotype';...
+    'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'uniqueDiff';'conditionLabel';'conditionRowIdx';};
+
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
     ;'delayAfterIncorrect';'laserDuration'; 'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'rewardSize';'noiseBurstAmplitude' ...
