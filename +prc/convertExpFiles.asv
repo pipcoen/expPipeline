@@ -64,7 +64,7 @@ deleteList = find(~listNotExcluded & any(existProcessed, 2));
 for i = deleteList'
     cellfun(@delete, processedFiles(i,existProcessed(i,:)));
 end
-files2Run = processListIdx(processListIdx>0)';
+files2Run = processList(processListIdx>0)';
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
@@ -78,7 +78,7 @@ for i = files2Run(files2Run>srtIdx)
     x.existProcessed = existProcessed(i,:);
     
     %If the processed file exists, try to load the whoD variable (turn off warning if not found) which contains a list of the variable in that
-    %processed file. If the variable doesn't exist, check the contents of the file, create the "whoD" variable, and then save it to the file.
+    %processed file. If the variable doesn't exist, check the contents of the
     warning('off', 'MATLAB:load:variableNotFound'); 
     if x.existProcessed(1)
         load(x.processedData, 'whoD');
@@ -90,8 +90,8 @@ for i = files2Run(files2Run>srtIdx)
     end
     warning('on', 'MATLAB:load:variableNotFound');
     
-    
     varIdx = contains({'blk', 'flu'}, ['ignore'; whoD]);
+    
     if any([~varIdx(2) redoSuite2P])
         switch lower(x.rigType)
             case 'twophoton'; conv2PData(x);            
