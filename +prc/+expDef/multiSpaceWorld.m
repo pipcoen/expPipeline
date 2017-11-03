@@ -141,7 +141,7 @@ feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
 responseTime = feedbackTimes-stimPeriodStart;
 
-if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end  %Make sure there is a value for each condition
+if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end    %Make sure there is a value for each condition
 if length(p.visContrast)==1; p.visContrast = repmat(p.visContrast,1,length(p.numRepeats)); end       %Make sure there is a value for each condition
 audAmplitude = [v(vIdx).audAmplitude]';               %Convert amplitudes to matrix. Assumes one value for each trial.
 visContrast = [v(vIdx).visContrast]';                 %Convert amplitudes to matrix. Assumes one value for each trial.
@@ -149,10 +149,10 @@ p.galvoCoords = e.galvoCoordsValues(:,1:2);           %Add galvoCoords to the pa
 correctResponse = [v(vIdx).correctResponse]';         %Convert correctResponse on each trial to matrix. Assumes one value for each trial.
 audInitialAzimuth = [v(vIdx).audInitialAzimuth]';     %Convert audInitialAzimuth on each trial to matrix. Assumes one value for each trial.
 audInitialAzimuth(audAmplitude==0) = inf;             %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
-p.audInitialAzimuth(p.audAmplitude == 0) = inf; %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
+p.audInitialAzimuth(p.audAmplitude == 0) = inf;       %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
 visInitialAzimuth = [v(vIdx).visInitialAzimuth]';     %Convert visInitialAzimuth on each trial to matrix. Assumes one value for each trial.
 visInitialAzimuth(visContrast==0) = inf;              %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
-p.visInitialAzimuth(p.visContrast == 0) = inf;  %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
+p.visInitialAzimuth(p.visContrast == 0) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
 
 %Galvo position is the position of the galvos on each tria. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
 %trials are when the laserTypeValue for that trial was 2. Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
