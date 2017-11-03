@@ -217,14 +217,14 @@ uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialCondition
 
 %For each trial, find which row of leftInitialConditions or rightInitialConditions it belongs to, and check that no rows belong to both. We generate a
 %condition index where each trial is positive if right, -ve if left, and the opposite of any conditionIdx is the inverse sign of that conditionIdx. We
-%also create uniqueConditionLabel which has the corresponding label for each row of uniqueConditions. Finally, we create conditionRowIdx which (for
+%also create uniqueConditionReference which has the corresponding condition for each row of uniqueConditions. Finally, we create conditionRowIdx which (for
 %every trial) inditcates which row of the uniqueConditions table that trial corresponds to.
 [~, rightConditionsIdx] = ismember(allConditions, rightInitialConditions, 'rows');
 [~, leftConditionsIdx] = ismember(allConditions, leftInitialConditions, 'rows');
 if any(all([rightConditionsIdx~=0, leftConditionsIdx~=0],2)); error('Detect same condition as being Left and Right'); end
 conditionLabel = rightConditionsIdx + -1*leftConditionsIdx;
-uniqueConditionLabel = [0*find(zeroConditions,1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
-[~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionLabel);
+uniqueConditionRowLabels = [0*find(zeroConditions,1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
+[~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionRowLabels);
 
 %Create a "trialType" field which is 0,1,2,3,4 for blank, auditory, visual, coherent, and incoherent trials.
 audTrial = (visContrast==0 | visInitialAzimuth==0) & (audAmplitude>0 & audInitialAzimuth~=0);
@@ -285,8 +285,15 @@ n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.totalRepeats = totalRepeats';
 n.uniqueConditions = uniqueConditions;
 n.uniqueDiff = uniqueDiff;
+n.uniqueConditionRowLabels = uniqueConditionRowLabels;
 n.conditionLabel = conditionLabel;
 n.conditionRowIdx = conditionRowIdx;
+
+%Create some useful grids of aud and vis values. Add these to the block.
+[n.grids.visValues, n.grids.audValues] = meshgrid(n.visValues, n.audValues);
+[~, gridIdx] = ismember(uniqueDiff, [n.grids.audValues(:) n.grids.visValues(:)], 'rows');
+n.grids.conditions = nan*ones(length(n.audValues), length(n.visValues));
+n.grids.conditions(gridIdx) = uniqueConditionRowLabels;
 
 p.maxRepeatIncorrect = max(p.maxRepeatIncorrect);
 p.numberConditions = length(unique([audAmplitude, visContrast audInitialAzimuth visInitialAzimuth], 'rows'));
@@ -307,7 +314,8 @@ for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.responseTim
 blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStartEnd';'StimPeriodStart';'closedLoopStart';'rewardAvailable'; ...
     'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'trialType';'audAmplitude';'audInitialAzimuth';'audValueLeftRight';...
     'audDiff';'audValues';'audType';'visContrast';'visInitialAzimuth';'visValueLeftRight';'visDiff';'visValues';'visAltitude';'visSigma';'galvotype';...
-    'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'uniqueDiff';'conditionLabel';'conditionRowIdx';};
+    'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'uniqueDiff';'conditionLabel'; ...
+    'conditionRowIdx'; 'uniqueConditionRowLabels';'grids'};
 
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
