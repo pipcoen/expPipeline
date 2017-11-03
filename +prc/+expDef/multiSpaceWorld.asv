@@ -110,7 +110,7 @@ totalRepeats = potentialRepeats;
 totalRepeats(potentialRepeats>0) = e.repeatNumValues(maxRepeatIdx)-1;
 
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
-%Note: we cannot perfrom this stage befor the stage above as it will mess with the calculation of totalRepeats 
+%Note: we cannot perform this stage before the stage above as it will mess with the calculation of totalRepeats 
 if sum(vIdx) > 100
     %We remove the first 10 and last 10 correct trials for each session we use -1 because we only want to remove these extra trials from totalRepeats.
     vIdx = double(vIdx);
@@ -141,7 +141,7 @@ feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
 responseTime = feedbackTimes-stimPeriodStart;
 
-if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end  %Make sure there is a value for each condition
+if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end    %Make sure there is a value for each condition
 if length(p.visContrast)==1; p.visContrast = repmat(p.visContrast,1,length(p.numRepeats)); end       %Make sure there is a value for each condition
 audAmplitude = [v(vIdx).audAmplitude]';               %Convert amplitudes to matrix. Assumes one value for each trial.
 visContrast = [v(vIdx).visContrast]';                 %Convert amplitudes to matrix. Assumes one value for each trial.
@@ -149,12 +149,12 @@ p.galvoCoords = e.galvoCoordsValues(:,1:2);           %Add galvoCoords to the pa
 correctResponse = [v(vIdx).correctResponse]';         %Convert correctResponse on each trial to matrix. Assumes one value for each trial.
 audInitialAzimuth = [v(vIdx).audInitialAzimuth]';     %Convert audInitialAzimuth on each trial to matrix. Assumes one value for each trial.
 audInitialAzimuth(audAmplitude==0) = inf;             %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
-p.audInitialAzimuth(p.audAmplitude == 0) = inf; %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
+p.audInitialAzimuth(p.audAmplitude == 0) = inf;       %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
 visInitialAzimuth = [v(vIdx).visInitialAzimuth]';     %Convert visInitialAzimuth on each trial to matrix. Assumes one value for each trial.
 visInitialAzimuth(visContrast==0) = inf;              %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
-p.visInitialAzimuth(p.visContrast == 0) = inf;  %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
+p.visInitialAzimuth(p.visContrast == 0) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
 
-%Galvo position is the position of the galvos on each tria. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
+%Galvo position is the position of the galvos on each trial. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
 %trials are when the laserTypeValue for that trial was 2. Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
 %-ve index indicating the left himisphere). That's why we need to get the galvo posiiton on each trial by using the abs of this index and then
 %multiplying the ML coordinate by the sign of the original index.
@@ -169,7 +169,7 @@ trialEndTimes = e.endTrialTimes(vIdx)';
 trialTimes = [trialStartTimes trialEndTimes];
 
 %Process the raw data to be stored separately (because it is large). These are the times at which the visual and auditory stimuli turned on/off and
-%all the wheel values. All are inexed by trial using the "indexByTrial" function, and times are relative to stimulus onset.
+%all the wheel values. All are indexed by trial using the "indexByTrial" function, and times are relative to stimulus onset.
 r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues'], stimPeriodStart, [1 0]);
 r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], stimPeriodStart, [1 0]);
 r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], stimPeriodStart, [1 0]);
@@ -184,24 +184,24 @@ r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audA
 closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)';
 closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
 
-%Calculate an approximate time to the fisrt wheel movement. This is different from the response time in that it is based on wheel movement, rather
+%Calculate an approximate time to the first wheel movement. This is different from the response time in that it is based on wheel movement, rather
 %than the time when the threshold was reached. WheelMove is an interpolation of the wheel movement (to get it's nearest position at every ms).
 %wheelToThresh uses the difference between the wheel position at the closed loop start and threshold to calculate the change in wheel value that
-%represents a response (this can ve different for different rotary encoders). timeToWheelMove is then the time at which wheelMove exceeds 25% of
+%represents a response (this can very different for different rotary encoders). timeToWheelMove is then the time at which wheelMove exceeds 25% of
 %wheelToThresh
 wheelMove = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(:,1), x(:,2), -1:0.001:x(end,1), 'nearest'))'], r.wheelTimeValue, 'uni', 0);
 wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelMove, closedLoopStart, feedbackTimes - stimPeriodStart, 'uni', 0);
 wheelToThresh = nanmedian(abs(cellfun(@(x) x(end)-x(1), wheelToThresh)));
 timeToWheelMove = double(cell2mat(cellfun(@(x) x(find(abs(x(:,2))>wheelToThresh/4 & x(:,1)>0,1),1), wheelMove, 'uni', 0)));
 
-%Get the response the mouse made on each trial based on the correct response and then taking the opposite for incoorect trials. NOTE: this will not
+%Get the response the mouse made on each trial based on the correct response and then taking the opposite for incorrect trials. NOTE: this will not
 %work for a task with more than two response options.
 responseMade = double(correctResponse);
 responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
 
 %allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, and the
 %intial azimuth of aud and vis stimuli.
-%Unique conditions is baseed on the parameter set, and includes all possible conditions that the mouse could have experienced. We repeat audAmplitude
+%Unique conditions is based on the parameter set, and includes all possible conditions that the mouse could have experienced. We repeat audAmplitude
 %because in some cases it will only have one value, and in some cases it will have more;
 allConditions = [audAmplitude visContrast audInitialAzimuth visInitialAzimuth];
 uniqueConditions = unique([p.audAmplitude' p.visContrast' p.audInitialAzimuth' p.visInitialAzimuth'], 'rows');
@@ -210,7 +210,9 @@ uniqueConditions = unique([p.audAmplitude' p.visContrast' p.audInitialAzimuth' p
 leftInitialConditions = uniqueConditions(uniqueConditions(:,end-1)< 0 | ((isinf(uniqueConditions(:,end-1)) | ~(uniqueConditions(:,end-1))) & uniqueConditions(:,end)<0),:);
 if size(leftInitialConditions,1)~=floor(size(uniqueConditions,1)/2); warning('Why are half conditions not left conditions?'); end
 zeroConditions = uniqueConditions(all(uniqueConditions==0 | isinf(uniqueConditions),2),:);
-rightInitialConditions = uniqueConditions(~ismember(uniqueConditions, [zeroConditions; leftInitialConditions], 'rows'),:);
+rightInitialConditions = [leftInitialConditions(:,1:2) leftInitialConditions(:,end-1:end)*-1];
+rightInitialConditions(isinf(rightInitialConditions)) = inf; 
+rightInitialConditions = [rightInitialConditions; uniqueConditions(~ismember(uniqueConditions, [zeroConditions; leftInitialConditions], 'rows'),:)];
 uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialConditions];
 
 %For each trial, find which row of leftInitialConditions or rightInitialConditions it belongs to, and check that no rows belong to both. We generate a
