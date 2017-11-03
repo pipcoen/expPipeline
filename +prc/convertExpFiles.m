@@ -61,7 +61,7 @@ end
 
 
 files2Run = processList(processList>0)';
-srtIdx = 1500;
+srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedMice); continue; end
     if contains(expList(i).subject, {'PC008'}); continue; end

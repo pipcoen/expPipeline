@@ -238,19 +238,19 @@ if p.stimContinuous == 1; p.stimDuration = inf; end
 
 for i = 1:numel(paramFields)
     if strcmp(paramFields{i}, 'type'); continue; end
+    if size(p.(paramFields{i}),2) > 1
         if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
             if contains(paramFields{i}, 'InitialAzimuth') || contains(paramFields{i}, 'correctResponse')
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)*-1];
-            elseif ~strcmp(paramFields{i}, 'numRepeats') && size(p.(paramFields{i}),2) > 1
+            elseif ~strcmp(paramFields{i}, 'numRepeats') && 
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)];
             end
-            if size(p.(paramFields{i}), 2) > 1
-                p.(paramFields{i}) = p.(paramFields{i})(:,p.numRepeats>0);
-                if size(unique(p.(paramFields{i})', 'rows'), 1) == 1 && ~strcmp(paramFields{i}, 'numRepeats')
-                    p.(paramFields{i}) = unique(p.(paramFields{i})', 'rows')';
-                end
-            end
+            p.(paramFields{i}) = p.(paramFields{i})(:,p.numRepeats>0);
         end
+        if size(unique(p.(paramFields{i})', 'rows'), 1) == 1 && ~strcmp(paramFields{i}, 'numRepeats')
+            p.(paramFields{i}) = unique(p.(paramFields{i})', 'rows')';
+        end
+    end
 end
 if ~isfield(e, 'rewardAvailable')
     e.rewardAvailableValues = 0*e.newTrialValues+1;    
