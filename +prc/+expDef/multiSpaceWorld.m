@@ -133,7 +133,7 @@ end
 %stimPeriodStart extracts times when stimPeriodOnOffValues is 1 (which is when this period starts). 
 %We also remove times when the first newTrialTime is greater than that the first stimPeriodStart, an error that can occur on the first trial.
 %responseTime are the times taken between the stimulus starting and the response being made (including open loop period). Must use 
-%"1:numel(e.endTrialTimes)" because if a trial is interupped there can be more stimPeriodStart values than feedback values. 
+%"1:length(stimPeriodStart)" because if a trial is interupped there can be more stimPeriodStart values than feedback values. 
 stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)'; 
 vIdx(e.newTrialTimes(1:length(stimPeriodStart))' > stimPeriodStart) = 0;
 stimPeriodStart = stimPeriodStart(vIdx);
