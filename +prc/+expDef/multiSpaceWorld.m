@@ -106,7 +106,7 @@ vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 maxRepeatIdx = diff([e.repeatNumValues(1:length(vIdx>0))'; 1])<0;
 potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<0)';
 if potentialRepeats(end) == 1 && vIdx(end)==1; potentialRepeats(end) = 0; end
-totalRepeats = potentialRepeats;
+totalRepeats = double(potentialRepeats);
 totalRepeats(potentialRepeats>0) = e.repeatNumValues(maxRepeatIdx)-1;
 
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
