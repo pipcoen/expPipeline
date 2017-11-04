@@ -1,6 +1,6 @@
 function results = outerProduct(block)
-numRightTurns = prc.makeGrid(block, block.response==2, @sum, 1);
-numTrials = prc.makeGrid(block, block.response, @length, 1);
+numRightTurns = prc.makeGrid(block, block.responseMade==2, @sum, 1);
+numTrials = prc.makeGrid(block, block.responseMade, @length, 1);
 numLeftTurns = numTrials-numRightTurns;
 
 responseData = numRightTurns./numTrials;    

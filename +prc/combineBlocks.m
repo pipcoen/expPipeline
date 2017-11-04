@@ -8,7 +8,7 @@ if length(blocks) == 1
     if ~isfield(blocks, 'sessionIdx'); combinedBlocks.sessionIdx = ones(nTrials, 1);
     else, combinedBlocks.sessionIdx = blocks.sessionIdx;
     end
-else, combinedBlocks.sessionIdx = cell2mat(arrayfun(@(x) blocks(x).trialStart*0+x, 1:length(blocks), 'uni', 0)');
+else, combinedBlocks.sessionIdx = cell2mat(arrayfun(@(x) blocks(x).trialStartEnd(:,1)*0+x, 1:length(blocks), 'uni', 0)');
 end
 if length(unique(arrayfun(@(x) num2str(x.uniqueConditions(:)'),blocks,'uni',0))) > 1
     unableToMerge = 1;

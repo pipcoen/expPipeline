@@ -149,6 +149,9 @@ classdef spatialAnalysis
                 switch plotType(1:3)
                     case 'rea'
                         gridData = prc.makeGrid(normBlock, round(normBlock.reactionTime*1e3), @median, 1);
+                        plt.gridSplitByRows(gridData, normBlock.visValues*100, normBlock.audValues, plotOpt);                    
+                    case 'res'
+                        gridData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean, 1);
                         plt.gridSplitByRows(gridData, normBlock.visValues*100, normBlock.audValues, plotOpt);
                     case {'svd'; 'mul'}
                         results = fit.outerProduct(normBlock);

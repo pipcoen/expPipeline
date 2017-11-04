@@ -212,7 +212,7 @@ if size(leftInitialConditions,1)~=floor(size(uniqueConditions,1)/2); warning('Wh
 zeroConditions = uniqueConditions(all([any(uniqueConditions(:,[1,3])==0,2) any(uniqueConditions(:,[2,4])==0,2)],2),:);
 rightInitialConditions = [leftInitialConditions(:,1:2) leftInitialConditions(:,end-1:end)*-1];
 rightInitialConditions(isinf(rightInitialConditions)) = inf; 
-rightInitialConditions = [rightInitialConditions; uniqueConditions(~ismember(uniqueConditions, [zeroConditions; leftInitialConditions; rightInitialConditions], 'rows'),:)];
+rightInitialConditions = [rightInitialConditions; uniqueConditions(~ismember(uniqueConditions, [zeroConditions; leftInitialConditions], 'rows'),:)];
 uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialConditions];
 
 %For each trial, find which row of leftInitialConditions or rightInitialConditions it belongs to, and check that no rows belong to both. We generate a
