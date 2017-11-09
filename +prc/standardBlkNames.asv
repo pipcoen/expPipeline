@@ -124,7 +124,7 @@ elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'audInitialAzimuth')
     p.visInitialAzimuth = p.audVisAzimuth(2,:);
     tDat = num2cell([e.iAziValues(1:2:end)' e.iAziValues(2:2:end)']);
     [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
-elseif isfield(e, 'preStimQuiescentDurationValues') && isfield(p, 'reflectAzimuthAndCorrectResponse') && ~strfind(b.expDef, 'multiTemporalWorld')
+elseif isfield(e, 'preStimQuiescentDurationValues') && isfield(p, 'reflectAzimuthAndCorrectResponse') && isempty(strfind(b.expDef, 'multiTemporalWorld'))
     tDat = num2cell([e.audInitialAzimuthValues' e.visInitialAzimuthValues']);
     [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
 end
@@ -183,7 +183,7 @@ elseif isfield(e, 'preStimQuiescentDurationValues')
     tDat = num2cell(e.preStimQuiescentDurationValues)'; [v.preStimQuiescentDuration] = tDat{:};
 end
 
-if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)
+% if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)
     b.galvoLog = struct;
     e.galvoTypeValues = 0*e.newTrialValues+1;
     e.laserTypeValues = 0*e.newTrialValues;
@@ -199,7 +199,7 @@ if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)
     p.laserDuration = 0;
     e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
     [v.laserDuration] = deal(0);
-end
+% end
 if ~isfield(e, 'galvoTTLTimes')
     e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
 end
@@ -229,11 +229,13 @@ end
 if isfield(p, 'reflectAzimuthAndCorr'); p.reflectAzimuthAndCorrectResponse = p.reflectAzimuthAndCorr; end
 if isfield(p, 'audioAmplitude'); p.audAmplitude = p.audioAmplitude; end
 if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
-    if ~strfind(b.expDef, 'multiTemporalWorld')
+    if isempty(strfind(b.expDef, 'multiTemporalWorld'))
         flippedIdx = max([p.visContrast;p.audAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
     else
+        flippedIdx = p.coherence~=0.5;
     end
-    if length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
+    if isfield(p, 'visInitialAzimuth') && length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
+    if isfield(p, 'audInitialAzimuth') && length(p.audInitialAzimuth)==1; p.audInitialAzimuth = p.numRepeats*0+p.audInitialAzimuth; end
     p.numRepeats = [p.numRepeats, p.numRepeats(flippedIdx)];
 end
 
@@ -244,6 +246,8 @@ for i = 1:numel(paramFields)
         if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
             if contains(paramFields{i}, 'InitialAzimuth') || contains(paramFields{i}, 'correctResponse')
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)*-1];
+            elseif contains(paramFields{i}, 'coherence')
+                
             elseif ~strcmp(paramFields{i}, 'numRepeats') && size(p.(paramFields{i}),2) > 1
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)];
             end

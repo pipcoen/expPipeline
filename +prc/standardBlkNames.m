@@ -235,6 +235,7 @@ if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectR
         flippedIdx = p.coherence~=0.5;
     end
     if isfield(p, 'visInitialAzimuth') && length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
+    if isfield(p, 'audInitialAzimuth') && length(p.audInitialAzimuth)==1; p.audInitialAzimuth = p.numRepeats*0+p.audInitialAzimuth; end
     p.numRepeats = [p.numRepeats, p.numRepeats(flippedIdx)];
 end
 
@@ -245,6 +246,8 @@ for i = 1:numel(paramFields)
         if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
             if contains(paramFields{i}, 'InitialAzimuth') || contains(paramFields{i}, 'correctResponse')
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)*-1];
+            elseif contains(paramFields{i}, 'coherence')
+                p.(paramFields{i}) = [p.(paramFields{i}) 1-p.(paramFields{i})(:,flippedIdx)];
             elseif ~strcmp(paramFields{i}, 'numRepeats') && size(p.(paramFields{i}),2) > 1
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)];
             end
