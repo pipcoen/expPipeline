@@ -126,7 +126,7 @@ if sum(vIdx) > 100
     
     %Remove the newly eliminated trials from totalRepeats and update vIdx
     totalRepeats(vIdx(vIdx==1)==-1) = [];
-    vIdx = vIdx~=0;
+    vIdx = vIdx>0;
 end
 
 %% Populate fields of "n" with basic trial data

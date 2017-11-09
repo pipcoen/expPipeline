@@ -124,7 +124,7 @@ elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'audInitialAzimuth')
     p.visInitialAzimuth = p.audVisAzimuth(2,:);
     tDat = num2cell([e.iAziValues(1:2:end)' e.iAziValues(2:2:end)']);
     [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
-elseif isfield(e, 'preStimQuiescentDurationValues') && isfield(p, 'reflectAzimuthAndCorrectResponse') && isempty(strfind(b.expDef, 'multiTemporalWorld'))
+elseif isfield(e, 'preStimQuiescentDurationValues') && isfield(p, 'reflectAzimuthAndCorrectResponse') && ~strfind(b.expDef, 'multiTemporalWorld')
     tDat = num2cell([e.audInitialAzimuthValues' e.visInitialAzimuthValues']);
     [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
 end
@@ -229,12 +229,11 @@ end
 if isfield(p, 'reflectAzimuthAndCorr'); p.reflectAzimuthAndCorrectResponse = p.reflectAzimuthAndCorr; end
 if isfield(p, 'audioAmplitude'); p.audAmplitude = p.audioAmplitude; end
 if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
-    if isempty(strfind(b.expDef, 'multiTemporalWorld'))
+    if ~strfind(b.expDef, 'multiTemporalWorld')
         flippedIdx = max([p.visContrast;p.audAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
     else
-        flippedIdx = p.coherence~=0.5;
     end
-    if isfield(p, 'visInitialAzimuth') && length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
+    if length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
     p.numRepeats = [p.numRepeats, p.numRepeats(flippedIdx)];
 end
 
