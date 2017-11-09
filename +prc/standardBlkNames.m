@@ -252,7 +252,7 @@ for i = 1:numel(paramFields)
             end
         end
 end
-if ~isfield(e, 'rewardAvailable')
+if ~isfield(e, 'rewardAvailableValues')
     e.rewardAvailableValues = 0*e.newTrialValues+1;    
 end
 

@@ -18,14 +18,15 @@ classdef spatialAnalysis
     
     %%
     methods
-        function obj = spatialAnalysis(subjects, expDate)
+        function obj = spatialAnalysis(subjects, expDate, combineMice)
             % Initialize fields with default values if no vaules are provided.
             if ~exist('subjects', 'var') || isempty(subjects); subjects = {'PC011';'PC012';'PC013';'PC015';'PC010';'PC017'}; end
             if ~exist('expDate', 'var'); expDate = 'last'; end
+            if ~exist('combineMice', 'var'); combineMice = 0; end
             if ~iscell(subjects); subjects = {subjects}; end
             if ~iscell(expDate); expDate = {expDate}; end
             if length(expDate) < length(subjects); expDate = repmat(expDate, length(subjects),1); end
-            obj = changeMouse(obj, subjects, expDate);
+            obj = changeMouse(obj, subjects, expDate, 'bloprm', combineMice);
         end
         
         function viewBoxPlots(obj, plotType)
@@ -60,7 +61,7 @@ classdef spatialAnalysis
                         boxPlot.plotData = results.model{i};
                         if i == 3; boxPlot.axisLimits = [-0.25 0.25]; end
                     case 'rea'
-                        boxPlot.plotData = prc.makeGrid(normBlock, round(normBlock.reactionTime*1e3), @median, 1);
+                        boxPlot.plotData = prc.makeGrid(normBlock, round(normBlock.responseTime*1e3), @median, 1);
                         boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
                 end
                 plt.getAxes(i, length(obj.subjects), [], maxGrid(2)/(1.3*maxGrid(1)), [100 80 60 100], [100 40]);
@@ -148,7 +149,7 @@ classdef spatialAnalysis
                 obj.currentAxes = plt.getAxes(i, length(obj.subjects), 500, [], [120 100 120 40], [100 60]);
                 switch plotType(1:3)
                     case 'rea'
-                        gridData = prc.makeGrid(normBlock, round(normBlock.reactionTime*1e3), @median, 1);
+                        gridData = prc.makeGrid(normBlock, round(normBlock.responseTime*1e3), @median, 1);
                         plt.gridSplitByRows(gridData, normBlock.visValues*100, normBlock.audValues, plotOpt);                    
                     case 'res'
                         gridData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean, 1);
@@ -247,19 +248,28 @@ classdef spatialAnalysis
                         plt.dataWithErrorBars(normBlock)
                         title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(normBlock.responseMade), normBlock.nSessions));
                         xlim([min(normBlock.visValues), max(normBlock.visValues)]);
+                    case 'flp'
+                        obj.currentAxes = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
+                        plt.psychoFits(normBlock, normBlock.visValues);
+                        plt.dataWithErrorBars(normBlock, 0, normBlock.visValues)
+                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(normBlock.responseMade), normBlock.nSessions));
+                        xlim([min(normBlock.audValues), max(normBlock.audValues)]);
                     case 'vis'
                         if ~isempty(obj.expDate)
                             obj.runMouseReplicate({'UniLeft'; 'Bilateral'; 'UniRight'}, ['viewPsychoCurves(''' plotType ''')']);
                             return;
                         end
-                        allReactionTimes = obj.blocks{i}.reactionTime < diff(obj.blocks{i}.laserOnOff, [], 2);
-                        normReactionTimes = normBlock.reactionTime < diff(normBlock.laserOnOff, [], 2);
+                        allresponseTimes = obj.blocks{i}.responseTime < diff(obj.blocks{i}.laserOnOff, [], 2);
+                        normresponseTimes = normBlock.responseTime < diff(normBlock.laserOnOff, [], 2);
                         galvoPos = obj.blocks{i}.galvoPosition;
                         laserType = [1 2 1]; hemiMod = [-1 1 1];
-                        laserBlock = prc.combineBlocks(obj.blocks{i}, obj.blocks{i}.laserType == laserType(i) & galvoPos(:,1) == 2.5*hemiMod(i)&allReactionTimes);
+                        laserBlock = prc.combineBlocks(obj.blocks{i}, obj.blocks{i}.laserType == laserType(i) & galvoPos(:,1) == 2.5*hemiMod(i)&allresponseTimes);
                         obj.currentAxes = plt.getAxes(i, length(obj.subjects), 500, 0.8, [80 100 80 40], [100 30]);
-                        plt.psychoFits(prc.combineBlocks(normBlock, normReactionTimes));
-                        plt.dataWithErrorBars(laserBlock)
+                        
+                        plotOpt.lineStyle = '--';
+                        plt.psychoFits(prc.combineBlocks(normBlock, normresponseTimes), [], plotOpt);
+                        plt.psychoFits(laserBlock);
+                        plt.dataWithErrorBars(laserBlock, 0)
                         title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(laserBlock.responseMade), normBlock.nSessions));
                         xlim([min(normBlock.visValues), max(normBlock.visValues)]);
                         %                         set(gca, 'XTick', min(normBlock.visValues):1:max(normBlock.visValues));
@@ -279,59 +289,48 @@ classdef spatialAnalysis
                 switch lower(plotType)
                     case {'coh'; 'con'}
                         normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
-                        jPlot = prc.getMultiTriplets(normBlock, strcmpi(plotType, 'coh'));
-                        
-                        jPlot.figureSize = 400;
+                        plotOpt = prc.getMultiTriplets(normBlock, strcmpi(plotType, 'coh'));
+                        plotOpt.figureSize = 400;
                         if strcmpi(plotType, 'coh')
-                            jPlot.mainTitle = '\fontsize{20} Fraction correct by condition';
-                            jPlot.mainYLabel = '\fontsize{20} Fraction correct';
-                            jPlot.yLimits = [0.2 1.05]; 
+                            plotOpt.mainTitle = '\fontsize{20} Fraction correct by condition';
+                            plotOpt.mainYLabel = '\fontsize{20} Fraction correct';
+                            plotOpt.yLimits = [0 1.2]; 
                         else
-                            jPlot.mainTitle = '\fontsize{20} Fraction of unisensory choices in conflict';
-                            jPlot.mainYLabel = '\fontsize{20} Fraction choices in unisensory direction';
-                            jPlot.yLimits = [0 1.05];
+                            plotOpt.mainTitle = '\fontsize{20} Fraction of unisensory choices in conflict';
+                            plotOpt.mainYLabel = '\fontsize{20} Fraction choices in unisensory direction';
+                            plotOpt.yLimits = [0 1.2];
                         end
-                        jPlot.mainXLabel = '\fontsize{20} Condition';
-                    case {'mod'}
-                        normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
-                        jPlot = prc.compareModels(normBlock);
-                        
-                        jPlot.figureSize = 400;
-                        if strcmpi(plotType, 'coh')
-                            jPlot.mainTitle = '\fontsize{20} Fraction correct by condition';
-                            jPlot.mainYLabel = '\fontsize{20} Fraction correct';
-                            jPlot.yLimits = [0.2 1.05];
-                        else
-                            jPlot.mainTitle = '\fontsize{20} Fraction of unisensory choices in conflict';
-                            jPlot.mainYLabel = '\fontsize{20} Fraction choices in unisensory direction';
-                            jPlot.yLimits = [0 1.05];
-                        end
-                        jPlot.mainXLabel = '\fontsize{20} Condition';
+                        plotOpt.mainXLabel = '\fontsize{20} Condition';
                 end
-                obj.currentAxes = plt.getAxes(i, length(obj.subjects), jPlot.figureSize, [], [100 100 100 20], [100 80]);
-                jitterPlot(jPlot.yData, 'xPos', jPlot.xPosition); grid('on');
-                set(gca, 'xTickLabels', jPlot.xLabels);
+                obj.currentAxes = plt.getAxes(i, length(obj.subjects), plotOpt.figureSize, [], [100 100 100 20], [100 80]);
+                plt.jitter(plotOpt.yData, plotOpt); grid('on');
                 title(sprintf('%s: n = %d', obj.subjects{i}, obj.blocks{i}.nSessions));
-                ylim(jPlot.yLimits);
                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
-                
-                if ~isempty(jPlot.testedPairs); plt.sigstar(jPlot.testedPairs, jPlot.significance); end
             end
             figureSize = get(gcf, 'position');
             mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
-            plt.suplabel(jPlot.mainTitle, 't', mainAxes);
-            plt.suplabel(jPlot.mainYLabel, 'y', mainAxes);
-            plt.suplabel(jPlot.mainXLabel, 'x', mainAxes);
+            plt.suplabel(plotOpt.mainTitle, 't', mainAxes);
+            plt.suplabel(plotOpt.mainYLabel, 'y', mainAxes);
+            plt.suplabel(plotOpt.mainXLabel, 'x', mainAxes);
         end
         
-        function obj = changeMouse(obj, subjects, expDate, dataType)
+        function obj = changeMouse(obj, subjects, expDate, dataType, combineMice)
             if ~exist('dataType', 'var'); dataType = 'bloprm'; end
+            if ~exist('combineMice', 'var'); combineMice = 0; end
             %Get block and parameter files for the requested dates.
             [obj.blocks, obj.params, rawData]  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, dataType), subjects, expDate, 'uni', 0);
             obj.blocks = vertcat(obj.blocks{:});
             obj.params = vertcat(obj.params{:});
             rawData = vertcat(rawData{:});
             excessData = [isempty(obj.params), isempty(obj.blocks), isempty(rawData)];
+            
+            if combineMice
+                combinedName = cell2mat(unique({obj.blocks.subject}')');
+                [obj.blocks.subject] = deal(combinedName);
+                [obj.params.subject] = deal(combinedName);
+                obj.subjects = {combinedName};
+                subjects = {combinedName};
+            end
             
             maxLength = max([length(obj.blocks) length(obj.params) length(rawData)]);
             if excessData(1); obj.params = cell(maxLength, 1); end
