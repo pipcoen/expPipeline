@@ -180,7 +180,9 @@ if isfield(p, 'preStimQuiRangeThr')
     tDat = num2cell(mean(p.preStimQuiescentRange)*ones(1,length(e.newTrialTimes)))';  
     [v.preStimQuiescentDuration] = tDat{:};  
 elseif isfield(e, 'preStimQuiescentDurationValues')
-    tDat = num2cell(e.preStimQuiescentDurationValues)'; [v.preStimQuiescentDuration] = tDat{:};
+    tDat = num2cell(e.preStimQuiescentDurationValues)';
+    if length(tDat) == length(v)-1; tDat = [tDat;0]; end
+    [v.preStimQuiescentDuration] = tDat{:};
 end
 
 if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)

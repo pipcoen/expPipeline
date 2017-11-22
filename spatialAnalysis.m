@@ -124,7 +124,7 @@ classdef spatialAnalysis
         end
         
         function viewGLMFit(obj, modelString)
-            if ~exist('modelString', 'var'); modelString = 'C-subset-multiAud2'; end
+            if ~exist('modelString', 'var'); modelString = 'C-subset-multiSimple'; end
             figure;
             for i  = 1:length(obj.subjects)
                 normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});

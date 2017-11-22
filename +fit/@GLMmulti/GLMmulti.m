@@ -23,7 +23,7 @@ classdef GLMmulti
             %% Input data must be a struct with fields: conditions and response
             obj.data = inputData;
             
-            tab = tabulate(obj.data.response);
+            tab = tabulate(obj.data.responseMade);
             tab = tab(:,3)/100;
             obj.guess_bpt=sum(tab.*log2(tab));
         end
@@ -62,20 +62,20 @@ classdef GLMmulti
                 case 'C-subset-multiSimple'
                     obj.prmLabels = {'visScale','audScale'};
                     obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
-                    obj.Zinput = @(b)([b.visContrastLeftRight, b.audAzimuthLeftRight]);
+                    obj.Zinput = @(b)([b.visValueLeftRight, b.audValueLeftRight]);
                     obj.ZL = @(P,in) (P(1)*diff(in(:,1:2),[],2) + P(2)*diff(in(:,3:4),[],2));
                     obj.ZR = [];
                 case 'C-subset-multiSimple2'
                     obj.prmLabels = {'audBias','visScale','audScale'};
                     obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
-                    obj.Zinput = @(b)([b.visContrastLeftRight, b.audAzimuthLeftRight]);
+                    obj.Zinput = @(b)([b.visValueLeftRight, b.audValueLeftRight]);
                     obj.ZL = @(P,in) (P(1).*double(all(in(:,3:4)==0,2)) + ...
                         P(2)*diff(in(:,1:2),[],2) + P(3).*diff(in(:,3:4),[],2));
                     obj.ZR = [];
                 case 'C-subset-multiAud3'
                     obj.prmLabels = {'visBias','audBias','visLScale','visRScale','audLScale','audRScale', 'bias'};
                     obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
-                    obj.Zinput = @(b)([b.visContrastLeftRight, b.audAzimuthLeftRight]);
+                    obj.Zinput = @(b)([b.visValueLeftRight, b.audValueLeftRight]);
                     obj.ZL = @(P,in)(P(1).*double(all(in(:,1:2),2)==0) + P(2).*double(all(in(:,3:4),2)==0) + P(3).*in(:,1) + P(4).*in(:,2) + P(5).*in(:,3) + P(6).*in(:,4) + P(7));
                     obj.ZR = [];
                 otherwise
@@ -101,7 +101,7 @@ classdef GLMmulti
 
             options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',10000);
 
-            fittingObjective = @(b) (obj.calculateLogLik(b, obj.Zinput(obj.data), obj.data.response));
+            fittingObjective = @(b) (obj.calculateLogLik(b, obj.Zinput(obj.data), obj.data.responseMade));
             [obj.prmFits,~,exitflag] = fmincon(fittingObjective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
             if ~any(exitflag == [1,2])
                 obj.prmFits = nan(1,length(obj.prmLabels));
@@ -114,16 +114,16 @@ classdef GLMmulti
             end
             
             %non-cv log likelihood for fitted model
-            ll_model = obj.calculateLogLik(obj.prmFits,obj.data.stimulus,obj.data.response)/length(obj.data.response);
+            ll_model = obj.calculateLogLik(obj.prmFits,obj.data.stimulus,obj.data.responseMade)/length(obj.data.responseMade);
             
             %another thing to do is just take the mode of the pred
             %probabilities and see if they match the data
             pHats = obj.calculatepHat(obj.prmFits,obj.data.stimulus);
-            classify = nan(length(obj.data.response),1);
-            for t = 1:length(obj.data.response)
+            classify = nan(length(obj.data.responseMade),1);
+            for t = 1:length(obj.data.responseMade)
                 [~,rhat] = max(pHats(t,:));
                 
-                if rhat == obj.data.response(t)
+                if rhat == obj.data.responseMade(t)
                     classify(t)=1;
                 else
                     classify(t)=0;
@@ -147,9 +147,9 @@ classdef GLMmulti
             options = optimoptions('fmincon','UseParallel',0,'MaxFunEvals',100000,'MaxIter',2000);
             
             if isempty(varargin)
-                C = cvpartition(length(obj.data.response),'LeaveOut');
+                C = cvpartition(length(obj.data.responseMade),'LeaveOut');
             else
-                C = cvpartition(obj.data.response,'KFold',varargin{1});
+                C = cvpartition(obj.data.responseMade,'KFold',varargin{1});
             end
             
             obj.prmFits = nan(C.NumTestSets,length(obj.prmLabels));
@@ -163,8 +163,8 @@ classdef GLMmulti
                 trainInputs = inputs(trainIdx,:);
                 testInputs = inputs(testIdx,:);
                 
-                trainResponses = obj.data.response(trainIdx);
-                testResponse = obj.data.response(testIdx);
+                trainResponses = obj.data.responseMade(trainIdx);
+                testResponse = obj.data.responseMade(testIdx);
                 
                 objective = @(b) ( obj.calculateLogLik(b, trainInputs, trainResponses) );
 
@@ -189,8 +189,8 @@ classdef GLMmulti
         
         function h = plotData(obj)
             %%
-            numTrials = prc.makeGrid(obj.data, obj.data.response~=0, @length, 1);
-            numRightTurns = prc.makeGrid(obj.data, obj.data.response==2, @sum, 1);
+            numTrials = prc.makeGrid(obj.data, obj.data.responseMade~=0, @length, 1);
+            numRightTurns = prc.makeGrid(obj.data, obj.data.responseMade==2, @sum, 1);
             
             audValues = obj.data.audValues;
             colorChoices = plt.selectRedBlueColors(audValues);
@@ -220,8 +220,8 @@ classdef GLMmulti
             colorChoices = plt.selectRedBlueColors(audValues);
             
             for audVal = audValues(:)'
-                maxContrast = max(obj.data.visContrastLeftRight(:));
-                audInputs = unique(obj.data.audAzimuthLeftRight(obj.data.audDiff==audVal,:), 'rows');
+                maxContrast = max(obj.data.visValueLeftRight(:));
+                audInputs = unique(obj.data.audValueLeftRight(obj.data.audDiff==audVal,:), 'rows');
                 evalPoints = [[linspace(maxContrast,0,100)'; zeros(100,1)], [zeros(100,1); linspace(0,maxContrast,100)'], repmat(audInputs, 200,1)];
                 otherInputs = obj.Zinput(obj.data);
                 otherInputs(:,1:4)=[];
@@ -251,7 +251,7 @@ classdef GLMmulti
                 for cr = 1:length(cVals)
                     E = obj.getrow(obj.data,obj.data.stimulus(:,1) == cVals(cl) & obj.data.stimulus(:,2) == cVals(cr));
                     for i=1:3
-                        prop(cl,cr,i) = sum(E.response==i)/length(E.response);
+                        prop(cl,cr,i) = sum(E.responseMade==i)/length(E.responseMade);
                     end
                     pd.propChooseLeft(cl,cr) = prop(cl,cr,1);
                     pd.propChooseRight(cl,cr) = prop(cl,cr,2);
@@ -317,17 +317,17 @@ classdef GLMmulti
                     prop_ci=zeros(nC,3,2);
                     for c = 1:length(uniqueC1D)
                         D = obj.getrow(obj.data,contrast1D == uniqueC1D(c));
-                        respSum = sum([D.response==1 D.response==2 D.response==3],1);
-                        p = respSum/length(D.response);
+                        respSum = sum([D.responseMade==1 D.responseMade==2 D.responseMade==3],1);
+                        p = respSum/length(D.responseMade);
                         
-                        [p,pci]=binofit(respSum,length(D.response),0.05);
+                        [p,pci]=binofit(respSum,length(D.responseMade),0.05);
                         
                         prop_ci(c,:,:) = pci;
                         
                         prop(c,:) = p;
                     end
                     
-                    if max(obj.data.response) == 2 %for 2AFC tasks
+                    if max(obj.data.responseMade) == 2 %for 2AFC tasks
                         rMax = 2;
                     else
                         rMax = 3;
@@ -507,7 +507,7 @@ classdef GLMmulti
                 n = obj.prmFits(end-1);
                 c50 = obj.prmFits(end);
                 cfn = @(c)(c.^n)./(c.^n + c50.^n);
-                numTrials = length(obj.data.response);
+                numTrials = length(obj.data.responseMade);
                 
                 widths = linspace(0.01,0.5,50);
                 
@@ -596,7 +596,7 @@ classdef GLMmulti
             %use mnrfit to fit rudimentary models MNR and NESTED and
             %compare directly
             cont = obj.data.stimulus;
-            resp = obj.data.response;
+            resp = obj.data.responseMade;
             resp_nes = resp; resp_nes(resp_nes==3)=0; resp_nes=resp_nes+1;
             
             B_mnr = mnrfit(cont,resp);
@@ -639,7 +639,7 @@ classdef GLMmulti
             T = struct2table(obj.data);
             for iter = 1:numIter
                 datTemp = datasample(T,height(T));
-                objective = @(b) (obj.calculateLogLik(b, obj.Zinput(datTemp), datTemp.response));
+                objective = @(b) (obj.calculateLogLik(b, obj.Zinput(datTemp), datTemp.responseMade));
                 bootstrap_params(iter,:) = fmincon(objective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
             end
             
