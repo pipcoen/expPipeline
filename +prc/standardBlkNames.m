@@ -283,8 +283,8 @@ end
 
 standardizedParams = prc.chkThenRemoveFields(p, f2Re);
 standardizedBlock = b;
-standardizedBlock.paramsValues = chkThenRemoveFields(v, f2Re(~contains(f2Re, 'correctResponse')));
-standardizedBlock.events = chkThenRemoveFields(e, f2Re);
+standardizedBlock.paramsValues = prc.chkThenRemoveFields(v, f2Re(~contains(f2Re, 'correctResponse')));
+standardizedBlock.events = prc.chkThenRemoveFields(e, f2Re);
 standardizedBlock.paramsTimes = b.paramsTimes+totalTimeOffset;
 end
 
