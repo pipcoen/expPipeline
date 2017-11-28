@@ -281,7 +281,7 @@ if sum(sum(p.laserTypeProportions(2:3,:))) == 0
     [v.laserDuration] = deal(0);
 end
 
-standardizedParams = chkThenRemoveFields(p, f2Re);
+standardizedParams = prc.chkThenRemoveFields(p, f2Re);
 standardizedBlock = b;
 standardizedBlock.paramsValues = chkThenRemoveFields(v, f2Re(~contains(f2Re, 'correctResponse')));
 standardizedBlock.events = chkThenRemoveFields(e, f2Re);
