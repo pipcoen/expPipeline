@@ -49,6 +49,8 @@ classdef spatialAnalysis
                 switch lower(plotType(1:3))
                     case 'res'
                         boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean, 1);
+                    case 'num'
+                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @length, 1);
                     case {'svd'; 'mul'}
                         if ~isempty(obj.expDate)
                             obj.runMouseReplicate({'Original'; 'Model'; 'Difference'}, ['viewBoxPlots(''' plotType ''')']);

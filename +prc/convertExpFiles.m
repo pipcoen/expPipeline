@@ -2,7 +2,7 @@ function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
 %% A funciton process experimental recodings into more concise, matching, local copies for future analysis.
 
 %Inputs(default values)
-%redoBlocks(0)------A tag to redo all block files
+%redoBlocks(0)------EITHER, a single RAW block file to process (must be that block's directory) A tag to redo all block files
 %redoSuite2P(0)-----A tag to redo all 2P files
 %selectedMice('0')-Run for a specific mouse, or group of mice containing this string
 
@@ -37,7 +37,21 @@ function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
 if ~exist('redoBlocks', 'var') || isempty(redoBlocks); redoBlocks = 0; end
 if ~exist('redoSuite2P', 'var') || isempty(redoSuite2P); redoSuite2P = 0; end
 if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'}; end
-
+if redoBlocks == 2
+    paths = cellfun(@dir, {'*_Block.mat'; '*_parameters.mat'}, 'uni', 0);
+    if any(cellfun(@isempty, paths))
+        error('Must be in directory of raw block file');
+    else
+        splitStr = regexp(paths{1}.folder,'[\\/]','split');
+        x.sessionNum = splitStr{end}; x.expDate = splitStr{end-1}; x.subject = splitStr{end-2};
+        x.rawBlock = paths{1}.name; x.rawParams =paths{2}.name; x.rigType = 'training'; 
+        x.galvoLog = 0;
+        x.rigName = 'default'; 
+        convBlockFile(x, 1);
+        return;
+    end
+end
+    
 %Checks whether both the DropBox and zserver directories exists. If they both do, sync the folders so data is everywere
 existDirectories = prc.pathFinder('directoryCheck'); 
 if all(existDirectories); syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
@@ -107,7 +121,7 @@ for i = files2Run(files2Run>srtIdx)
     if isempty(which(func2str(x.blockFunction))); continue; end 
     if any([~varIdx(1) redoBlocks])
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
-        convBlockFile(x); 
+        convBlockFile(x, 0); 
     end
 end
 
@@ -117,7 +131,7 @@ cellfun(@prc.updateParamChangeSpreadsheet, uniquecell({expList(files2Run).subjec
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
-function convBlockFile(x)
+function x = convBlockFile(x, testTag)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 
@@ -125,8 +139,8 @@ if ~strcmpi(x.rigType, 'training')
     x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
     x.oldBlock.blockTimeOffset = alignBlockTimes(x.oldBlock, x.timeline);
 end
-if x.gavloLog~=0; x.gavloLog = load(x.gavloLog); end
-x.oldBlock.galvoLog = x.gavloLog;
+if x.galvoLog~=0; x.galvoLog = load(x.galvoLog); end
+x.oldBlock.galvoLog = x.galvoLog;
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
 x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;
 
@@ -151,6 +165,7 @@ x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue]);
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
+if testTag; save x x; return; end
 [blk, prm, raw] = x.blockFunction(x); %#ok
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~exist(fileparts(strrep(x.processedData,'dData','dDataLite')), 'dir'); mkdir(fileparts(strrep(x.processedData,'dData','dDataLite'))); end

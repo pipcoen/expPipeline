@@ -124,9 +124,13 @@ elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'audInitialAzimuth')
     p.visInitialAzimuth = p.audVisAzimuth(2,:);
     tDat = num2cell([e.iAziValues(1:2:end)' e.iAziValues(2:2:end)']);
     [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
-elseif isfield(e, 'preStimQuiescentDurationValues') && isfield(p, 'reflectAzimuthAndCorrectResponse') && isempty(strfind(b.expDef, 'multiTemporalWorld'))
-    tDat = num2cell([e.audInitialAzimuthValues' e.visInitialAzimuthValues']);
-    [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
+elseif isfield(e, 'preStimQuiescentDurationValues') && isfield(p, 'reflectAzimuthAndCorrectResponse')
+    if  isempty(strfind(b.expDef, 'multiTemporalWorld'))
+        tDat = num2cell([e.audInitialAzimuthValues' e.visInitialAzimuthValues']);
+        [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
+    else
+        tDat = num2cell([e.audInitialAzimuthValues']); [v.audInitialAzimuth] = tDat{:,1};
+    end
 end
 
 if isfield(e, 'corRValues'); tDat = num2cell(e.corRValues'); [v.correctResponse] = tDat{:};
@@ -137,8 +141,7 @@ totalTimeOffset = b.experimentStartedTime-e.expStartTimes;
 if isfield(b, 'blockTimeOffset'); totalTimeOffset = totalTimeOffset-b.blockTimeOffset(1); end
 
 fieldList = fieldnames(e);
-fieldList = fieldList(contains(fieldList, 'Times'));
-for i = 1:length(fieldList); eval(['e.' fieldList{i} ' = e.' fieldList{i} ' + totalTimeOffset;']); end
+for i = 2:2:length(fieldList); eval(['e.' fieldList{i} ' = e.' fieldList{i} ' + totalTimeOffset;']); end
 
 fieldList = fieldnames(b.inputs);
 fieldList = fieldList(cellfun(@(x) ~isempty(strfind(x, 'Times')>0), fieldList));
