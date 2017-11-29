@@ -256,6 +256,8 @@ for i = 1:numel(paramFields)
                 p.(paramFields{i}) = [p.(paramFields{i}) 1-p.(paramFields{i})(:,flippedIdx)];
             elseif ~strcmp(paramFields{i}, 'numRepeats') && size(p.(paramFields{i}),2) > 1
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)];
+            elseif ~isempty(strfind(b.expDef, 'multiTemporalWorld')) && contains(paramFields{i}, 'visContrast')
+                p.(paramFields{i}) = [p.(paramFields{i}) flip(p.(paramFields{i})(:,flippedIdx),2)];
             end
             if size(p.(paramFields{i}), 2) > 1
                 p.(paramFields{i}) = p.(paramFields{i})(:,p.numRepeats>0);
