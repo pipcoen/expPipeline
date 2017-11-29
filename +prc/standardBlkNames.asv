@@ -130,7 +130,7 @@ elseif isfield(e, 'preStimQuiescentDurationValues') && isfield(p, 'reflectAzimut
         [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
     else
         tDat = num2cell(e.audInitialAzimuthValues'); [v.audInitialAzimuth] = tDat{:,1};
-        tDat = num2cell(e.visContrastValues',2); [v.visInitialAzimuth] = tDat{:,1};
+        tDat = num2cell(e.visContrastValues'); [v.visInitialAzimuth] = tDat{:,1};
     end
 end
 
