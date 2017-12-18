@@ -143,7 +143,7 @@ classdef spatialAnalysis
         end
         
         function viewDataWithoutFits(obj, plotType)
-            if ~exist('plotType', 'var'); plotType = 'mul'; end
+            if ~exist('plotType', 'var'); plotType = 'res'; end
             figure;
             for i  = 1:length(obj.subjects)
                 normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
@@ -383,7 +383,6 @@ classdef spatialAnalysis
                 eval(['replicatedObj.' funString ';']);
                 suptitle(obj.subjects(i));
             end
-            
         end
     end
     
