@@ -69,3 +69,5 @@ xlsData(:,1) = cellfun(@(x) datestr(x, 'yyyy-mm-dd'), xlsData(:,1), 'uni', 0);
 xlsData = [headers; xlsData];
 xlsData(end+1:end+50, :) = {[]};
 xlswrite(recordPath, xlsData, subject);
+copyfile(recordPath, strrep(recordPath,'MouseData\','MouseData\ProcessedDataLite\'), 'f');
+

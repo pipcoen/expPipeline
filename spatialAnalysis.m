@@ -5,7 +5,7 @@ classdef spatialAnalysis
     %
     % Inputs(default values) subjects({'PC011';'PC012';'PC013';'PC016'})------A cell array of subjects collect parameter and block files for
     % expDate('last')----------------------------------A cell array of dates, one for all subjects or one for each subject
-    % processingTag('none')----------------------------A tag to indicate whether you want to combine data across mice or retain individuals.
+    % combineMice(0)----------------------------A tag to indicate whether you want to combine data across mice or retain individuals.
     
     properties (Access=public)
         subjects;                %Cell array of subject names
@@ -19,7 +19,7 @@ classdef spatialAnalysis
     %%
     methods
         function obj = spatialAnalysis(subjects, expDate, combineMice)
-            % Initialize fields with default values if no vaules are provided.
+            % Initialize fields with default values if no vaules are provided. Then called changeMouse function to get requested data.
             if ~exist('subjects', 'var') || isempty(subjects); subjects = {'PC011';'PC012';'PC013';'PC015';'PC010';'PC017'}; end
             if ~exist('expDate', 'var'); expDate = 'last'; end
             if ~exist('combineMice', 'var'); combineMice = 0; end

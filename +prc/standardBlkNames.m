@@ -238,7 +238,7 @@ if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectR
     if isempty(strfind(b.expDef, 'multiTemporalWorld'))
         flippedIdx = max([p.visContrast;p.audAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
     else
-        flippedIdx = p.coherence~=0.5;
+        flippedIdx = p.requestedCoherence~=0.5;
     end
     if isfield(p, 'visInitialAzimuth') && length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
     if isfield(p, 'audInitialAzimuth') && length(p.audInitialAzimuth)==1; p.audInitialAzimuth = p.numRepeats*0+p.audInitialAzimuth; end
@@ -252,7 +252,7 @@ for i = 1:numel(paramFields)
         if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
             if contains(paramFields{i}, 'InitialAzimuth') || contains(paramFields{i}, 'correctResponse')
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)*-1];
-            elseif contains(paramFields{i}, 'coherence')
+            elseif contains(paramFields{i}, 'requestedCoherence')
                 p.(paramFields{i}) = [p.(paramFields{i}) 1-p.(paramFields{i})(:,flippedIdx)];
             elseif ~isempty(strfind(b.expDef, 'multiTemporalWorld')) && contains(paramFields{i}, 'visContrast')
                 p.(paramFields{i}) = [p.(paramFields{i}) flip(p.(paramFields{i})(:,flippedIdx),2)];
