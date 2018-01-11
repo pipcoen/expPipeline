@@ -36,7 +36,7 @@ function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
 %% Set default values, load experimental list, check which processed files already exist, etc.
 if ~exist('redoBlocks', 'var') || isempty(redoBlocks); redoBlocks = 0; end
 if ~exist('redoSuite2P', 'var') || isempty(redoSuite2P); redoSuite2P = 0; end
-if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'; 'Dylan'}; end
+if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'; 'Dylan'; 'DJ'}; end
 if redoBlocks == 2
     paths = cellfun(@dir, {'*_Block.mat'; '*_parameters.mat'}, 'uni', 0);
     if any(cellfun(@isempty, paths))

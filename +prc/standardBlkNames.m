@@ -19,6 +19,11 @@ f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFun
     'iAziTimes'; 'iAziValues'; 'aViCValues'; 'aViCTimes'; 'visCValues'; 'visCTimes'; 'audCValues'; 'audCTimes'; 'reflectAzimuthAndCorrectResponse'; ...
     'aViMTimes'; 'aViMValues'; 'corRValues'; 'corRTimes'; 'sPreTimes'; 'sPreValues'; 'stimContinuous'; 'galvoCoordID'};
 
+totalTimeOffset = b.experimentStartedTime-e.expStartTimes;
+if isfield(b, 'blockTimeOffset'); totalTimeOffset = totalTimeOffset-b.blockTimeOffset(1); end
+fieldList = fieldnames(e);
+for i = 2:2:length(fieldList); eval(['e.' fieldList{i} ' = e.' fieldList{i} ' + totalTimeOffset;']); end
+
 if isfield(e, 'fBckTimes'); e.feedbackTimes = e.fBckTimes; e.feedbackValues = e.fBckValues; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
@@ -138,12 +143,6 @@ if isfield(e, 'corRValues'); tDat = num2cell(e.corRValues'); [v.correctResponse]
 elseif isfield(e, 'correctResponseValues'); tDat = num2cell(e.correctResponseValues'); [v.correctResponse] = tDat{:};
 end
 
-totalTimeOffset = b.experimentStartedTime-e.expStartTimes;
-if isfield(b, 'blockTimeOffset'); totalTimeOffset = totalTimeOffset-b.blockTimeOffset(1); end
-
-fieldList = fieldnames(e);
-for i = 2:2:length(fieldList); eval(['e.' fieldList{i} ' = e.' fieldList{i} ' + totalTimeOffset;']); end
-
 fieldList = fieldnames(b.inputs);
 fieldList = fieldList(cellfun(@(x) ~isempty(strfind(x, 'Times')>0), fieldList));
 for i = 1:length(fieldList); eval(['b.inputs.' fieldList{i} ' = b.inputs.' fieldList{i} ' + totalTimeOffset;']); end
@@ -187,6 +186,9 @@ elseif isfield(e, 'preStimQuiescentDurationValues')
     tDat = num2cell(e.preStimQuiescentDurationValues)';
     if length(tDat) == length(v)-1; tDat = [tDat;0]; end
     [v.preStimQuiescentDuration] = tDat{:};
+end
+if ~isfield(e, 'responseWindow')
+    p.responseWindow = 0;
 end
 
 if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)
