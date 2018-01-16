@@ -28,6 +28,7 @@ if isfield(e, 'fBckTimes'); e.feedbackTimes = e.fBckTimes; e.feedbackValues = e.
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if isfield(p, 'backNoiseAmp'); p.backgroundNoiseAmplitude = p.backNoiseAmp; end
+if ~isfield(p, 'responseWindow'); p.responseWindow = 0; end
 
 if isfield(e, 'sPreValues')
     e.stimPeriodOnOffTimes = e.sPreTimes;
@@ -257,7 +258,7 @@ for i = 1:numel(paramFields)
             elseif contains(paramFields{i}, 'requestedCoherence')
                 p.(paramFields{i}) = [p.(paramFields{i}) 1-p.(paramFields{i})(:,flippedIdx)];
             elseif ~isempty(strfind(b.expDef, 'multiTemporalWorld')) && contains(paramFields{i}, 'visContrast')
-                p.(paramFields{i}) = [p.(paramFields{i}) flip(p.(paramFields{i})(:,flippedIdx),2)];
+                p.(paramFields{i}) = [p.(paramFields{i}) flip(p.(paramFields{i})(:,flippedIdx),1)];
             elseif ~strcmp(paramFields{i}, 'numRepeats') && size(p.(paramFields{i}),2) > 1
                 p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)];
             end

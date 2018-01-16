@@ -28,13 +28,15 @@ idxBounds(mod(unique(trialIdx),2)==0,:) = [];
 eventCount(2:2:end) = [];
 
 %Get the unique tiral indices that aren't inter-trial spaces and pre-populate the sortedByTrial cell array according to this.
-uniqueIdx = unique(trialIdx(mod(trialIdx,2)>0));
-sortedByTrial = cell(length(uniqueIdx),1);
-for i = 1:length(sortedByTrial)
+idx = 0;
+sortedByTrial = cell(length(eventCount),1);
+for i = 1:length(eventCount)
+    if eventCount(i)==0; continue; else; idx = idx+1; end
+    
     subtractValues = repmat(paramsForSubtraction, eventCount(i), 1);
     if any(paramsForSubtraction); subtractValues = timesToSubtract(i)*subtractValues; end
 
-    sortedByTrial{i} = prmValues(idxBounds(i,1):idxBounds(i,2),:);
+    sortedByTrial{i} = prmValues(idxBounds(idx,1):idxBounds(idx,2),:);
     if isempty(sortedByTrial{i}); continue; end
     sortedByTrial{i} = sortedByTrial{i} - subtractValues;
 end

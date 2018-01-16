@@ -48,6 +48,7 @@ classdef spatialAnalysis
                 boxPlot.xyLabel = {normBlock.audType; 'VisualContrast'};
                 switch lower(plotType(1:3))
                     case 'res'
+                        normBlock = prc.combineBlocks(normBlock, normBlock.responseMade~=0);
                         boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean, 1);
                     case 'num'
                         boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @length, 1);
