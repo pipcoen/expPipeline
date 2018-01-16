@@ -132,7 +132,7 @@ if sum(vIdx) > 100
     vIdx(trasitionTimes(:)>timeToTTL(:))=-1;
     
     %Remove the newly eliminated trials from totalRepeats and update vIdx
-    totalRepeats(vIdx(vIdx==1)==-1) = [];
+    totalRepeats(vIdx(vIdx~=0)==-1) = [];
     vIdx = vIdx>0;
 end
 
@@ -153,7 +153,7 @@ if length(p.audStimMobile)==1; p.audStimMobile = repmat(p.audStimMobile,1,length
 if length(p.visContrast(1,:))==1; visContrastRight = repmat(p.visContrast(1,:),1,length(p.numRepeats)); else visContrastRight = p.visContrast(1,:); end
 if length(p.visContrast(2,:))==1; visContrastLeft = repmat(p.visContrast(2,:),1,length(p.numRepeats)); else visContrastLeft = p.visContrast(2,:); end
 audAmplitude = [v(vIdx).audAmplitude]';               %Convert amplitudes to matrix. Assumes one value for each trial.
-visContrast = cell2mat({v(vIdx).visContrast}');                 %Convert amplitudes to matrix. 
+visContrast = cell2mat({v(vIdx).visContrast}');                
 p.galvoCoords = e.galvoCoordsValues(:,1:2);           %Add galvoCoords to the parameter list (take first two columns in case it concatenated across trials)
 correctResponse = [v(vIdx).correctResponse]';         %Convert correctResponse on each trial to matrix. Assumes one value for each trial.
 audInitialAzimuth = [v(vIdx).audInitialAzimuth]';     %Convert audInitialAzimuth on each trial to matrix. Assumes one value for each trial.
@@ -280,8 +280,8 @@ n.clickTimesAud = clickTimesAud(vIdx,:);
 n.actualClickRate = numOfClicks/unique([v(vIdx).stimDuration]);
 
 % Calculate the actual coherence of the click train
-actualCoherenceRight = zeros(length(vIdx(vIdx)),1);
-actualCoherenceLeft = zeros(length(vIdx(vIdx)),1);
+actualCoherenceRight = zeros(length(vIdx(vIdx)),1)';
+actualCoherenceLeft = zeros(length(vIdx(vIdx)),1)';
 for i = 1:length(vIdx(vIdx))
     actualCoherenceRight(i,1) = mean(ismember(n.clickTimesRight(i,2:end), n.clickTimesAud(i,2:end)));
     actualCoherenceLeft(i,1) = mean(ismember(n.clickTimesLeft(i,2:end), n.clickTimesAud(i,2:end)));
@@ -314,7 +314,7 @@ blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStart
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
     ;'delayAfterIncorrect';'laserDuration'; 'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'rewardSize';'noiseBurstAmplitude' ...
-    ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal'; 'responseWindow' ...
+    ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal' ...
     ;'totalTrials';'minutesOnRig';'galvoCoords';'numberConditions';'coherentPerformance';'validTrials' ...
     ; 'numRepeats'; 'audStimMobile'; 'requestedCoherence'; 'minInterClickGap'; 'minLeftRightGap'};
 
