@@ -119,10 +119,9 @@ if sum(vIdx) > 100
     
     %Remove trials in which the laser "trasitionTimes" are more than 90% of the time until the TTL pulse that activates the laser. Otherwise, cannot
     %be confident that the laser was ready to receive the pulse.
-    laserDelays = (1:min([numel(e.galvoTTLTimes) numel(e.laserInitialisationTimes)]))';
-    trasitionTimes = e.laserInitialisationTimes(laserDelays);
-    timeToTTL = (e.galvoTTLTimes(laserDelays)-e.newTrialTimes(laserDelays))*0.9;
-    vIdx(trasitionTimes(:)>timeToTTL(:))=-1;
+    trasitionTimes = e.laserInitialisationTimes(1:length(vIdx));
+    timeToTTL = (e.galvoTTLTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx)))*0.9;
+    vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
     
     %Remove the newly eliminated trials from totalRepeats and update vIdx
     totalRepeats(vIdx(vIdx~=0)==-1) = [];

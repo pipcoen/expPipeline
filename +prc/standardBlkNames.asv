@@ -217,11 +217,11 @@ if ~isfield(e, 'galvoAndLaserEndTimes')
     p.laserDuration = 1.5;
 end
 if ~isfield(b.galvoLog, 'tictoc')
-    e.laserInitialisationTimes = 0*e.newTrialValues;
+    e.laserInitialisationTimes = deal(0);
 else
     if any(isnan(b.galvoLog.delay_issueLaser(b.galvoLog.laserType>0))); keyboard; end
     e.laserInitialisationTimes = 0*e.newTrialValues;
-    e.laserInitialisationTimes(b.galvoLog.trialNum) = b.galvoLog.tictoc;
+    e.laserInitialisationTimes() = b.galvoLog.tictoc;
 end
 if ~isfield(p, 'laserDuration'); p.laserDuration = 1.5; end
 e.laserTypeValues(~ismember(1:length(e.newTrialTimes), b.galvoLog.trialNum'))=0;
