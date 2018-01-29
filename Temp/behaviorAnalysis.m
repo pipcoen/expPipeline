@@ -312,7 +312,6 @@ classdef behaviorAnalysis
         end
         
         function viewInactivationEffects(obj, UniOrBilateral, individualFlies)
-            imgBWOuline=imread('BrainOutlineBW.png');
             if ~exist('UniOrBilateral', 'var'); UniOrBilateral = 2; end
             if ~exist('individualFlies', 'var'); individualFlies = 1; end
             
@@ -496,7 +495,7 @@ classdef behaviorAnalysis
                     obj.audType{i,1} = 'Auditory amplitude';
                     uniqueConditions = [uniqueConditions(:,1).*sign(uniqueConditions(:,3)) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
                 end
-                obj.audValues{i,1} = unique(uniqueConditions(:,1));
+                obj.audValues{i,1} = unique(uniqueConditions(:,1)); %#ok<*PROPLC>
                 obj.visValues{i,1} = unique(uniqueConditions(:,2));
                 [visGridConditions, audGridConditions] = meshgrid(obj.visValues{i}, obj.audValues{i});
                 [~, gridIdx] = ismember(uniqueConditions, [audGridConditions(:) visGridConditions(:)], 'rows');

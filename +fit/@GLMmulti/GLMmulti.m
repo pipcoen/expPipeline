@@ -5,12 +5,12 @@ classdef GLMmulti
         prmFits;
         prmBounds;
         prmInit;
-        prmSenses;
         Zinput;
         ZL;
         ZR;
         data;
         p_hat;
+        evalPoints;
     end
     
     properties (Access=public)
@@ -44,40 +44,29 @@ classdef GLMmulti
             obj.prmFits = [];
             obj.prmInit = [];
             
+            obj.data.audValues = unique(obj.data.audDiff);
+            obj.data.visValues = unique(obj.data.visDiff);
+            maxContrast = max(abs(obj.data.visValues));
+            audRepMat = repmat(obj.data.audValues,1,200)';
+            obj.evalPoints = [repmat(linspace(-maxContrast,maxContrast,200)', length(obj.data.audValues),1), audRepMat(:)];
             switch(modelString)
-                case 'Offset' %Model guesses based on the proportion of responses in the data
-                    %used as a baseline to compare other models
-                    obj.prmLabels = {'Offset_L','Offset_R'};
-                    obj.prmBounds = [-inf -inf; +inf +inf];
-                    obj.Zinput = @(D)([D.stimulus(:,1) D.stimulus(:,2)]);
-                    obj.ZL = @(P,in)(P(1)*ones(length(in(:,1)),1));
-                    obj.ZR = @(P,in)(P(2)*ones(length(in(:,1)),1));
-                case 'C-subset-visual'
-                    obj.prmLabels = {'Offset_L','ScaleL_L','Offset_R','ScaleR_R'};
-                    obj.prmBounds = [-inf -inf -inf -inf;
-                        +inf +inf +inf +inf];
-                    obj.Zinput = @(b)([b.visContrast.*b.visInitialAzimuth<0 b.visContrast.*b.visInitialAzimuth>0]);
-                    obj.ZL = @(P,in)(P(1) + P(2).*in(:,1));
-                    obj.ZR = @(P,in)(P(3) + P(4).*in(:,2));
-                case 'C-subset-multiSimple'
-                    obj.prmLabels = {'visScale','audScale'};
+                case 'SimpleLogistic'
+                    obj.prmLabels = {'bias','visScale','audScale'};
                     obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
-                    obj.Zinput = @(b)([b.visValueLeftRight, b.audValueLeftRight]);
-                    obj.ZL = @(P,in) (P(1)*diff(in(:,1:2),[],2) + P(2)*diff(in(:,3:4),[],2));
+                    obj.Zinput = @(b)([b.visDiff, b.audDiff]);
+                    obj.ZL = @(P,in) (P(1)+ P(2)*in(:,1) + P(3)*in(:,2));
                     obj.ZR = [];
-                case 'C-subset-multiSimple2'
-                    obj.prmLabels = {'audBias','visScale','audScale'};
+                case 'Simp-emp'
+                    allValues = [cellfun(@(x) [num2str(x) 'Vis'], num2cell(obj.data.visValues), 'uni', 0); cellfun(@(x) [num2str(x) 'Aud'], num2cell(obj.data.audValues), 'uni', 0)];              
+                    obj.prmLabels = ['bias'; allValues]';
                     obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
-                    obj.Zinput = @(b)([b.visValueLeftRight, b.audValueLeftRight]);
-                    obj.ZL = @(P,in) (P(1).*double(all(in(:,3:4)==0,2)) + ...
-                        P(2)*diff(in(:,1:2),[],2) + P(3).*diff(in(:,3:4),[],2));
+                    obj.Zinput = @(b)([b.visDiff, b.audDiff]);
+                    obj.ZL = @(P,in)(P(1) +  ...
+                        sum(cell2mat(arrayfun(@(x,y,z) x.*(y{1}==z), P(2:(length(unique(in(:,1)))+1)),repmat({in(:,1)},1,length(unique(in(:,1)))), unique(in(:,1))', 'uni', 0)),2) + ...
+                        sum(cell2mat(arrayfun(@(x,y,z) x.*(y{1}==z), P((length(unique(in(:,1)))+2):(length(unique(in(:,1)))+length(unique(in(:,2)))+1)),repmat({in(:,2)},1,length(unique(in(:,2)))), unique(in(:,2))', 'uni', 0)),2));
                     obj.ZR = [];
-                case 'C-subset-multiAud3'
-                    obj.prmLabels = {'visBias','audBias','visLScale','visRScale','audLScale','audRScale', 'bias'};
-                    obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
-                    obj.Zinput = @(b)([b.visValueLeftRight, b.audValueLeftRight]);
-                    obj.ZL = @(P,in)(P(1).*double(all(in(:,1:2),2)==0) + P(2).*double(all(in(:,3:4),2)==0) + P(3).*in(:,1) + P(4).*in(:,2) + P(5).*in(:,3) + P(6).*in(:,4) + P(7));
-                    obj.ZR = [];
+                    [aGrid,vGrid] = meshgrid(obj.data.audValues,obj.data.visValues);
+                    obj.evalPoints = [vGrid(:) aGrid(:)];                    
                 otherwise
                     error('Model does not exist');
             end
@@ -89,7 +78,6 @@ classdef GLMmulti
         
         function obj = addLapse(obj)
             if isempty(obj.ZL); error('Set model first'); end
-            
             obj.prmLabels = [obj.prmLabels 'LapseRate'];
             obj.prmBounds = [obj.prmBounds, [0;1]];
             obj.prmInit = [obj.prmInit 0];
@@ -98,9 +86,7 @@ classdef GLMmulti
         function obj = fit(obj)
             %Non crossvalidated fitting
             if isempty(obj.ZL); error('Set model first'); end
-
             options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',10000);
-
             fittingObjective = @(b) (obj.calculateLogLik(b, obj.Zinput(obj.data), obj.data.responseMade));
             [obj.prmFits,~,exitflag] = fmincon(fittingObjective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
             if ~any(exitflag == [1,2])
@@ -216,22 +202,18 @@ classdef GLMmulti
         function figureHand = plotFit(obj)
             if size(obj.prmFits,1)~=1; error('Model not fitted (non-crossvalidated) yet'); end
             hold on;
-            audValues = obj.data.audValues;
-            colorChoices = plt.selectRedBlueColors(audValues);
-            
-            for audVal = audValues(:)'
-                maxContrast = max(obj.data.visValueLeftRight(:));
-                audInputs = unique(obj.data.audValueLeftRight(obj.data.audDiff==audVal,:), 'rows');
-                evalPoints = [[linspace(maxContrast,0,100)'; zeros(100,1)], [zeros(100,1); linspace(0,maxContrast,100)'], repmat(audInputs, 200,1)];
-                otherInputs = obj.Zinput(obj.data);
-                otherInputs(:,1:4)=[];
-                if isempty(otherInputs); inputs = evalPoints;
-                else, inputs = [evalPoints, zeros(length(evalPoints),size(otherInputs,2))];
-                end
-                
-                pHat = obj.calculatepHat(obj.prmFits,inputs);
-                plot(gca, evalPoints(:,2)-evalPoints(:,1), pHat(:,2), 'Color', colorChoices(audValues==audVal,:), 'linewidth', 2);
+            colorChoices = plt.selectRedBlueColors(obj.data.audValues);
+            otherInputs = obj.Zinput(obj.data);
+            otherInputs(:,1:2)=[];
+            if isempty(otherInputs); inputs = obj.evalPoints;
+            else, inputs = [obj.evalPoints, zeros(length(obj.evalPoints),size(otherInputs,2))];
             end
+            pHat = obj.calculatepHat(obj.prmFits,inputs);            
+            for audVal = obj.data.audValues(:)'
+                plotIdx = obj.evalPoints(:,2)==audVal;
+                plot(gca, obj.evalPoints(plotIdx,1), pHat(plotIdx,2), 'Color', colorChoices(obj.data.audValues==audVal,:), 'linewidth', 2);
+            end
+            maxContrast = max(abs(obj.evalPoints(:,1)));
             xlim([-maxContrast maxContrast])
             set(gca, 'xTick', (-maxContrast):(maxContrast/4):maxContrast, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100)); 
             title(obj.modelString);
@@ -239,66 +221,6 @@ classdef GLMmulti
             figureHand = gca;
         end
         
-        function plotPedestal(obj)
-            if isempty(obj.prmFits)
-                error('Need to fit model first');
-            end
-            
-            cVals = unique(obj.data.stimulus(:));
-            prop=nan(length(cVals),length(cVals),3);
-            
-            for cl = 1:length(cVals)
-                for cr = 1:length(cVals)
-                    E = obj.getrow(obj.data,obj.data.stimulus(:,1) == cVals(cl) & obj.data.stimulus(:,2) == cVals(cr));
-                    for i=1:3
-                        prop(cl,cr,i) = sum(E.responseMade==i)/length(E.responseMade);
-                    end
-                    pd.propChooseLeft(cl,cr) = prop(cl,cr,1);
-                    pd.propChooseRight(cl,cr) = prop(cl,cr,2);
-                    pd.propChooseNogo(cl,cr) = prop(cl,cr,3);
-                end
-            end
-            
-            cTestVals = min(cVals):0.01:2;
-            selectContrast{1} = [reshape(reshape(repmat(cVals, 1, length(cTestVals)), length(cVals), length(cTestVals))', 1, length(cVals)*length(cTestVals)); ...
-                repmat(cTestVals, 1, length(cVals))];
-            selectContrast{2} = selectContrast{1}([2 1], :);
-            
-            predictionsSelect{1} = obj.calculatepHat(obj.prmFits, selectContrast{1}')';
-            predictionsSelect{2} = obj.calculatepHat(obj.prmFits, selectContrast{2}')';
-            f3 = figure; %set(f3, 'Position', [  -1896         507        1058         405]);
-            
-            colors = [        0    0.4470    0.7410;
-                0.8500    0.3250    0.0980;
-                0.9290    0.6940    0.1250];
-            
-            for ped = 1:length(cVals)-1
-                
-                subplot(1, length(cVals)-1, ped)
-                
-                for r = 1:3
-                    plot(-(cVals(ped:end)-cVals(ped)), prop(ped:end,ped,r), 'o','Color',colors(r,:));
-                    
-                    hold on;
-                    plot((cVals(ped:end)-cVals(ped)), prop(ped,ped:end,r), 'o','Color',colors(r,:));
-                    
-                    
-                    
-                    plot(-(cTestVals(cTestVals>=cVals(ped))-cVals(ped)), predictionsSelect{2}(r,selectContrast{1}(1,:)==cVals(ped)&selectContrast{1}(2,:)>=cVals(ped)),'Color',colors(r,:));
-                    
-                    plot((cTestVals(cTestVals>=cVals(ped))-cVals(ped)), predictionsSelect{1}(r,selectContrast{2}(2,:)==cVals(ped)&selectContrast{2}(1,:)>=cVals(ped)),'Color',colors(r,:));
-                    
-                end
-                
-                title(['pedestal = ' num2str(cVals(ped))]);
-                xlabel('delta C');
-                ylim([0 1]);
-                xlim([-1 1]);
-                set(gca,'box','off');
-                %                 makepretty
-            end
-            set(gcf,'color','w');
-        end
         
         function plotPredVsActual(obj, varargin)
             
@@ -402,73 +324,6 @@ classdef GLMmulti
             end
         end
         
-        function obj = addData(obj,type)
-            %Adds extra data depending on what is required
-            
-            if strcmp(obj.expRef,'none')
-                error('not coded for custom struct inputs');
-            end
-            
-            switch(type)
-                case 'lick'
-                    block = dat.loadBlock(obj.expRef);
-                    trials = block.trial;
-                    
-                    disp('Loading lick data...');
-                    try
-                        L=load(dat.expFilePath(obj.expRef, 'Timeline', 'm'));
-                        tseries = L.Timeline.rawDAQTimestamps;
-                        lickseries = L.Timeline.rawDAQData(:,7);
-                        
-                        for t=1:block.numCompletedTrials
-                            start = trials(t).trialStartedTime;
-                            finish = trials(t).trialEndedTime;
-                            idx = (start < tseries) & (tseries < finish);
-                            
-                            obj.data.lickenergy(t,1) = sum(lickseries(idx).^2);
-                        end
-                    catch
-                        warning('No lick data found.. Setting to NaNs');
-                        obj.data.lickenergy = nan(block.numCompletedTrials,1);
-                    end
-                    
-                case 'pupil'
-                    block = dat.loadBlock(obj.expRef);
-                    trials = block.trial;
-                    
-                    disp('Loading eye movie...');
-                    
-                    try
-                        vidFilename = ['\\zserver\Data\EyeCamera\' obj.expRef(14:end) '\' obj.expRef(1:10) '\' obj.expRef(12) '\eye.mj2'];
-                        v = VideoReader(vidFilename);
-                        
-                        for t=1:block.numCompletedTrials
-                            %                             disp(t);
-                            start = trials(t).trialStartedTime;
-                            finish = trials(t).trialEndedTime;
-                            
-                            v.CurrentTime = start; a=0; pixCounts=0;
-                            while v.CurrentTime < finish
-                                frame = 255 - (v.readFrame*5.5);
-                                frame(frame>0)=1;
-                                frame = frame(50:110,80:180);
-                                pixCounts = pixCounts + sqrt(sum(frame(:)));
-                                a=a+1;
-                            end
-                            
-                            obj.data.pupilenergy(t,1) = pixCounts/a;
-                        end
-                    catch
-                        warning('No eye data found.. Setting to NaNs');
-                        obj.data.pupilenergy = nan(block.numCompletedTrials,1);
-                        
-                    end
-            end
-            
-            disp('Done!');
-            
-        end
-        
         function cov=paramCov(obj,varargin)
             if isempty(obj.prmFits)
                 error('Fit model first!');
@@ -491,159 +346,6 @@ classdef GLMmulti
             cmap = [ones(100,1) linspace(0,1,100)' linspace(0,1,100)';
                 linspace(1,0,100)' linspace(1,0,100)' ones(100,1)];
             colormap(ax2,cmap); colorbar;
-        end
-        
-        function paramCovSimulate(obj)
-            %Plots covariance/variance of prms as a function of
-            %varying stimulus and behavioural configurations. This is to
-            %explore other ways of setting up the task such that the
-            %prm estimation can be less variable/less covariable.
-            if isempty(obj.prmFits)
-                error('Fit first');
-            end
-            
-            %1) Same prms but vary the distribution of contrasts
-            if obj.ContrastDimensions == 1
-                n = obj.prmFits(end-1);
-                c50 = obj.prmFits(end);
-                cfn = @(c)(c.^n)./(c.^n + c50.^n);
-                numTrials = length(obj.data.responseMade);
-                
-                widths = linspace(0.01,0.5,50);
-                
-                meanVarS = []; cv = [];
-                for w = 1:length(widths)
-                    varS = [];
-                    for iter = 1:50
-                        crnd = widths(w)*randn(numTrials,1);
-                        c = zeros(length(crnd),2);
-                        c(crnd<0,1) = -crnd(crnd<0);
-                        c(crnd>0,2) = crnd(crnd>0);
-                        
-                        H = obj.hessian(obj.prmFits,c);
-                        
-                        F = -sum(H,3);
-                        cov = inv(F);
-                        varS(iter,:) = [cov(1,1) cov(2,2) cov(3,3) cov(4,4) cov(3,1) cov(2,1) cov(4,3)];
-                        
-                    end
-                    meanVarS(w,:) = mean(varS);
-                    
-                    corrSLBL(w,1) = meanVarS(w,5)/sqrt(meanVarS(w,1)*meanVarS(w,3));
-                    
-                    cv(w,1) = sqrt(meanVarS(w,1))/obj.prmFits(1);
-                    cv(w,2) = sqrt(meanVarS(w,2))/obj.prmFits(3);
-                    cv(w,3) = sqrt(meanVarS(w,3))/obj.prmFits(2);
-                    cv(w,4) = sqrt(meanVarS(w,4))/obj.prmFits(4);
-                end
-                figure;
-                subplot(3,1,1);
-                plot(widths,[meanVarS corrSLBL],'LineWidth',2); xlabel('Standard Deviation of Contrasts');
-                legend({'Var[B_L]','Var[B_R]','Var[S_L]','Var[S_R]','Cov[B_L,S_L]','Cov[B_L,B_R]','Cov[S_L,S_R]','Corr[B_L,S_L]'});
-                
-                hold on;
-                this = std(diff(obj.data.stimulus,[],2));
-                line([this,this],[-1 1]);
-            end
-            
-            %2) Same contrasts but vary GovsNoGo bias
-            fitted_p = obj.prmFits;
-            Biases = linspace(-5,5,50);
-            varS = []; CVs = [];
-            for bias = 1:length(Biases)
-                new_p = fitted_p;
-                new_p([1 3]) = Biases(bias);
-                H = obj.hessian(new_p,obj.data.stimulus);
-                F = -sum(H,3);
-                cov = inv(F);
-                varS(bias,:) = [cov(1,1) cov(2,2) cov(3,3) cov(4,4) cov(3,1) cov(2,1) cov(4,3)];
-                CVs(bias,1) = sqrt(cov(1,1))/new_p(1);
-                CVs(bias,2) = sqrt(cov(2,2))/new_p(3);
-                CVs(bias,3) = sqrt(cov(3,3))/new_p(2);
-                CVs(bias,4) = sqrt(cov(4,4))/new_p(4);
-            end
-            corrS = varS(:,5)./sqrt(varS(:,1).*varS(:,3));
-            subplot(3,1,2);
-            pGO = 1- 1./(1+2*exp(Biases)); xlim([0 1]);
-            plot(pGO,[varS,corrS],'LineWidth',2); xlabel('pGO');
-            %             legend({'cv[B_L]','cv[B_R]','cv[S_L]','cv[S_R]'});
-            
-            this = mean(fitted_p([1 3]));
-            this = 1- 1./(1+2*exp(this));
-            line([this,this],[-1 1]);
-            
-            %3) Same contrast but vary LvNG bias
-            fitted_p = obj.prmFits;
-            Biases = linspace(-5,5,50);
-            varS = [];
-            for bias = 1:length(Biases)
-                new_p = fitted_p;
-                new_p(1) = Biases(bias);
-                H = obj.hessian(new_p,obj.data.stimulus);
-                F = -sum(H,3);
-                cov = inv(F);
-                varS(bias,:) = [cov(1,1) cov(2,2) cov(3,3) cov(4,4) cov(3,1) cov(2,1) cov(4,3)];
-            end
-            corrS = varS(:,5)./sqrt(varS(:,1).*varS(:,3));
-            subplot(3,1,3);
-            plot(Biases,[varS corrS],'LineWidth',2); xlabel(['bL . bR=' num2str(fitted_p(3))]);
-            this = fitted_p(1);
-            %             this = 1- 1./(1+2*exp(this));
-            line([this,this],[-1 1]);
-        end
-        
-        function plotPspace_mnrvsnested(obj)
-            %use mnrfit to fit rudimentary models MNR and NESTED and
-            %compare directly
-            cont = obj.data.stimulus;
-            resp = obj.data.responseMade;
-            resp_nes = resp; resp_nes(resp_nes==3)=0; resp_nes=resp_nes+1;
-            
-            B_mnr = mnrfit(cont,resp);
-            B_nes = mnrfit(cont,resp_nes,'model','hierarchical');
-            
-            cVals = linspace(0,0.54,1000);
-            [cr,cl]=meshgrid(cVals);
-            cont = [cl(:) cr(:)];
-            
-            P_mnr = mnrval(B_mnr,cont);
-            P_nes = mnrval(B_nes,cont,'model','hierarchical');
-            P_nes = [P_nes(:,2:3) P_nes(:,1)];
-            
-            %Plot
-            figure('color','w');
-            labels = {'pL','pR','pNG'};
-            %             cVals=log(cVals);
-            for r = 1:3
-                subplot(1,3,r);
-                [~,ax]=contour(cVals,cVals,reshape(P_mnr(:,r),size(cl)));
-                ax.LineWidth=1; hold on;
-                [~,ax]=contour(cVals,cVals,reshape(P_nes(:,r),size(cl)));
-                ax.LineWidth=2;
-                ax.LineStyle=':';
-                
-                set(gca,'ydir','normal','box','off');
-                xlabel('CR'); ylabel('CL'); title(labels{r}); axis square; caxis([0 1]);
-            end
-            %             keyboard;
-        end
-        
-        function bootstrapFit(obj)
-            if isempty(obj.ZL); error('Set model first'); end
-            
-            numIter = 300;
-            
-            options = optimoptions('fmincon','UseParallel',0,'MaxFunEvals',100000,'MaxIter',10000);
-            bootstrap_params = nan(numIter,length(obj.prmLabels));
-            
-            T = struct2table(obj.data);
-            for iter = 1:numIter
-                datTemp = datasample(T,height(T));
-                objective = @(b) (obj.calculateLogLik(b, obj.Zinput(datTemp), datTemp.responseMade));
-                bootstrap_params(iter,:) = fmincon(objective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
-            end
-            
-            gplotmatrix(bootstrap_params,[],[],[],[],[],[],[],obj.prmLabels);
         end
         
     end

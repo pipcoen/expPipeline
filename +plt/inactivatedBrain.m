@@ -1,6 +1,7 @@
-function boxPlot(boxPlot, addText)
+function inactivatedBrain(brainPlot, addText)
 if ~exist('addText', 'var'); addText = 1; end
-if ~isfield(boxPlot, 'plotLabels'); boxPlot.plotLabels = boxPlot.plotData; end
+if ~isfield(brainPlot, 'brainImage'); imgBWOuline=imread('BrainOutlineBW.png');
+
 plotData = boxPlot.plotData;
 imsc(plotData, boxPlot.axisLimits, boxPlot.colorMap, 'k'); 
 daspect([1 1 1]); axis xy;

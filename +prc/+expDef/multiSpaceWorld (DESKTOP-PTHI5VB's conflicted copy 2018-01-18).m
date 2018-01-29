@@ -104,7 +104,7 @@ vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 %potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat. 
 %totalRepeats is the total number of times each trial was repeated (we subtract 1 so it will be zero if a trial was correct the first time)
 maxRepeatIdx = diff([e.repeatNumValues(1:length(vIdx>0))'; 1])<0;
-potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<=0)';
+potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<0)';
 if potentialRepeats(end) == 1 && vIdx(end)==1; potentialRepeats(end) = 0; end
 totalRepeats = double(potentialRepeats);
 totalRepeats(potentialRepeats>0) = e.repeatNumValues(maxRepeatIdx)-1;
@@ -125,7 +125,7 @@ if sum(vIdx) > 100
     vIdx(trasitionTimes(:)>timeToTTL(:))=-1;
     
     %Remove the newly eliminated trials from totalRepeats and update vIdx
-    totalRepeats(vIdx(vIdx~=0)==-1) = [];
+    totalRepeats(vIdx(vIdx==1)==-1) = [];
     vIdx = vIdx>0;
 end
 
@@ -139,7 +139,6 @@ vIdx(e.newTrialTimes(1:length(stimPeriodStart))' > stimPeriodStart) = 0;
 stimPeriodStart = stimPeriodStart(vIdx);
 feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
-timeOuts = feedbackValues==0;
 responseTime = feedbackTimes-stimPeriodStart;
 
 if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end    %Make sure there is a value for each condition
@@ -174,7 +173,6 @@ trialTimes = [trialStartTimes trialEndTimes];
 r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues'], stimPeriodStart, [1 0]);
 r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], stimPeriodStart, [1 0]);
 r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], stimPeriodStart, [1 0]);
-r.wheelTimeValue(cellfun(@isempty, r.wheelTimeValue)) = deal({[0 0]});
 r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)-x(find(x(:,1)>0,1),2)], r.wheelTimeValue, 'uni', 0);
 n = rmfield(n, 'rawWheelTimeValue');
 
@@ -191,15 +189,14 @@ closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
 %wheelToThresh uses the difference between the wheel position at the closed loop start and threshold to calculate the change in wheel value that
 %represents a response (this can be very different for different rotary encoders). timeToWheelMove is then the time at which wheelMove exceeds 25% of
 %wheelToThresh
-wheelMove = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(:,1), x(:,2), -1:0.001:x(end,1), 'nearest'))'], r.wheelTimeValue(~timeOuts), 'uni', 0);
-wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelMove, closedLoopStart(~timeOuts), feedbackTimes(~timeOuts)-stimPeriodStart(~timeOuts), 'uni', 0);
+wheelMove = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(:,1), x(:,2), -1:0.001:x(end,1), 'nearest'))'], r.wheelTimeValue, 'uni', 0);
+wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelMove, closedLoopStart, feedbackTimes - stimPeriodStart, 'uni', 0);
 wheelToThresh = nanmedian(abs(cellfun(@(x) x(end)-x(1), wheelToThresh)));
-timeToWheelMove = feedbackValues;
-timeToWheelMove(~timeOuts) = cell2mat(cellfun(@(x) x(find(abs(x(:,2))>wheelToThresh/4 & x(:,1)>0,1),1), wheelMove, 'uni', 0));
+timeToWheelMove = double(cell2mat(cellfun(@(x) x(find(abs(x(:,2))>wheelToThresh/4 & x(:,1)>0,1),1), wheelMove, 'uni', 0)));
 
 %Get the response the mouse made on each trial based on the correct response and then taking the opposite for incorrect trials. NOTE: this will not
 %work for a task with more than two response options.
-responseMade = double(correctResponse).*~timeOuts;
+responseMade = double(correctResponse);
 responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
 
 %allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, and the
@@ -260,10 +257,10 @@ n.StimPeriodStart = stimPeriodStart;
 n.closedLoopStart = closedLoopStart;
 n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.correctResponse = (correctResponse>0)+1;
-n.feedback = feedbackValues;
+n.feedback = feedbackValues>0;
 n.responseTime = responseTime;
 n.timeToWheelMove = timeToWheelMove;
-n.responseMade = ((responseMade>0)+1).*(responseMade~=0);
+n.responseMade = (responseMade>0)+1;
 n.trialType = trialType;
 n.audAmplitude = audAmplitude;
 n.audInitialAzimuth = audInitialAzimuth;
@@ -323,7 +320,7 @@ blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStart
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
     ;'delayAfterIncorrect';'laserDuration'; 'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'rewardSize';'noiseBurstAmplitude' ...
-    ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal'; 'responseWindow'; 'responseWindow' ...
+    ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal'; 'responseWindow' ...
     ;'totalTrials';'minutesOnRig';'galvoCoords';'numberConditions';'audPerformance';'visPerformance';'mulPerformance';'validTrials'; 'numRepeats'};
 
 if any(~contains(fields(newBlock), blockFields)) || any(~contains(blockFields, fields(newBlock)))

@@ -10,9 +10,9 @@ subjectPath = [subject '\' expDate '\' sessionNum '\'];
 expRef = [expDate '_' sessionNum '_' subject];
 processedFileName = [subject '\' subject '_' expDate([3:4 6:7 9:10]) '_' sessionNum  'Proc.mat'];
 
-expInfo = '\\zserver.cortexlab.net\Data2\Subjects\';
+expInfo = '\\zubjects.cortexlab.net\Subjects\';
 processedFolder = 'E:\Dropbox (Neuropixels)\MouseData\ProcessedData\';
-sharedFolder = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
+sharedFolder = '\\zubjects.cortexlab.net\lab\Share\Pip\ProcessedData\';
 suite2POutput = 'E:\Dropbox (Neuropixels)\subjectData\Suite2POutput\';
 rawBackup = 'E:\Dropbox (Neuropixels)\MouseData\RawBehavior\';
 

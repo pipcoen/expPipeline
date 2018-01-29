@@ -174,7 +174,7 @@ r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e
 r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], stimPeriodStart, [1 0]);
 r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], stimPeriodStart, [1 0]);
 r.wheelTimeValue(cellfun(@isempty, r.wheelTimeValue)) = deal({[0 0]});
-r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)-x(find(x(:,1)>0,1),2)], r.wheelTimeValue, 'uni', 0);
+r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)-x(find([x(1:end-1,1);1]>0,1),2)], r.wheelTimeValue, 'uni', 0);
 n = rmfield(n, 'rawWheelTimeValue');
 
 %As above, but for the auditory and visual azimuth. These are smaller in size, so we save in the main structure.
@@ -183,6 +183,7 @@ r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audA
 
 %Get closed loop start times, relative to the stimulus start times (likely to all be the same for a constant delay)
 closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)';
+if e.closedLoopOnOffValues(1) == 0 && length(closedLoopStart)<length(vIdx); closedLoopStart = [0;closedLoopStart]; end
 closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
 
 %Calculate an approximate time to the first wheel movement. This is different from the response time in that it is based on wheel movement, rather

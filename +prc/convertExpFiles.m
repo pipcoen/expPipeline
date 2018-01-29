@@ -36,7 +36,7 @@ function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
 %% Set default values, load experimental list, check which processed files already exist, etc.
 if ~exist('redoBlocks', 'var') || isempty(redoBlocks); redoBlocks = 0; end
 if ~exist('redoSuite2P', 'var') || isempty(redoSuite2P); redoSuite2P = 0; end
-if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'; 'DJ'}; end
+if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'; 'DJ'; 'Dylan'}; end
 if redoBlocks == 2
     paths = cellfun(@dir, {'*_Block.mat'; '*_parameters.mat'}, 'uni', 0);
     if any(cellfun(@isempty, paths))
@@ -127,7 +127,8 @@ end
 
 %Run the prc.updateParamChangeSpreadsheet on all mice that have new files. This keeps track of when parameters have changed for the mice.
 if all(existDirectories); syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
-cellfun(@prc.updateParamChangeSpreadsheet, uniquecell({expList(files2Run).subject}'));
+changedMice = uniquecell({expList(files2Run).subject}');
+cellfun(@prc.updateParamChangeSpreadsheet, changedMice(contains(changedMice, 'PC')));
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition

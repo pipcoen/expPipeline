@@ -192,7 +192,7 @@ if ~isfield(e, 'responseWindow')
     p.responseWindow = 0;
 end
 
-if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog)
+if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog) || length(fields(b.galvoLog))==1
     b.galvoLog = struct;
     e.galvoTypeValues = 0*e.newTrialValues+1;
     e.laserTypeValues = 0*e.newTrialValues;
