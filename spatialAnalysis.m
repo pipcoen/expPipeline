@@ -49,7 +49,7 @@ classdef spatialAnalysis
             end
             
             for i  = subjects2Run
-                normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
+                [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                 boxPlot.subject = obj.subjects{i};
                 boxPlot.trialNumber = length(normBlock.responseMade);
                 boxPlot.nSessions = obj.blocks{i}.nSessions;
@@ -57,18 +57,17 @@ classdef spatialAnalysis
                 boxPlot.xyLabel = {normBlock.audType; 'VisualContrast'};
                 switch lower(plotType(1:3))
                     case 'res'
-                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean, 1);
+                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean);
                         if isempty(obj.figureHandles) || ~ismember(obj.figureHandles, gcf); obj.figureHandles(end+1) = gcf; end
                         set(gcf, 'Tag', 'boxRes', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
                     case 'num'
-                        normBlock = prc.combineBlocks(normBlock, normBlock.responseMade~=0);
-                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @length, 1);
+                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @length);
                         set(gcf, 'Tag', 'boxnum', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
                         colorBar.colorLabel = 'Relative Num of Trials';
                         boxPlot.axisLimits = [0 max(boxPlot.plotData(:))];
                     case 'rea'
                         boxPlot.plotData = prc.makeGrid(normBlock, round(normBlock.responseTime*1e3), @median, 1);
-                        boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
+                        boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];                      
                 end
                 axesOpt.idx = i;
                 axesOpt.totalNumOfAxes = length(obj.subjects);
@@ -95,7 +94,7 @@ classdef spatialAnalysis
             axesOpt.gapBetweenAxes = [100 60];
             for i  = 1:length(obj.subjects)
                 axesOpt.idx = i;
-                normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                 obj.axesHandles = plt.getAxes(axesOpt);
                 glm = fit.GLMmulti(normBlock);
                 glm = glm.setModel(modelString);
@@ -117,7 +116,7 @@ classdef spatialAnalysis
             axesOpt.figureSize = 500;
             for i  = 1:length(obj.subjects)
                 axesOpt.idx = i;
-                normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                 plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
                 obj.axesHandles = plt.getAxes(axesOpt);
                 switch plotType(1:3)
@@ -139,13 +138,13 @@ classdef spatialAnalysis
             if ~exist('plotType', 'var'); plotType = 'mov'; end
             figure;
             for i  = 1:length(obj.subjects)
-                tmp = obj.changeMouse({obj.subjects{i}}, {obj.expDate{i}}, 1);
-                normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(tmp.blocks{1});
+                rawObj = obj.changeMouse({obj.subjects{i}}, {obj.expDate{i}}, 1);
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(rawObj.blocks{1});
                 switch plotType(1:3)
                     case {'mov'}
                         timeSeg = -0.1:0.01:0.5;
                         colorTake = 'rbck';
-                        tmp.axesHandles = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
+                        plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
                         for tTyp = 1:4
                             for response = 1:2
                                 blk = prc.combineBlocks(normBlock, normBlock.trialType==tTyp & normBlock.responseMade == response & (abs(normBlock.visDiff) == abs(normBlock.visValues(3)) | tTyp == 1));
@@ -175,7 +174,7 @@ classdef spatialAnalysis
             if ~exist('plotType', 'var'); plotType = 'res'; end
             figure;
             for i  = 1:length(obj.subjects)
-                normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                 switch plotType(1:3)
                     case 'res'
                         obj.axesHandles = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
@@ -223,7 +222,6 @@ classdef spatialAnalysis
             for i  = 1:length(obj.subjects)
                 switch lower(plotType)
                     case {'coh'; 'con'}
-                        normBlock = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
                         plotOpt = prc.getMultiTriplets(normBlock, strcmpi(plotType, 'coh'));
                         plotOpt.figureSize = 400;
                         if strcmpi(plotType, 'coh')
@@ -236,6 +234,10 @@ classdef spatialAnalysis
                             plotOpt.yLimits = [0 1.2];
                         end
                         plotOpt.mainXLabel = '\fontsize{20} Condition';
+                    case 'whe'
+                        normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+                        plotOpt = prc.getCoherentConflictPairs(normBlock);
+
                 end
                 obj.axesHandles = plt.getAxes(i, length(obj.subjects), plotOpt.figureSize, [], [100 100 100 20], [100 80]);
                 plt.jitter(plotOpt.yData, plotOpt); grid('on');
@@ -249,57 +251,25 @@ classdef spatialAnalysis
             plt.suplabel(plotOpt.mainXLabel, 'x', mainAxes);
         end
         
-        function viewInactivationResults(obj, plotType)
-            imgBWOuline=imread('BrainOutlineBW.png');
-            for i  = 1:length(obj.subjects)
-                blkOff = spatialAnalysis.getMaxNumberOfNormalTrials(obj.blocks{i});
-                blkOff = concatinateBlocks(blocks{i}, {vertcat(obj.blocks{i}.laserType)==0});
+        function viewInactivationResults(obj)
+            brainPlot.brainImage=imread('BrainOutlineBW.png');     
+            if ~isempty(obj.expDate)
+                runMouseReplicate(obj, {'VL', 'VR', 'AL', 'AR', 'CR', 'CL'}, 'viewInactivationResults')
+                return;
             end
-            
-            if ~exist('UniOrBilateral', 'var'); UniOrBilateral = 2; end
-            if ~exist('individualFlies', 'var'); individualFlies = 1; end
-            
-            if UniOrBilateral==1; galvoType = 1; else, galvoType = 2; end
-            
-            switch individualFlies
-                case 0
-                    laserBlocks = cell(length(obj.subjects),1);
-                    for i  = 1:length(obj.subjects)
-                        laserBlocks{i,1} = obj.blocks{i}(arrayfun(@(x) any(all([x.laserType>0 x.galvoType==galvoType],2)), obj.blocks{i}));
-                    end
-                    blkOff = concatinateBlocks(cat(1,laserBlocks{:}), {vertcat(obj.blocks{i}.laserType)==0});
-                    blkOn = concatinateBlocks(cat(1,laserBlocks{:}), 'onlyLaser');
-                    
-                    if UniOrBilateral==2
-                        blkOff.galvoPosition(:,1) = abs(blkOff.galvoPosition(:,1));
-                        blkOn.galvoPosition(:,1) = abs(blkOn.galvoPosition(:,1));
-                    end
-                    galvoGrid = unique(blkOn.galvoPosition, 'rows');
-                    blkOn.response(blkOn.reactionTime>diff(blkOn.laserOnOff, [], 2)) = 0;
-                    blkOff.response(blkOff.reactionTime>diff(blkOff.laserOnOff, [], 2)) = 0;
-                    
-                    idx = 0;
-                    yOpt = {'VisLeft'; 'VisRight'; 'ConflictVisLeft'; 'ConflictVisRight'};
-                    tOpt = {'Timeout'; 'ChooseLeft'; 'ChooseRight'};
-                    for conditions = [unique(blkOn.conditions(blkOn.trialType == 2))' (unique(blkOn.conditions(blkOn.trialType == 4))*-1)']
-                        idx = idx+1;
-                        idx2 = 0;
-                        for response = 0:2
-                            idx2 = idx2+1;
-                            baseline = mean(blkOff.response(blkOff.conditions==conditions)==response);
-                            siteEffects = arrayfun(@(x,y) mean(blkOn.response(all(blkOn.galvoPosition==[x, y],2) & blkOn.conditions==conditions)==response), galvoGrid(:,1), galvoGrid(:,2));
-                            subplot(4,3,(idx-1)*3 + idx2);
-                            siteEffects = siteEffects-baseline;
-                            imagesc(linspace(-4.5,4.5,1000),linspace(3.75,-5.2,1000),imgBWOuline); axis xy;
-                            hold on;
-                            scatter(galvoGrid(:,1),galvoGrid(:,2),150,siteEffects,'o','filled'); axis equal;  drawnow;
-                            scatter(galvoGrid(:,1)*-1,galvoGrid(:,2),150,siteEffects,'o','filled'); axis equal;  drawnow;
-                            colormap(redblue); caxis([-0.8 0.8]);
-                            box off;
-                            if idx ==1; title(tOpt{idx2}); end
-                            if idx2 ==1; ylabel(yOpt{idx}); end
-                        end
-                    end
+            axesOpt.totalNumOfAxes = length(obj.subjects);
+            axesOpt.btlrMargins =  [50 100 10 10];
+            axesOpt.gapBetweenAxes = [40 0];
+            axesOpt.numOfRows = 3;
+            axesOpt.totalNumOfAxes = length(obj.subjects);
+            axesOpt.figureHWRatio = 0.8;
+            axesOpt.figureSize = 400;
+            for i  = 1:length(obj.subjects)
+                axesOpt.idx = i;
+                obj.axesHandles = plt.getAxes(axesOpt);
+                [brainPlot.normBlock, brainPlot.laserBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 1);         
+                brainPlot.condition = obj.subjects{i};
+                plt.inactivatedBrain(brainPlot);
             end
         end
         
@@ -374,7 +344,7 @@ classdef spatialAnalysis
     end
     
     methods (Static)
-        function [normBlock, laserBlock] = getMaxNumberOfNormalTrials(block, inactivation)
+        function [normBlock, laserBlock] = getMaxNumberOfTrials(block, inactivation)
             if ~exist('inactivation', 'var'); inactivation = 0; end
             if mode(block.laserSession>0)==1 || inactivation
                 normBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType==0 & block.responseMade~=0);

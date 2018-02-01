@@ -12,6 +12,7 @@ screenSize = screenSize(screenSize(:,1)==min(screenSize(:,1)),:);
 screenRatio = round(screenSize(3)/screenSize(4));
 
 if axesOpt.totalNumOfAxes < 4; numOfRows = 1;
+elseif isfield(axesOpt, 'numOfRows'); numOfRows = axesOpt.numOfRows;
 else, numOfRows = find(((1:5)*screenRatio.*(1:5))>=axesOpt.totalNumOfAxes,1);
 end
 numOfCols = ceil(axesOpt.totalNumOfAxes/numOfRows);

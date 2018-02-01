@@ -1,41 +1,33 @@
-function [gridData, gridXY] = makeGrid(blocks, data, operation, gridOpt)
+function [gridData, gridXY] = makeGrid(blocks, data, operation, type, split)
 %Make grid is a function for separating trials into a grid of audiovisual conditions. It operates on the output of concatenate blocks.
 
 if ~exist('data', 'var'); error('Need data to sort into grid'); end
 if ~exist('blocks', 'var'); error('Need block information to sort into grid'); end
 if ~exist('operation', 'var'); operation = @sum; end
-if ~exist('girdOpt', 'var') || ~isfield(gridOpt); gridOpt.type = 'condition'; end
-if ~exist('girdOpt', 'var') || ~isfield(gridOpt); gridOpt.split = 0; end
+if ~exist('type', 'var'); type = 'condition'; end
+if ~exist('split', 'var'); split = 0; end
 
-sessionIdx = blocks.sessionIdx;
-sessions = unique(sessionIdx);
-
-
+sessions = unique(blocks.sessionIdx);
 conditions = blocks.conditionLabel;
-gridIdx = blocks.grids.conditions;
-switch lower(gridOpt.type)
+gridIdx = num2cell(blocks.grids.conditions);
+gridXY = {blocks.audValues; blocks.visValues};
+switch lower(type)
     case 'abscondition'
         conditions = abs(conditions);
     case 'galvouni'
-        a = 5;
+        conditions = blocks.galvoPosition;
+        LMAxis = unique(blocks.galvoPosition(:,1));
+        APAxis = unique(blocks.galvoPosition(:,2));
+        [gridXY{1}, gridXY{2}] = meshgrid(LMAxis, APAxis);
+        gridIdx = arrayfun(@(x,y) [x y], gridXY{1}, gridXY{2}, 'uni', 0);
 end
 
-fullGrid = repmat(gridIdx,[1,1,length(sessions)]);
-repSessions = arrayfun(@(x) gridIdx*0+x, sessions, 'uni', 0);
-repSessions = cat(3,repSessions{:});
+% fullGrid = repmat(gridIdx,[1,1,length(sessions)]);
+% repSessions = arrayfun(@(x) gridIdx*0+x, sessions, 'uni', 0);
+% repSessions = cat(3,repSessions{:});
 
-if ~exist('selectedSessions', 'var'); selectedSessions = 1:length(sessions); end
-
-switch sortFlag
-    case 0; gridData = arrayfun(@(x,y) operation(data(conditions==x & sessionIdx==y)), fullGrid, repSessions, 'uni', 0);
-    case 1; gridData = cell2mat(arrayfun(@(x) operation(data(conditions==x)), gridIdx, 'uni', 0));
-    case 2; gridData = arrayfun(@(x,y) operation(data(abs(conditions)==x & sessionIdx==y)), fullGrid, repSessions, 'uni', 0);
-    case 3; gridData = cell2mat(arrayfun(@(x) operation(data(abs(conditions)==x)), gridIdx, 'uni', 0));
+switch split
+    case 0; gridData = cell2mat(cellfun(@(x) operation(data(all(conditions==x,2))), gridIdx, 'uni', 0));
+    case 1; gridData = arrayfun(@(x,y) operation(data(conditions==x & blocks.sessionIdx==y)), fullGrid, repSessions, 'uni', 0);
 end
-
-if iscell(gridData) && max(cellfun(@length, gridData(:))) == 1
-    gridData = cellfun(@squeeze, num2cell(cell2mat(gridData(:,:,selectedSessions)),3), 'uni', 0);
-end
-
-gridXY = 5;
 end

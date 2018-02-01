@@ -58,14 +58,17 @@ for i = 1:size(includedMice,1)
 end
 
 %% Build list of unregistered files from the last week (or find all files if rebuilding list)
-if rebuildList
+if rebuildList == 1
     expList = struct;
     newBlocks = cat(1, cellfun(@(x) dir([expInfo '/' x '/**/*block*']), includedMice(:,1), 'uni', 0));
     newBlocks = cat(1, newBlocks{:});
 else 
     load(prc.pathFinder('expList'));
     [~, nIdx] = setdiff({lastBlockFiles.folder}',{expList.rawFolder}'); 
-    newBlocks = lastBlockFiles(nIdx);
+    if rebuildList == 2
+        newBlocks = lastBlockFiles;
+    else, newBlocks = lastBlockFiles(nIdx);
+    end
 end
 
 
