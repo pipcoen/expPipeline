@@ -1,5 +1,5 @@
-function [newBlock, newParams, newRaw] = multiSpaceWorld(x)
-%% A helper function for multisensoySpaceWorld experimental definition that produces standardised files with useful structures for further analysis.
+function [newBlock, newParams, newRaw] = multiTemporalWorld(x)
+%% A helper function for multiTemporalWorld experimental definition that produces standardised files with useful structures for further analysis.
 
 % Inputs
 % x---------------------Structure form the "convertExpFiles" function that contains all the file information
@@ -22,12 +22,11 @@ function [newBlock, newParams, newRaw] = multiSpaceWorld(x)
 %.reactionTime---------nx1 vector of times from closed loop onset until the animal made a response
 %.clickDuration--------nx1 vector of click durations (normally the same on every trial) (Hz)
 %.clickRate------------nx1 vector of click rate (normally the same on every trial) (Hz)
+%.actualClickRate------nx1 vector the actual click rate may be different to the requested click rate if the requested click rate is non-integer (Hz)
 %.audAmplitude---------nx1 vector of auditory amplitude (does not vary within a trial) (arbitrary units)
 %.visContrast----------nx1 vector of visual contrast (does not vary within a trial), as a fraction of 100% contrast.
-%.audDiff--------------nx1 vector of the difference in auditory amplitude between left and right (right - left)
-%.visDiff--------------nx1 vector of the difference in visual contrast between left and right (right - left)
 %.audInitialAzimuth----nx1 vector of the initial azimuth of the auditory stimulus (deg)
-%.audInitialAzimuth----nx1 vector of the initial azimuth of the visual stimulus (deg)
+%.visInitialAzimuth----nx1 vector of the initial azimuth of the visual stimulus (deg)
 %.visAltitude----------nx1 vector of the altitude of the visual contrast stimulus (normally the same on every trial) (deg)
 %.visSigma-------------nx2 vector of the sigma values for the visual gabors (normally the same on every trial) (deg)
 %.galvoType------------nx1 vector indicating galvo moveement, which can be stationary (1) or moving between two sites (2) while the laser is on
@@ -37,9 +36,15 @@ function [newBlock, newParams, newRaw] = multiSpaceWorld(x)
 %.laserSession---------nx1 vector indicating whether had no inactivation (0), unilateral (1), bilateral (2), or both (3)
 %.laserOnOff-----------nx2 vector of [on off] times for the laser, relative to trial start.
 %.conditions-----------nx1 vector indicating the exact condition index for each trial
-%.trialType------------nx1 vector indicating whether a trial was blank (0), aud (1), vis (0), coherent (3), or conflict (4)
 %.uniqueConditions-----nxm matrix of unique conditions in the session with columns [audAmplitude visContrast audInitialAzimuth visInitialAzimuth]
 %.uniqueConditionsIdx--nxm matrix of the index for each uniqueCondition (used in the "conditions" field)
+%.requestedCoherence --The coherence value given to genRandClickTimes, which it will have used to generate the auditory click times
+%.actualCoherenceRight-The proportion of auditory clicks which coincide with the clicks of the right visual stimulus
+%.actualCoherenceLeft--The proportion of auditory clicks which coincide with the clicks of the left visual stimulus
+%
+%.clickTimesRight --------------The particular set of randomised click times used for the right visual stimulus for that trial
+%.clickTimesLeft ---------------The particular set of randomised click times used for the left visual stimulus for that trial
+%.clickTimesAud ----------------The particular set of randomised click times used for the Auditory stimulus for that trial
 
 % "newParams" is the new, compact, and restructured parameters file. Each field will be either one number (same value for for every trial),
 % or will have columns equal to the columns in the "numRepeats" field (which is for variables that change with trial type). Fields are:
@@ -63,7 +68,7 @@ function [newBlock, newParams, newRaw] = multiSpaceWorld(x)
 %.visAltitude------------------Altitude of the visual stimulus (deg relative to zero)
 %.visSigma---------------------Sigma values for the visual gabor
 %.audInitialAzimuth------------Initial azimuth of the auditory stimulus (deg)
-%.audInitialAzimuth------------Initial azimuth of the visual stimulus (deg)
+%.visInitialAzimuth------------Initial azimuth of the visual stimulus (deg)
 %.openLoopDuration-------------Duration of the open loop phase (when turning the wheel will not move the stimulus)
 %.delayAfterIncorrect----------How long to wait after an incorrect trial before starting the next trial (s)
 %.laserDuration----------------Duraction of laser stimulation
@@ -79,16 +84,18 @@ function [newBlock, newParams, newRaw] = multiSpaceWorld(x)
 %.totalTrials------------------Total trials performed
 %.galvoCoords------------------Set of galvo coordinates used for inactivation
 %.numberConditions-------------Number of unique conditions presented
-%.audPerformance---------------% correct on auditory trials
-%.visPerformance---------------% correct on visual trials
-%.mulPerformance---------------% correct on coherent multisensory trials
 %.validTrials------------------Number of valid trials (after repeats etc. have been removed)
+%.minInterClickGap-------------The minimum delay required between clicks within the same click train
+%.minLeftRightGap--------------The minimum delay required between clicks in the left and right click trains
+%.coherentPerformance----------%correct for trials with coherence ~=0.5
 
 % "newRaw" is a structure comprising potentially useful raw data (such as wheel movement and timeline data) which is not used for a lot of analyses and
 % so should only be loaded if necessary (as it is large). Fields are:
-%.visStimOnOff---------{nx1} cell, each contatining an [nx2] vector of [time(s), value(on/off is 1/0)] for the visual stimulus
-%.audStimOnOff---------{nx1} cell, each contatining an [nx2] vector of [time(s), value(on/off is 1/0)] for the auditory stimulus
-%.visAzimuthTimeValue--{nx1} cell, each contatining an [nx2] vector of [time(s), value(deg)] for the visual stimulus azimth
+%.visStimOnOffRightTimeValue---------{nx1} cell, each contatining an [nx2] vector of [time(s), value(on/off is 1/0)] for the right visual stimulus
+%.visStimOnOffLeftTimeValue---------{nx1} cell, each contatining an [nx2] vector of [time(s), value(on/off is 1/0)] for the left visual stimulus
+%.audStimOnOffTImeValue---------{nx1} cell, each contatining an [nx2] vector of [time(s), value(on/off is 1/0)] for the auditory stimulus
+%.visAzimuthRightTimeValue--{nx1} cell, each contatining an [nx2] vector of [time(s), value(deg)] for the right visual stimulus azimuth
+%.visAzimuthLeftTimeValue--{nx1} cell, each contatining an [nx2] vector of [time(s), value(deg)] for the left visual stimulus azimuth
 %.audAzimuthTimeValue--{nx1} cell, each contatining an [nx2] vector of [time(s), value(deg)] for the auditory stimulus azimth
 %.rawWheelTimeValue----[nx2] vector of wheel [times(s), position(deg)] over the course of the entire session
 
@@ -104,9 +111,9 @@ vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 %potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat. 
 %totalRepeats is the total number of times each trial was repeated (we subtract 1 so it will be zero if a trial was correct the first time)
 maxRepeatIdx = diff([e.repeatNumValues(1:length(vIdx>0))'; 1])<0;
-potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<0)';
+potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<=0)';
 if potentialRepeats(end) == 1 && vIdx(end)==1; potentialRepeats(end) = 0; end
-totalRepeats = double(potentialRepeats);
+totalRepeats = potentialRepeats;
 totalRepeats(potentialRepeats>0) = e.repeatNumValues(maxRepeatIdx)-1;
 
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
@@ -125,7 +132,7 @@ if sum(vIdx) > 100
     vIdx(trasitionTimes(:)>timeToTTL(:))=-1;
     
     %Remove the newly eliminated trials from totalRepeats and update vIdx
-    totalRepeats(vIdx(vIdx==1)==-1) = [];
+    totalRepeats(vIdx(vIdx~=0)==-1) = [];
     vIdx = vIdx>0;
 end
 
@@ -139,20 +146,28 @@ vIdx(e.newTrialTimes(1:length(stimPeriodStart))' > stimPeriodStart) = 0;
 stimPeriodStart = stimPeriodStart(vIdx);
 feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
+caughtMovements = feedbackValues==0; %To identify all trials which ended early due to movement in post stimulus quiescence period
 responseTime = feedbackTimes-stimPeriodStart;
+responseType = e.responseTypeValues(vIdx);
+
 
 if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end    %Make sure there is a value for each condition
-if length(p.visContrast)==1; p.visContrast = repmat(p.visContrast,1,length(p.numRepeats)); end       %Make sure there is a value for each condition
+if length(p.audStimMobile)==1; p.audStimMobile = repmat(p.audStimMobile,1,length(p.numRepeats)); end %Make sure there is a value for each condition, as it determines whether audAzimuth has any meaning
+if length(p.visContrast(1,:))==1; visContrastRight = repmat(p.visContrast(1,:),1,length(p.numRepeats)); else visContrastRight = p.visContrast(1,:); end
+if length(p.visContrast(2,:))==1; visContrastLeft = repmat(p.visContrast(2,:),1,length(p.numRepeats)); else visContrastLeft = p.visContrast(2,:); end
 audAmplitude = [v(vIdx).audAmplitude]';               %Convert amplitudes to matrix. Assumes one value for each trial.
-visContrast = [v(vIdx).visContrast]';                 %Convert amplitudes to matrix. Assumes one value for each trial.
+visContrast = cell2mat({v(vIdx).visContrast}');                
 p.galvoCoords = e.galvoCoordsValues(:,1:2);           %Add galvoCoords to the parameter list (take first two columns in case it concatenated across trials)
 correctResponse = [v(vIdx).correctResponse]';         %Convert correctResponse on each trial to matrix. Assumes one value for each trial.
 audInitialAzimuth = [v(vIdx).audInitialAzimuth]';     %Convert audInitialAzimuth on each trial to matrix. Assumes one value for each trial.
 audInitialAzimuth(audAmplitude==0) = inf;             %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
 p.audInitialAzimuth(p.audAmplitude == 0) = inf;       %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
+audStimMobile = [v(vIdx).audStimMobile]';             %Convert whether the aud stimulus was mobile to a matrix.
 visInitialAzimuth = [v(vIdx).visInitialAzimuth]';     %Convert visInitialAzimuth on each trial to matrix. Assumes one value for each trial.
-visInitialAzimuth(visContrast==0) = inf;              %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
-p.visInitialAzimuth(p.visContrast == 0) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
+visInitialAzimuth(all(visContrast==0,2)) = inf;              %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
+p.visInitialAzimuth(all(p.visContrast==0,2)) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
+requestedCoherence = e.requestedCoherenceValues(vIdx)';
+p.requestedCoherence = (round(p.requestedCoherence.*1000))./1000;
 
 %Galvo position is the position of the galvos on each trial. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
 %trials are when the laserTypeValue for that trial was 2. Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
@@ -170,19 +185,23 @@ trialTimes = [trialStartTimes trialEndTimes];
 
 %Process the raw data to be stored separately (because it is large). These are the times at which the visual and auditory stimuli turned on/off and
 %all the wheel values. All are indexed by trial using the "indexByTrial" function, and times are relative to stimulus onset.
-r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues'], stimPeriodStart, [1 0]);
-r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], stimPeriodStart, [1 0]);
+r.visStimOnOffRightTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffRightTimes', [e.visStimOnOffRightTimes' e.visStimOnOffRightValues'], stimPeriodStart, [1 0]);
+r.visStimOnOffLeftTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffLeftTimes', [e.visStimOnOffLeftTimes' e.visStimOnOffLeftValues'], stimPeriodStart, [1 0]);
+r.audStimOnOffTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], stimPeriodStart, [1 0]);
 r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], stimPeriodStart, [1 0]);
 r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)-x(find(x(:,1)>0,1),2)], r.wheelTimeValue, 'uni', 0);
 n = rmfield(n, 'rawWheelTimeValue');
 
 %As above, but for the auditory and visual azimuth. These are smaller in size, so we save in the main structure.
-r.visAzimuthTimeValue = prc.indexByTrial(trialTimes, e.visAzimuthTimes', [e.visAzimuthTimes' e.visAzimuthValues'], stimPeriodStart, [1 0]);
+r.visAzimuthRightTimeValue = prc.indexByTrial(trialTimes, e.visAzimuthRightTimes', [e.visAzimuthRightTimes' e.visAzimuthRightValues'], stimPeriodStart, [1 0]);
+r.visAzimuthLeftTimeValue = prc.indexByTrial(trialTimes, e.visAzimuthLeftTimes', [e.visAzimuthLeftTimes' e.visAzimuthLeftValues'], stimPeriodStart, [1 0]);
 r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audAzimuthTimes' e.audAzimuthValues'], stimPeriodStart, [1 0]);
 
 %Get closed loop start times, relative to the stimulus start times (likely to all be the same for a constant delay)
 closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)';
-closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
+closedLoopStart = prc.indexByTrial(trialTimes, closedLoopStart, closedLoopStart, stimPeriodStart, 0);
+closedLoopStart(cellfun(@isempty, closedLoopStart)) = {nan};
+closedLoopStart = cell2mat(closedLoopStart) - stimPeriodStart;
 
 %Calculate an approximate time to the first wheel movement. This is different from the response time in that it is based on wheel movement, rather
 %than the time when the threshold was reached. WheelMove is an interpolation of the wheel movement (to get it's nearest position at every ms).
@@ -191,65 +210,40 @@ closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
 %wheelToThresh
 wheelMove = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(:,1), x(:,2), -1:0.001:x(end,1), 'nearest'))'], r.wheelTimeValue, 'uni', 0);
 wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelMove, closedLoopStart, feedbackTimes - stimPeriodStart, 'uni', 0);
-wheelToThresh = nanmedian(abs(cellfun(@(x) x(end)-x(1), wheelToThresh)));
+wheelToThresh(responseType==0) = {nan};
+wheelToThresh = nanmedian(abs(cell2mat(cellfun(@(x) x(end)-x(1), wheelToThresh, 'uni', 0)));
 timeToWheelMove = double(cell2mat(cellfun(@(x) x(find(abs(x(:,2))>wheelToThresh/4 & x(:,1)>0,1),1), wheelMove, 'uni', 0)));
 
 %Get the response the mouse made on each trial based on the correct response and then taking the opposite for incorrect trials. NOTE: this will not
 %work for a task with more than two response options.
-responseMade = double(correctResponse);
+responseMade = double(correctResponse).*~caughtMovements; %So that early ended trials should be displayed as 0. 
 responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
 
-%allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, and the
-%intial azimuth of aud and vis stimuli.
+%allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, the
+%intial azimuth of aud and vis stimuli, and the coherence
 %Unique conditions is based on the parameter set, and includes all possible conditions that the mouse could have experienced. We repeat audAmplitude
 %because in some cases it will only have one value, and in some cases it will have more;
-allConditions = [audAmplitude visContrast audInitialAzimuth visInitialAzimuth];
-uniqueConditions = unique([p.audAmplitude' p.visContrast' p.audInitialAzimuth' p.visInitialAzimuth'], 'rows');
+allConditions = [audAmplitude audInitialAzimuth audStimMobile visContrast(:,1) visContrast(:,2) requestedCoherence];
+uniqueConditions = unique([p.audAmplitude' p.audInitialAzimuth' p.audStimMobile' visContrastRight' visContrastLeft' p.requestedCoherence'], 'rows');
 
-%Create a set of unique conditions, where each row is a condition in the order: [zero conditions; right conditions; left conditions]. 
-leftInitialConditions = uniqueConditions(uniqueConditions(:,end-1)< 0 | ((isinf(uniqueConditions(:,end-1)) | ~(uniqueConditions(:,end-1))) & uniqueConditions(:,end)<0),:);
-if size(leftInitialConditions,1)~=floor(size(uniqueConditions,1)/2); warning('Why are half conditions not left conditions?'); end
-zeroConditions = uniqueConditions(all([any(uniqueConditions(:,[1,3])==0,2) any(uniqueConditions(:,[2,4])==0,2)],2),:);
-rightInitialConditions = [leftInitialConditions(:,1:2) leftInitialConditions(:,end-1:end)*-1];
-rightInitialConditions(isinf(rightInitialConditions)) = inf; 
-rightInitialConditions = [rightInitialConditions; uniqueConditions(~ismember(uniqueConditions, [zeroConditions; leftInitialConditions; rightInitialConditions], 'rows'),:)];
-uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialConditions];
+%Create a set of unique conditions, where each row is a condition in the order: [incoherent conditions; right conditions; left conditions]. 
+leftCoherentInitialConditions = uniqueConditions(uniqueConditions(:,end)<0.5,:);
+rightCoherentInitialConditions = uniqueConditions(uniqueConditions(:,end)>0.5,:);
+incoherentInitialConditions = uniqueConditions(uniqueConditions(:,end)==0.5,:);
+if size(leftCoherentInitialConditions,1)~= (size(rightCoherentInitialConditions,1)); warning('Imbalanced right and left conditions'); end
+uniqueConditions = [incoherentInitialConditions; rightCoherentInitialConditions; leftCoherentInitialConditions];
 
-%For each trial, find which row of leftInitialConditions or rightInitialConditions it belongs to, and check that no rows belong to both. We generate a
+%For each trial, find which row of leftCoherentInitialConditions or rightCoherentInitialConditions it belongs to, and check that no rows belong to both. We generate a
 %condition index where each trial is positive if right, -ve if left, and the opposite of any conditionIdx is the inverse sign of that conditionIdx. We
 %also create uniqueConditionReference which has the corresponding condition for each row of uniqueConditions. Finally, we create conditionRowIdx which (for
 %every trial) inditcates which row of the uniqueConditions table that trial corresponds to.
-[~, rightConditionsIdx] = ismember(allConditions, rightInitialConditions, 'rows');
-[~, leftConditionsIdx] = ismember(allConditions, leftInitialConditions, 'rows');
+
+[~, rightConditionsIdx] = ismember(allConditions, rightCoherentInitialConditions, 'rows');
+[~, leftConditionsIdx] = ismember(allConditions, leftCoherentInitialConditions, 'rows'); %%%Does not seem to be adding values...
 if any(all([rightConditionsIdx~=0, leftConditionsIdx~=0],2)); error('Detect same condition as being Left and Right'); end
 conditionLabel = rightConditionsIdx + -1*leftConditionsIdx;
-uniqueConditionRowLabels = [0*find(zeroConditions,1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
+uniqueConditionRowLabels = [0*find(incoherentInitialConditions,1); (1:size(rightCoherentInitialConditions,1))'; -1*(1:size(leftCoherentInitialConditions,1))'];
 [~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionRowLabels);
-
-%Create a "trialType" field which is 0,1,2,3,4 for blank, auditory, visual, coherent, and incoherent trials.
-audTrial = (visContrast==0 | visInitialAzimuth==0) & (audAmplitude>0 & audInitialAzimuth~=0);
-visTrial = (audAmplitude==0 | audInitialAzimuth==0) & (visContrast>0 & visInitialAzimuth~=0);
-coherentTrial = sign(visInitialAzimuth.*audInitialAzimuth)>0 & audAmplitude>0 & visContrast>0;
-coflictTrial = sign(visInitialAzimuth.*audInitialAzimuth)<0 & audAmplitude>0 & visContrast>0;
-trialType = (zeros(length(coflictTrial),1)+(audTrial+visTrial*2+coherentTrial*3+coflictTrial*4));
-
-%If statement to decide whether a particular session had amplitude variations in auditory, or visual, or neither. If there are auditory variations,
-%then audDiff will be (audAmplitude Right - audAmplitude Left), otherwise it will be (audAzimuth Right - audAzimuth Left). visDiff will always be
-%(visContrast Right - visContrast Left). In cases where there is only ever one aud/vis stimulus, this is equivalent to just multiplying the left
-%values be -1. uniqueDiff are the unique trials in this difference space (so two columns: [audDiff, visDiff];
-if numel(unique(p.audAmplitude))==1
-    uniqueDiff = [uniqueConditions(:,3) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
-    audValueLeftRight = [abs(audInitialAzimuth.*double(audInitialAzimuth<0)) abs(audInitialAzimuth.*double(audInitialAzimuth>0))];
-    if any(uniqueConditions(:,1)); audType = 'Azimuth'; else; audType = 'None'; end
-else
-    uniqueDiff = [uniqueConditions(:,1).*sign(uniqueConditions(:,3)) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
-    audValueLeftRight = [abs(audAmplitude.*(audInitialAzimuth<0)) abs(audAmplitude.*(audInitialAzimuth>0))];
-    audType = 'Amplitude';
-end
-visValueLeftRight = [visContrast.*double(visInitialAzimuth<0), double(visContrast.*double(visInitialAzimuth>0))];
-audDiff = uniqueDiff(conditionRowIdx, 1);
-visDiff = uniqueDiff(conditionRowIdx, 2);
-%Create vectors that indicate the separated values for contrast and audio azimuth on left and right (used for modeling) 
 
 %Populate n with all fields;
 n.trialStartEnd = [trialStartTimes trialEndTimes];
@@ -257,22 +251,16 @@ n.StimPeriodStart = stimPeriodStart;
 n.closedLoopStart = closedLoopStart;
 n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.correctResponse = (correctResponse>0)+1;
-n.feedback = feedbackValues>0;
+n.feedback = feedbackValues; %Changed from feedbackValues>0 so that early ended trials will be notable. Need to change analysis code probably though
 n.responseTime = responseTime;
 n.timeToWheelMove = timeToWheelMove;
-n.responseMade = (responseMade>0)+1;
-n.trialType = trialType;
+n.responseMade = (responseMade>0)+1.*(responseMade~=0); %Added so that when no response has been made the value will be 0.
+n.responseType = responseType;
 n.audAmplitude = audAmplitude;
 n.audInitialAzimuth = audInitialAzimuth;
-n.audValueLeftRight = audValueLeftRight;
-n.audDiff = audDiff;
-n.audValues = (unique(uniqueDiff(:,1)));
-n.audType = audType;
-n.visContrast = visContrast;
+n.audStimMobile = audStimMobile;
+n.visContrast = visContrast; 
 n.visInitialAzimuth = visInitialAzimuth;
-n.visValueLeftRight = visValueLeftRight;
-n.visDiff = visDiff;
-n.visValues = (unique(uniqueDiff(:,2)));
 n.visAltitude = [v(vIdx).visAltitude]';
 n.visSigma = [v(vIdx).visSigma]';
 n.galvotype = e.galvoTypeValues(vIdx)';
@@ -284,22 +272,33 @@ n.laserOnOff = [e.galvoTTLTimes(vIdx)' e.galvoAndLaserEndTimes(vIdx)']-trialStar
 n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.totalRepeats = totalRepeats;
 n.uniqueConditions = uniqueConditions;
-n.uniqueDiff = uniqueDiff;
 n.uniqueConditionRowLabels = uniqueConditionRowLabels;
 n.conditionLabel = conditionLabel;
 n.conditionRowIdx = conditionRowIdx;
+n.requestedCoherence = requestedCoherence; 
 
-%Create some useful grids of aud and vis values. Add these to the block.
-[n.grids.visValues, n.grids.audValues] = meshgrid(n.visValues, n.audValues);
-[~, gridIdx] = ismember(uniqueDiff, [n.grids.audValues(:) n.grids.visValues(:)], 'rows');
-n.grids.conditions = nan*ones(length(n.audValues), length(n.visValues));
-n.grids.conditions(gridIdx) = uniqueConditionRowLabels;
+numOfClicks = round(unique([v(vIdx).clickRate])*(unique([v(vIdx).stimDuration])));
+clickTimesRight = reshape(e.clickTimesValues(1,:), [numOfClicks,length(e.trialNumValues)])';
+n.clickTimesRight = clickTimesRight(vIdx,:);
+clickTimesLeft = reshape(e.clickTimesValues(2,:), [numOfClicks,length(e.trialNumValues)])';
+n.clickTimesLeft = clickTimesLeft(vIdx,:);
+clickTimesAud = reshape(e.clickTimesValues(3,:), [numOfClicks,length(e.trialNumValues)])';
+n.clickTimesAud = clickTimesAud(vIdx,:);
+n.actualClickRate = numOfClicks/unique([v(vIdx).stimDuration]);
+
+% Calculate the actual coherence of the click train
+actualCoherenceRight = zeros(length(vIdx(vIdx)),1)';
+actualCoherenceLeft = zeros(length(vIdx(vIdx)),1)';
+for i = 1:length(vIdx(vIdx))
+    actualCoherenceRight(i,1) = mean(ismember(n.clickTimesRight(i,2:end), n.clickTimesAud(i,2:end)));
+    actualCoherenceLeft(i,1) = mean(ismember(n.clickTimesLeft(i,2:end), n.clickTimesAud(i,2:end)));
+end
+n.actualCoherenceRight = actualCoherenceRight;
+n.actualCoherenceLeft = actualCoherenceLeft;
 
 p.maxRepeatIncorrect = max(p.maxRepeatIncorrect);
-p.numberConditions = length(unique([audAmplitude, visContrast audInitialAzimuth visInitialAzimuth], 'rows'));
-p.audPerformance = round(mean(n.feedback(n.trialType==1 & n.laserType == 0))*100);
-p.visPerformance = round(mean(n.feedback(n.trialType==2 & n.laserType == 0))*100);
-p.mulPerformance = round(mean(n.feedback(n.trialType==3 & n.laserType == 0))*100);
+p.numberConditions = length(unique([audAmplitude audInitialAzimuth visContrast(:,1) visContrast(:,2) requestedCoherence], 'rows')); 
+p.coherentPerformance = round(mean(n.feedback(n.requestedCoherence ~=0.5 & n.laserType == 0))*100); 
 p.validTrials = sum(vIdx);
 
 x.validTrials = vIdx;
@@ -308,20 +307,23 @@ newBlock = n;
 
 %Remove fields of the raw data where the trial lasts longer than 5s. The data from there trials aren't likely to be useful (since the mouse stayed
 %still for a long time) and can take up a lot of space in the mat file.
-for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.responseTime>5) = {[]}; end
+for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.responseTime>10) = {[]}; end
+
+%%% The sections on trialType, uniqueDiff, and making grids have been removed
 
 %% Check that all expected fields exist
 blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStartEnd';'StimPeriodStart';'closedLoopStart';'rewardAvailable'; ...
-    'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'trialType';'audAmplitude';'audInitialAzimuth';'audValueLeftRight';...
-    'audDiff';'audValues';'audType';'visContrast';'visInitialAzimuth';'visValueLeftRight';'visDiff';'visValues';'visAltitude';'visSigma';'galvotype';...
-    'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'uniqueDiff';'conditionLabel'; ...
-    'conditionRowIdx'; 'uniqueConditionRowLabels';'grids'};
+    'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'audAmplitude';'audInitialAzimuth';...
+    'visContrast';'visInitialAzimuth';'audStimMobile';'visAltitude';'visSigma';'galvotype';...
+    'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'conditionLabel'; ...
+    'conditionRowIdx'; 'uniqueConditionRowLabels';'requestedCoherence';'clickTimesRight';'clickTimesLeft';'clickTimesAud';'actualCoherenceRight';'actualCoherenceLeft';'actualClickRate'};
 
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
     ;'delayAfterIncorrect';'laserDuration'; 'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'rewardSize';'noiseBurstAmplitude' ...
     ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal'; 'responseWindow' ...
-    ;'totalTrials';'minutesOnRig';'galvoCoords';'numberConditions';'audPerformance';'visPerformance';'mulPerformance';'validTrials'; 'numRepeats'};
+    ;'totalTrials';'minutesOnRig';'galvoCoords';'numberConditions';'coherentPerformance';'validTrials' ...
+    ; 'numRepeats'; 'audStimMobile'; 'requestedCoherence'; 'minInterClickGap'; 'minLeftRightGap'; 'postStimQuiescentThreshold'; 'postStimQuiescentDuration'};
 
 if any(~contains(fields(newBlock), blockFields)) || any(~contains(blockFields, fields(newBlock)))
     error('Field mistmatch in block file');

@@ -111,7 +111,7 @@ vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 %potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat. 
 %totalRepeats is the total number of times each trial was repeated (we subtract 1 so it will be zero if a trial was correct the first time)
 maxRepeatIdx = diff([e.repeatNumValues(1:length(vIdx>0))'; 1])<0;
-potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<0)';
+potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<=0)';
 if potentialRepeats(end) == 1 && vIdx(end)==1; potentialRepeats(end) = 0; end
 totalRepeats = potentialRepeats;
 totalRepeats(potentialRepeats>0) = e.repeatNumValues(maxRepeatIdx)-1;
@@ -146,7 +146,10 @@ vIdx(e.newTrialTimes(1:length(stimPeriodStart))' > stimPeriodStart) = 0;
 stimPeriodStart = stimPeriodStart(vIdx);
 feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
+caughtMovements = feedbackValues==0; %To identify all trials which ended early due to movement in post stimulus quiescence period
 responseTime = feedbackTimes-stimPeriodStart;
+responseType = e.responseTypeValues(vIdx);
+
 
 if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end    %Make sure there is a value for each condition
 if length(p.audStimMobile)==1; p.audStimMobile = repmat(p.audStimMobile,1,length(p.numRepeats)); end %Make sure there is a value for each condition, as it determines whether audAzimuth has any meaning
@@ -196,7 +199,9 @@ r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audA
 
 %Get closed loop start times, relative to the stimulus start times (likely to all be the same for a constant delay)
 closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)';
-closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
+closedLoopStart = prc.indexByTrial(trialTimes, closedLoopStart, closedLoopStart, stimPeriodStart, 0);
+closedLoopStart(cellfun(@isempty, closedLoopStart)) = {nan};
+closedLoopStart = cell2mat(closedLoopStart) - stimPeriodStart;
 
 %Calculate an approximate time to the first wheel movement. This is different from the response time in that it is based on wheel movement, rather
 %than the time when the threshold was reached. WheelMove is an interpolation of the wheel movement (to get it's nearest position at every ms).
@@ -205,12 +210,13 @@ closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
 %wheelToThresh
 wheelMove = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(:,1), x(:,2), -1:0.001:x(end,1), 'nearest'))'], r.wheelTimeValue, 'uni', 0);
 wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelMove, closedLoopStart, feedbackTimes - stimPeriodStart, 'uni', 0);
-wheelToThresh = nanmedian(abs(cellfun(@(x) x(end)-x(1), wheelToThresh)));
+wheelToThresh(responseType==0) = {nan};
+wheelToThresh = nanmedian(abs(cell2mat(cellfun(@(x) double(x(end)-x(1)), wheelToThresh, 'uni', 0))));
 timeToWheelMove = double(cell2mat(cellfun(@(x) x(find(abs(x(:,2))>wheelToThresh/4 & x(:,1)>0,1),1), wheelMove, 'uni', 0)));
 
 %Get the response the mouse made on each trial based on the correct response and then taking the opposite for incorrect trials. NOTE: this will not
 %work for a task with more than two response options.
-responseMade = double(correctResponse);
+responseMade = double(correctResponse).*~caughtMovements; %So that early ended trials should be displayed as 0. 
 responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
 
 %allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, the
@@ -245,10 +251,11 @@ n.StimPeriodStart = stimPeriodStart;
 n.closedLoopStart = closedLoopStart;
 n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.correctResponse = (correctResponse>0)+1;
-n.feedback = feedbackValues>0;
+n.feedback = feedbackValues; %Changed from feedbackValues>0 so that early ended trials will be notable. Need to change analysis code probably though
 n.responseTime = responseTime;
 n.timeToWheelMove = timeToWheelMove;
-n.responseMade = (responseMade>0)+1;
+n.responseMade = (responseMade>0)+1.*(responseMade~=0); %Added so that when no response has been made the value will be 0.
+n.responseType = responseType;
 n.audAmplitude = audAmplitude;
 n.audInitialAzimuth = audInitialAzimuth;
 n.audStimMobile = audStimMobile;
@@ -280,8 +287,8 @@ n.clickTimesAud = clickTimesAud(vIdx,:);
 n.actualClickRate = numOfClicks/unique([v(vIdx).stimDuration]);
 
 % Calculate the actual coherence of the click train
-actualCoherenceRight = zeros(length(vIdx(vIdx)),1);
-actualCoherenceLeft = zeros(length(vIdx(vIdx)),1);
+actualCoherenceRight = zeros(length(vIdx(vIdx)),1)';
+actualCoherenceLeft = zeros(length(vIdx(vIdx)),1)';
 for i = 1:length(vIdx(vIdx))
     actualCoherenceRight(i,1) = mean(ismember(n.clickTimesRight(i,2:end), n.clickTimesAud(i,2:end)));
     actualCoherenceLeft(i,1) = mean(ismember(n.clickTimesLeft(i,2:end), n.clickTimesAud(i,2:end)));
@@ -307,7 +314,7 @@ for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.responseTim
 %% Check that all expected fields exist
 blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStartEnd';'StimPeriodStart';'closedLoopStart';'rewardAvailable'; ...
     'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'audAmplitude';'audInitialAzimuth';...
-    'visContrast';'visInitialAzimuth';'audStimMobile';'visAltitude';'visSigma';'galvotype';...
+    'visContrast';'visInitialAzimuth';'audStimMobile';'visAltitude';'visSigma';'galvotype'; 'responseType';...
     'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'conditionLabel'; ...
     'conditionRowIdx'; 'uniqueConditionRowLabels';'requestedCoherence';'clickTimesRight';'clickTimesLeft';'clickTimesAud';'actualCoherenceRight';'actualCoherenceLeft';'actualClickRate'};
 
@@ -316,7 +323,7 @@ prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'
     ;'delayAfterIncorrect';'laserDuration'; 'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'rewardSize';'noiseBurstAmplitude' ...
     ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal'; 'responseWindow' ...
     ;'totalTrials';'minutesOnRig';'galvoCoords';'numberConditions';'coherentPerformance';'validTrials' ...
-    ; 'numRepeats'; 'audStimMobile'; 'requestedCoherence'; 'minInterClickGap'; 'minLeftRightGap'; 'postStimQuiescentDuration'; 'postStimQuiescentThreshold'};
+    ; 'numRepeats'; 'audStimMobile'; 'requestedCoherence'; 'minInterClickGap'; 'minLeftRightGap'; 'postStimQuiescentThreshold'; 'postStimQuiescentDuration'};
 
 if any(~contains(fields(newBlock), blockFields)) || any(~contains(blockFields, fields(newBlock)))
     error('Field mistmatch in block file');
