@@ -242,6 +242,7 @@ if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectR
     if isempty(strfind(b.expDef, 'multiTemporalWorld'))
         flippedIdx = max([p.visContrast;p.audAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
     else
+        if length(p.requestedCoherence) < length(p.numRepeats); p.requestedCoherence = p.numRepeats*0+p.requestedCoherence; end
         flippedIdx = p.requestedCoherence~=0.5;
     end
     if isfield(p, 'visInitialAzimuth') && length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end

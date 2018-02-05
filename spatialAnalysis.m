@@ -1,4 +1,4 @@
-classdef spatialAnalysis
+ classdef spatialAnalysis
     %% spatialAnalysis object that extracts beahvioral information for a specified animal or set of animals. The resulting object has a set of methods
     % that can be used to plot various aspects of animal behavior. NOTE: This function is designed to operate on the output of convertExpFiles and
     % most methods are specific to multisensoty spatial integration plots.
@@ -219,7 +219,12 @@ classdef spatialAnalysis
         function viewJitterPlot(obj, plotType)
             if ~exist('plotType', 'var'); plotType = 'coh'; end
             figure;
+            axesOpt.totalNumOfAxes = length(obj.subjects);
+            axesOpt.btlrMargins = [100 100 100 20];
+            axesOpt.gapBetweenAxes = [100 80];
+            axesOpt.figureSize = 500;
             for i  = 1:length(obj.subjects)
+                axesOpt.idx = i;
                 switch lower(plotType)
                     case {'coh'; 'con'}
                         plotOpt = prc.getMultiTriplets(normBlock, strcmpi(plotType, 'coh'));
@@ -233,13 +238,14 @@ classdef spatialAnalysis
                             plotOpt.mainYLabel = '\fontsize{20} Fraction choices in unisensory direction';
                             plotOpt.yLimits = [0 1.2];
                         end
-                        plotOpt.mainXLabel = '\fontsize{20} Condition';
                     case 'whe'
                         normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                         plotOpt = prc.getCoherentConflictPairs(normBlock);
-
+                        plotOpt.mainXLabel = '\fontsize{20} Condition';
+                        plotOpt.mainTitle = '\fontsize{20} Difference in reation times for coherent/conflict conditions (ms)';
+                        plotOpt.mainYLabel = '\fontsize{20} Time to wheel movement (ms)';
                 end
-                obj.axesHandles = plt.getAxes(i, length(obj.subjects), plotOpt.figureSize, [], [100 100 100 20], [100 80]);
+                obj.axesHandles = plt.getAxes(axesOpt);
                 plt.jitter(plotOpt.yData, plotOpt); grid('on');
                 title(sprintf('%s: n = %d', obj.subjects{i}, obj.blocks{i}.nSessions));
                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
