@@ -30,10 +30,7 @@ if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if ~isfield(e, 'responseTypeValues'); e.responseTypeValues = e.feedbackValues; end
 if isfield(p, 'backNoiseAmp'); p.backgroundNoiseAmplitude = p.backNoiseAmp; end
 if ~isfield(p, 'responseWindow'); p.responseWindow = 0; end
-if ~isempty(strfind(b.expDef, 'multiTemporalWorld'));
-    p.postStimQuiescentThreshold = inf;
-    p.postStimQuiescentDuration = 0;
-end
+if ~isempty(strfind(b.expDef, 'multiTemporalWorld'))
 
 if isfield(e, 'sPreValues')
     e.stimPeriodOnOffTimes = e.sPreTimes;

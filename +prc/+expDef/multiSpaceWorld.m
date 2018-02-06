@@ -103,8 +103,15 @@ vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 %maxRepeatIdx is the set of indices when repeat numbers decrease (i.e. when a maxRepeat is reached, or a repeated trial is performed correctly.
 %potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat. 
 %totalRepeats is the total number of times each trial was repeated (we subtract 1 so it will be zero if a trial was correct the first time)
+% responseType = 
+
+
+responseAfterTimeOut = double([0 e.timeOutCountValues(2:length(x.validTrials))==0])';
+responseAfterTimeOut(responseAfterTimeOut>0) = e.timeOutCountValues(find(responseAfterTimeOut)-1);
+responseAfterTimeOutString = (responseAfterTimeOut == (e.repeatNumValues(1:length(vIdx>0))'-1) & e.repeatNumValues(1:length(vIdx>0))'>1);
+
 maxRepeatIdx = diff([e.repeatNumValues(1:length(vIdx>0))'; 1])<0;
-potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<=0)';
+potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<0)' | (e.feedbackValues(vIdx>0)==0)';
 if potentialRepeats(end) == 1 && vIdx(end)==1; potentialRepeats(end) = 0; end
 totalRepeats = double(potentialRepeats);
 totalRepeats(potentialRepeats>0) = e.repeatNumValues(maxRepeatIdx)-1;

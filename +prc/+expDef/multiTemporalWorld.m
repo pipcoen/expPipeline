@@ -148,7 +148,7 @@ feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
 caughtMovements = feedbackValues==0; %To identify all trials which ended early due to movement in post stimulus quiescence period
 responseTime = feedbackTimes-stimPeriodStart;
-responseType = e.responseTypeValues(vIdx);
+responseType = e.responseTypeValues(vIdx)';
 
 
 if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end    %Make sure there is a value for each condition
@@ -287,8 +287,8 @@ n.clickTimesAud = clickTimesAud(vIdx,:);
 n.actualClickRate = numOfClicks/unique([v(vIdx).stimDuration]);
 
 % Calculate the actual coherence of the click train
-actualCoherenceRight = zeros(length(vIdx(vIdx)),1)';
-actualCoherenceLeft = zeros(length(vIdx(vIdx)),1)';
+actualCoherenceRight = zeros(length(vIdx(vIdx)),1);
+actualCoherenceLeft = zeros(length(vIdx(vIdx)),1);
 for i = 1:length(vIdx(vIdx))
     actualCoherenceRight(i,1) = mean(ismember(n.clickTimesRight(i,2:end), n.clickTimesAud(i,2:end)));
     actualCoherenceLeft(i,1) = mean(ismember(n.clickTimesLeft(i,2:end), n.clickTimesAud(i,2:end)));
