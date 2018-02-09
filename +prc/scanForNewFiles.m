@@ -99,7 +99,7 @@ for i = 1:length(newBlocks)
     expList(end).expDef = 'ChoiceWorld';
     
     backUpFolder = prc.pathFinder('rawbackupfolder', subject, expDate, sessionNum);
-    syncfolder(newBlocks(i).folder, backUpFolder, 2);
+    prc.syncfolder(newBlocks(i).folder, backUpFolder, 2);
 
     if exist(prc.pathFinder('galvoLog', subject, expDate, sessionNum), 'file')
         expList(end).galvoLog = prc.pathFinder('galvoLog', subject, expDate, sessionNum);

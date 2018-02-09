@@ -13,8 +13,18 @@ processedFileName = [subject '\' subject '_' expDate([3:4 6:7 9:10]) '_' session
 expInfo = '\\zubjects.cortexlab.net\Subjects\';
 processedFolder = 'E:\Dropbox (Neuropixels)\MouseData\ProcessedData\';
 sharedFolder = '\\zubjects.cortexlab.net\lab\Share\Pip\ProcessedData\';
-suite2POutput = 'E:\Dropbox (Neuropixels)\subjectData\Suite2POutput\';
+suite2POutput = 'E:\Dropbox (Neuropixels)\MouseData\Suite2POutput\';
 rawBackup = 'E:\Dropbox (Neuropixels)\MouseData\RawBehavior\';
+mouseRecord = 'E:\Dropbox (Neuropixels)\MouseData\MouseRecord.xlsx';
+
+if strcmp(hostname, 'ziggurat')
+    expInfo = '\\zubjects.cortexlab.net\Subjects\';
+    processedFolder = 'C:\Users\carandini\Dropbox (Neuropixels)\MouseData\ProcessedData\';
+    sharedFolder = '\\zubjects.cortexlab.net\lab\Share\Pip\ProcessedData\';
+    suite2POutput = 'C:\Users\carandini\Dropbox (Neuropixels)\MouseData\Suite2POutput\';
+    rawBackup = 'C:\Users\carandini\Dropbox (Neuropixels)\MouseData\RawBehavior\';
+    mouseRecord = 'C:\Users\carandini\Dropbox (Neuropixels)\MouseData\MouseRecord.xlsx';
+end
 
 if contains(lower(pathType), {'directorycheck';'processedcheck';'explist'})
     if strcmp(hostname, 'homerig'), directoryCheck = [1 0];
@@ -46,5 +56,5 @@ switch lower(pathType)
     case 'sharedfolder'; pathOut = sharedFolder;
     case 'expinfo'; pathOut = expInfo;
     case 'rawbackup'; pathOut = rawBackup;
-    case 'mouserecord'; pathOut = 'E:\Dropbox (Neuropixels)\MouseData\MouseRecord.xlsx';
+    case 'mouserecord'; pathOut = mouseRecord;
 end

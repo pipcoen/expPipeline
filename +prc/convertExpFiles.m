@@ -126,7 +126,7 @@ for i = files2Run(files2Run>srtIdx)
 end
 
 %Run the prc.updateParamChangeSpreadsheet on all mice that have new files. This keeps track of when parameters have changed for the mice.
-if all(existDirectories); syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
+if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
 changedMice = uniquecell({expList(files2Run).subject}');
 cellfun(@prc.updateParamChangeSpreadsheet, changedMice(contains(changedMice, 'PC')));
 end
