@@ -87,7 +87,7 @@ for i = 1:length(newBlocks)
     if datenum(expDate, 'yyyy-mm-dd') < includedMice{mouseIdx,2} || datenum(expDate, 'yyyy-mm-dd') > includedMice{mouseIdx,3}
         if exist([prc.pathFinder('rawbackup') subject '\' expDate], 'dir'); rmdir([prc.pathFinder('rawbackup') subject '\' expDate], 's'); end
         continue;
-    else,  syncfolder([prc.pathFinder('expinfo') subject '\' expDate], [prc.pathFinder('rawbackup') subject '\' expDate], 2);
+    else,  prc.syncfolder([prc.pathFinder('expinfo') subject '\' expDate], [prc.pathFinder('rawbackup') subject '\' expDate], 2);
     end
 
     fprintf('Adding recording %s %s %s\n', expDate, subject, sessionNum);

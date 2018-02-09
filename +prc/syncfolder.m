@@ -1,7 +1,7 @@
 function syncfolder(p1, p2, syncdirect, includeTimeline)
-%SYNCFOLDER sync two folds
+%prc.syncfolder sync two folds
 %
-%  syncfolder(p1, p2, syncdirect), sync between p1 and p2. p1 and p2 are
+%  prc.syncfolder(p1, p2, syncdirect), sync between p1 and p2. p1 and p2 are
 %  two directories. The exact behavior depends on the third parameter
 %  'syncdirect'
 %
@@ -69,9 +69,9 @@ while nf1 <= numel(files1) || nf2 <= numel(files2)
     % the same files or directories in p1 and p2
     if nf1 <= numel(files1) && nf2 <= numel(files2) && ...
             strcmpi(files1(nf1).name, files2(nf2).name)
-        % the same directories, recursively syncfolder
+        % the same directories, recursively prc.syncfolder
         if files1(nf1).isdir
-            syncfolder([p1, files1(nf1).name], [p2, files2(nf2).name], syncdirect)
+            prc.syncfolder([p1, files1(nf1).name], [p2, files2(nf2).name], syncdirect)
         else % the same files, copy the newer file to old file
             if files1(nf1).datenum > files2(nf2).datenum + 1.0/24/60
                 if syncdirect >= 0

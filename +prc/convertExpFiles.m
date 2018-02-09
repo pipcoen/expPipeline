@@ -54,7 +54,7 @@ end
     
 %Checks whether both the DropBox and zserver directories exists. If they both do, sync the folders so data is everywere
 existDirectories = prc.pathFinder('directoryCheck'); 
-if all(existDirectories); syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
+if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
 expList = prc.scanForNewFiles;                  

@@ -69,8 +69,8 @@ elseif isfield(v, 'maxRetryIfIncorrect')
     tDat = {v.maxRetryIfIncorrect}'; [v.maxRepeatIncorrect] = tDat{:};
     p.maxRepeatIncorrect = p.maxRetryIfIncorrect;
 elseif ~isfield(v, 'maxRepeatIncorrect')   
-    [v(:).maxRepeatIncorrect] = deal(9); 
-    p.maxRepeatIncorrect = 0;
+    [v(:).maxRepeatIncorrect] = deal(max([max(e.repeatNumValues)-1, 9])); 
+    p.maxRepeatIncorrect = max([max(e.repeatNumValues)-1, 9]);
 end
 
 if ~isfield(e, 'timeOutCountValues')

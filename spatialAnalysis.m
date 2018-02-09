@@ -263,6 +263,7 @@
                 runMouseReplicate(obj, {'VL', 'VR', 'AL', 'AR', 'CR', 'CL'}, 'viewInactivationResults')
                 return;
             end
+            figure;
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.btlrMargins =  [50 100 10 10];
             axesOpt.gapBetweenAxes = [40 0];
@@ -336,7 +337,6 @@
         end
         
         function runMouseReplicate(obj, subjectNames, funString)
-            close;
             for i = 1:length(obj.subjects)
                 replicatedObj = obj;
                 replicatedObj.subjects = subjectNames;

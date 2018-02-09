@@ -99,23 +99,6 @@ n = x.newBlock;                        %newBlock, already populated with subject
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
 vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 
-%% The number of repeats for each trial
-%maxRepeatIdx is the set of indices when repeat numbers decrease (i.e. when a maxRepeat is reached, or a repeated trial is performed correctly.
-%potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat. 
-%totalRepeats is the total number of times each trial was repeated (we subtract 1 so it will be zero if a trial was correct the first time)
-% responseType = 
-
-
-responseAfterTimeOut = double([0 e.timeOutCountValues(2:length(x.validTrials))==0])';
-responseAfterTimeOut(responseAfterTimeOut>0) = e.timeOutCountValues(find(responseAfterTimeOut)-1);
-responseAfterTimeOutString = (responseAfterTimeOut == (e.repeatNumValues(1:length(vIdx>0))'-1) & e.repeatNumValues(1:length(vIdx>0))'>1);
-
-maxRepeatIdx = diff([e.repeatNumValues(1:length(vIdx>0))'; 1])<0;
-potentialRepeats = ([v(vIdx>0).maxRepeatIncorrect]>0 & e.feedbackValues(vIdx>0)<0)' | (e.feedbackValues(vIdx>0)==0)';
-if potentialRepeats(end) == 1 && vIdx(end)==1; potentialRepeats(end) = 0; end
-totalRepeats = double(potentialRepeats);
-totalRepeats(potentialRepeats>0) = e.repeatNumValues(maxRepeatIdx)-1;
-
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
 %Note: we cannot perform this stage before the stage above as it will mess with the calculation of totalRepeats 
 if sum(vIdx) > 100
@@ -129,12 +112,33 @@ if sum(vIdx) > 100
     trasitionTimes = e.laserInitialisationTimes(1:length(vIdx));
     timeToTTL = (e.galvoTTLTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx)))*0.9;
     vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
-    
-    %Remove the newly eliminated trials from totalRepeats and update vIdx
-    totalRepeats(vIdx(vIdx~=0)==-1) = [];
     vIdx = vIdx>0;
 end
 
+%% The number of repeats and timeouts for each trial type presented
+%maxRepeatIdx is the set of indices when repeat numbers decrease (i.e. when a maxRepeat is reached, or a repeated trial is performed correctly.
+%potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat. 
+%totalRepeats is the total number of times each trial was repeated (we subtract 1 so it will be zero if a trial was correct the first time)
+timeOutsBeforeResponse = 0*vIdx';
+sequentialTimeOuts = 0*vIdx';
+sequentialTimeOuts(vIdx &  e.responseTypeValues(1:length(vIdx)) == 0) = 1;
+for i = find(vIdx)
+    if i < length(vIdx) && e.responseTypeValues(i) == 0
+        nextResponse = min([i+find(e.responseTypeValues(i+1:length(vIdx))~=0 | e.repeatNumValues(i+1:length(vIdx))==1,1), length(vIdx)+1]);
+        sequentialTimeOuts(i) = nextResponse - i;
+        if e.repeatNumValues(nextResponse)==1 || nextResponse >= length(vIdx); continue; end
+        vIdx(nextResponse) = 1;
+        timeOutsBeforeResponse(nextResponse) = nextResponse-i;
+    end
+end
+
+repeatsAfterResponse = 0*vIdx';
+for i = find(vIdx)
+    if i < length(vIdx) && e.responseTypeValues(i) ~= 0
+        nextNewTrial = min([i+find(e.repeatNumValues(i+1:length(vIdx))==1,1) length(vIdx)+1]);
+        repeatsAfterResponse(i) = nextNewTrial-i-1;
+    end
+end
 %% Populate fields of "n" with basic trial data
 %stimPeriodStart extracts times when stimPeriodOnOffValues is 1 (which is when this period starts). 
 %We also remove times when the first newTrialTime is greater than that the first stimPeriodStart, an error that can occur on the first trial.
@@ -272,6 +276,9 @@ n.responseTime = responseTime;
 n.timeToWheelMove = timeToWheelMove;
 n.responseMade = ((responseMade>0)+1).*(responseMade~=0);
 n.trialType = trialType;
+n.sequentialTimeOuts = sequentialTimeOuts(vIdx);
+n.timeOutsBeforeResponse = timeOutsBeforeResponse(vIdx);
+n.repeatsAfterResponse = repeatsAfterResponse(vIdx);
 n.audAmplitude = audAmplitude;
 n.audInitialAzimuth = audInitialAzimuth;
 n.audValueLeftRight = audValueLeftRight;
@@ -292,12 +299,22 @@ n.laserPower = (e.laserPowerValues(vIdx)');
 n.laserSession = sum(unique(n.laserType))+(n.laserPower*0);
 n.laserOnOff = [e.galvoTTLTimes(vIdx)' e.galvoAndLaserEndTimes(vIdx)']-trialStartTimes;
 n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
-n.totalRepeats = totalRepeats;
 n.uniqueConditions = uniqueConditions;
 n.uniqueDiff = uniqueDiff;
 n.uniqueConditionRowLabels = uniqueConditionRowLabels;
 n.conditionLabel = conditionLabel;
 n.conditionRowIdx = conditionRowIdx;
+
+% Add back trials where a response was made after timeouts
+
+
+% responseAfterTimeout = [0 diff(e.responseTypeValues(1:length(vIdx))~=0)]==1;
+% firstResponseAfterNewTrial = ;
+% 
+% responseAfterTimeOut = double([0 e.timeOutCountValues(2:length(x.validTrials))==0])';
+% responseAfterTimeOut(responseAfterTimeOut>0) = e.timeOutCountValues(find(responseAfterTimeOut)-1);
+% responseAfterTimeOutString = (responseAfterTimeOut == (e.repeatNumValues(1:length(vIdx>0))'-1) & e.repeatNumValues(1:length(vIdx>0))'>1);
+
 
 %Create some useful grids of aud and vis values. Add these to the block.
 [n.grids.visValues, n.grids.audValues] = meshgrid(n.visValues, n.audValues);
@@ -324,8 +341,8 @@ for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.responseTim
 blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStartEnd';'StimPeriodStart';'closedLoopStart';'rewardAvailable'; ...
     'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'trialType';'audAmplitude';'audInitialAzimuth';'audValueLeftRight';...
     'audDiff';'audValues';'audType';'visContrast';'visInitialAzimuth';'visValueLeftRight';'visDiff';'visValues';'visAltitude';'visSigma';'galvotype';...
-    'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'uniqueDiff';'conditionLabel'; ...
-    'conditionRowIdx'; 'uniqueConditionRowLabels';'grids'};
+    'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'sequentialTimeOuts';'uniqueConditions';'uniqueDiff';'conditionLabel'; ...
+    'conditionRowIdx'; 'uniqueConditionRowLabels';'grids'; 'timeOutsBeforeResponse'; 'repeatsAfterResponse'};
 
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
