@@ -47,7 +47,7 @@ if any(startedIdx); includedMice(startedIdx > 0,3) = num2cell(datenum(startedDat
 if any(retiredIdx); includedMice(retiredIdx > 0,3) = num2cell(datenum(retiredDates(retiredIdx(retiredIdx>0), 2), 'yyyy-mm-dd')); end
 
 %% List of rig names and the type of rig (possible values are training, twophoton, widefield
-rigList = {'zym1', 'training'; 'zym2', 'training'; 'zym3', 'training'; 'zredone', 'training'; 'zredtwo', 'training'; 'zoolatry', 'training'; ...
+rigList = {'zym1', 'training'; 'zym2', 'training'; 'zym3', 'training'; 'zym4', 'training'; 'zredone', 'training'; 'zredtwo', 'training'; 'zoolatry', 'training'; ...
     'zredthree', 'training'; 'zgreyfour', 'training'; 'zurprise', 'twophoton'; 'zooropa', 'widefield'; 'zgood', 'widefield'};
 
 %% Check for all files generated in the past 3 weeks for included mice.
