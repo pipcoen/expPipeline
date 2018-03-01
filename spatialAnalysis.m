@@ -18,15 +18,16 @@
     
     %%
     methods
-        function obj = spatialAnalysis(subjects, expDate, combineMice)
+        function obj = spatialAnalysis(subjects, expDate, combineMice, dataType)
             % Initialize fields with default values if no vaules are provided. Then called changeMouse function to get requested data.
             if ~exist('subjects', 'var') || isempty(subjects); subjects = {'PC011';'PC012';'PC013';'PC015';'PC010';'PC017'}; end
             if ~exist('expDate', 'var'); expDate = 'last'; end
             if ~exist('combineMice', 'var'); combineMice = 0; end
+            if ~exist('dataType', 'var'); dataType = 'bloprm'; end
             if ~iscell(subjects); subjects = {subjects}; end
             if ~iscell(expDate); expDate = {expDate}; end
             if length(expDate) < length(subjects); expDate = repmat(expDate, length(subjects),1); end
-            obj = changeMouse(obj, subjects, expDate, 'bloprm', combineMice);
+            obj = changeMouse(obj, subjects, expDate, dataType, combineMice);
         end
         
         function viewBoxPlots(obj, plotType, alter)

@@ -52,10 +52,15 @@ rigList = {'zym1', 'training'; 'zym2', 'training'; 'zym3', 'training'; 'zym4', '
 
 %% Check for all files generated in the past 3 weeks for included mice.
 lastBlockFiles = [];
+lastWeekOnly = [];
+lastWeek = datestr(datenum(datetime('now'))-7:datenum(datetime('now')), 'yyyy-mm-dd');
 for i = 1:size(includedMice,1)
     lastWeeks = datestr(datenum(includedMice{i,3})-20:datenum(includedMice{i,3}), 'yyyy-mm-dd');
     detectedFiles = arrayfun(@(x) dir([expInfo '/' includedMice{i} '/' lastWeeks(x,:) '/**/' '*block*']), 1:length(lastWeeks), 'uni', 0);
     lastBlockFiles = cat(1, lastBlockFiles, detectedFiles{:});
+    
+    detectedFiles = arrayfun(@(x) dir([expInfo '/' includedMice{i} '/' lastWeek(x,:) '/**/' '*block*']), 1:size(lastWeek,1), 'uni', 0);
+    lastWeekOnly = cat(1, lastWeekOnly, detectedFiles{:});
 end
 
 %% Build list of unregistered files from the last week (or find all files if rebuilding list)
@@ -64,11 +69,11 @@ if rebuildList == 1
     newBlocks = cat(1, cellfun(@(x) dir([expInfo '/' x '/**/*block*']), includedMice(:,1), 'uni', 0));
     newBlocks = cat(1, newBlocks{:});
 else 
-    load(prc.pathFinder('expList'));
-    [~, nIdx] = setdiff({lastBlockFiles.folder}',{expList.rawFolder}'); 
-    if rebuildList == 2
-        newBlocks = lastBlockFiles;
-    else, newBlocks = lastBlockFiles(nIdx);
+    expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
+    if rebuildList ~= 2
+        [~, nIdx] = setdiff({lastBlockFiles.folder}',{expList.rawFolder}');
+        newBlocks = lastBlockFiles(nIdx);
+    else, newBlocks = lastWeekOnly;
     end
 end
 

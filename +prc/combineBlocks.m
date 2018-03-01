@@ -34,7 +34,10 @@ for i = fieldNames'
     elseif iscell(tDat) || size(tDat,1) == sum(tkIdx)
        combinedBlocks.(field) = tDat;
     elseif ~unableToMerge
-        combinedBlocks.(field) = blocks(1).(field);
+        if strcmp(field, 'expDate') 
+            combinedBlocks.(field) = tDat;
+        else, combinedBlocks.(field) = blocks(1).(field);
+        end
     else, combinedBlocks.(field) = [];
     end
 end
