@@ -276,7 +276,7 @@ n.uniqueConditionRowLabels = uniqueConditionRowLabels;
 n.conditionLabel = conditionLabel;
 n.conditionRowIdx = conditionRowIdx;
 n.requestedCoherence = requestedCoherence; 
-n.postStimQuiescenceDuration = e.postStimQuiescentDurationValues(vIdx)';
+% n.postStimQuiescenceDuration = e.postStimQuiescentDurationValues(vIdx)';
 
 numOfClicks = round(unique([v(vIdx).clickRate])*(unique([v(vIdx).stimDuration])));
 clickTimesRight = reshape(e.clickTimesValues(1,:), [numOfClicks,length(e.trialNumValues)])';
@@ -318,7 +318,7 @@ blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStart
     'visContrast';'visInitialAzimuth';'audStimMobile';'visAltitude';'visSigma';'galvotype'; 'responseType';...
     'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'conditionLabel'; ...
     'conditionRowIdx'; 'uniqueConditionRowLabels';'requestedCoherence';'clickTimesRight';'clickTimesLeft';'clickTimesAud';'actualCoherenceRight'; ...
-    'actualCoherenceLeft';'actualClickRate';'postStimQuiescenceDuration'};
+    'actualCoherenceLeft';'actualClickRate'}; %'postStimQuiescenceDuration'};
 
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
