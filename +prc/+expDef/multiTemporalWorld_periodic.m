@@ -1,4 +1,4 @@
-function [newBlock, newParams, newRaw] = multiTemporalWorld(x)
+function [newBlock, newParams, newRaw] = multiTemporalWorld_periodic(x)
 %% A helper function for multiTemporalWorld experimental definition that produces standardised files with useful structures for further analysis.
 
 % Inputs
