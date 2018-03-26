@@ -252,7 +252,7 @@ if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectR
         flippedIdx = max([p.visContrast;p.audAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
     else
         if length(p.requestedCoherence) < length(p.numRepeats); p.requestedCoherence = p.numRepeats*0+p.requestedCoherence; end
-        flippedIdx = p.requestedCoherence~=0.5;
+        flippedIdx = p.requestedCoherence~=0.5 | min(p.visContrast)==0;
     end
     if isfield(p, 'visInitialAzimuth') && length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
     if isfield(p, 'audInitialAzimuth') && length(p.audInitialAzimuth)==1; p.audInitialAzimuth = p.numRepeats*0+p.audInitialAzimuth; end
