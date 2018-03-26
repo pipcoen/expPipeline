@@ -1,4 +1,4 @@
-function [newBlock, newParams, newRaw] = multiTemporalWorld(x)
+function [newBlock, newParams, newRaw] = multiTemporalWorld_periodic(x)
 %% A helper function for multiTemporalWorld experimental definition that produces standardised files with useful structures for further analysis.
 
 % Inputs
@@ -276,7 +276,7 @@ n.uniqueConditionRowLabels = uniqueConditionRowLabels;
 n.conditionLabel = conditionLabel;
 n.conditionRowIdx = conditionRowIdx;
 n.requestedCoherence = requestedCoherence; 
-n.postStimQuiescenceDuration = e.postStimQuiescentDurationValues(vIdx)';
+% n.postStimQuiescenceDuration = e.postStimQuiescentDurationValues(vIdx)';
 
 numOfClicks = round(unique([v(vIdx).clickRate])*(unique([v(vIdx).stimDuration])));
 clickTimesRight = reshape(e.clickTimesValues(1,:), [numOfClicks,length(e.trialNumValues)])';
@@ -318,14 +318,14 @@ blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStart
     'visContrast';'visInitialAzimuth';'audStimMobile';'visAltitude';'visSigma';'galvotype'; 'responseType';...
     'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'totalRepeats';'uniqueConditions';'conditionLabel'; ...
     'conditionRowIdx'; 'uniqueConditionRowLabels';'requestedCoherence';'clickTimesRight';'clickTimesLeft';'clickTimesAud';'actualCoherenceRight'; ...
-    'actualCoherenceLeft';'actualClickRate';'postStimQuiescenceDuration'};
+    'actualCoherenceLeft';'actualClickRate'}; %'postStimQuiescenceDuration'};
 
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
     ;'delayAfterIncorrect';'laserDuration'; 'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'rewardSize';'noiseBurstAmplitude' ...
     ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal'; 'responseWindow' ...
     ;'totalTrials';'minutesOnRig';'galvoCoords';'numberConditions';'coherentPerformance';'validTrials' ...
-    ; 'numRepeats'; 'audStimMobile'; 'requestedCoherence'; 'minInterClickGap'; 'minLeftRightGap'; 'postStimQuiescentThreshold'; 'postStimQuiescentDuration'; 'periodicClicks'};
+    ; 'numRepeats'; 'audStimMobile'; 'requestedCoherence'; 'minInterClickGap'; 'minLeftRightGap'; 'postStimQuiescentThreshold'; 'postStimQuiescentDuration'};
 
 if any(~contains(fields(newBlock), blockFields)) || any(~contains(blockFields, fields(newBlock)))
     error('Field mistmatch in block file');
