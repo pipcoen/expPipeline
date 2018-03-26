@@ -9,25 +9,25 @@ function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
 %Outputs
 %An output files is generated for each experiment in the form subject_yymmdd_sessionNumProc.mat These files will contain the following
 %"blk" is a structure comprising a reduced, processed block file which contains all essential information. Fields common to all experiments are:
-    %.subject-----------Name of the mouse
-    %.expDate-----------Date that the experiment was recorded
-    %.sessionNum--------Session number for experiment
-    %.rigName-----------Name of the rig where the experiment took place
-    %.rigType-----------Type of the rig where the experiment took place
-    %.trialStart--------nx1 vector of trial start times relative to the start of the experiment (s)
-    %.trialEnd----------nx1 vector of trial end times relative to the start of the experiment (s)
-    %.????????----------Additional fields are specified in the helper function for each experimental definition
-    
+%.subject-----------Name of the mouse
+%.expDate-----------Date that the experiment was recorded
+%.sessionNum--------Session number for experiment
+%.rigName-----------Name of the rig where the experiment took place
+%.rigType-----------Type of the rig where the experiment took place
+%.trialStart--------nx1 vector of trial start times relative to the start of the experiment (s)
+%.trialEnd----------nx1 vector of trial end times relative to the start of the experiment (s)
+%.????????----------Additional fields are specified in the helper function for each experimental definition
+
 %"prm" is a structure comprising a reduced, processed parameters file which contains all essential information. Fields common to all experiments are:
-    %.subject-----------Name of the mouse
-    %.expDate-----------Date that the experiment was recorded
-    %.sessionNum--------Session number for experiment
-    %.rigName-----------Name of the rig where the experiment took place
-    %.rigType-----------Type of the rig where the experiment took place
-    %.minutesOnRig------Number of minutes spent on the rig
-    %.numRepeats--------1xn vector of (max) number of repeats for each parameter conditions.
-    %.????????----------Additional fields are specified in the helper function for each experimental definition
-    
+%.subject-----------Name of the mouse
+%.expDate-----------Date that the experiment was recorded
+%.sessionNum--------Session number for experiment
+%.rigName-----------Name of the rig where the experiment took place
+%.rigType-----------Type of the rig where the experiment took place
+%.minutesOnRig------Number of minutes spent on the rig
+%.numRepeats--------1xn vector of (max) number of repeats for each parameter conditions.
+%.????????----------Additional fields are specified in the helper function for each experimental definition
+
 %"raw" is a structure comprising potentially useful (realtively) raw data (wheel movement etc.) which is not used for a lot of analyses and
 %so should only be loaded if necessary (as it is large).
 
@@ -44,23 +44,23 @@ if redoBlocks == 2
     else
         splitStr = regexp(paths{1}.folder,'[\\/]','split');
         x.sessionNum = splitStr{end}; x.expDate = splitStr{end-1}; x.subject = splitStr{end-2};
-        x.rawBlock = paths{1}.name; x.rawParams =paths{2}.name; x.rigType = 'training'; 
+        x.rawBlock = paths{1}.name; x.rawParams =paths{2}.name; x.rigType = 'training';
         x.galvoLog = 0;
-        x.rigName = 'default'; 
+        x.rigName = 'default';
         convBlockFile(x, 1);
         return;
     end
 end
-    
+
 %Checks whether both the DropBox and zserver directories exists. If they both do, sync the folders so data is everywere
-existDirectories = prc.pathFinder('directoryCheck'); 
+existDirectories = prc.pathFinder('directoryCheck');
 if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
-expList = prc.scanForNewFiles;                  
+expList = prc.scanForNewFiles;
 if all(existDirectories==[0,1])
-    newPathList = {expList.sharedData}'; 
-    [expList.processedData] = newPathList{:}; 
+    newPathList = {expList.sharedData}';
+    [expList.processedData] = newPathList{:};
 end
 
 processedFiles = [{expList.processedData}', {expList.sharedData}'];    %List of all [Dropbox, zserver] processed file paths
@@ -82,23 +82,23 @@ files2Run = processListIdx(processListIdx>0)';
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
-srtIdx = 0; 
+srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedMice); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name
     if contains(expList(i).subject, {'PC008'}); continue; end      %SKIP PC008 for now...
     
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
-    x = expList(i); x.expList = expList;                           
+    x = expList(i); x.expList = expList;
     x.existProcessed = existProcessed(i,:);
     
     %If the processed file exists, try to load the whoD variable (turn off warning if not found) which contains a list of the variable in that
     %processed file. If the variable doesn't exist, check the contents of the file, create the "whoD" variable, and then save it to the file.
-    warning('off', 'MATLAB:load:variableNotFound'); 
+    warning('off', 'MATLAB:load:variableNotFound');
     if x.existProcessed(1)
         load(x.processedData, 'whoD');
         if ~exist('whoD', 'var')
             whoD = who('-file', x.processedData);
-           save(x.processedData, 'whoD', '-append');
+            save(x.processedData, 'whoD', '-append');
         end
     else; whoD = [];
     end
@@ -110,18 +110,18 @@ for i = files2Run(files2Run>srtIdx)
     if any([~varIdx(2) redoSuite2P])
         switch lower(x.rigType)
             case 'twophoton'
-                fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i); 
-                conv2PData(x);            
+                fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i);
+                conv2PData(x);
             case 'widefield'; continue; %convWidefieldData(x);
         end
     end
     
     %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if redoBlocks is set to 1. First, check whether the processing
     %function for the particular experiment definition file exists. If it does, process the block.
-    if isempty(which(func2str(x.blockFunction))); continue; end 
+    if isempty(which(func2str(x.blockFunction))); continue; end
     if any([~varIdx(1) redoBlocks])
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
-        convBlockFile(x, 0); 
+        convBlockFile(x, 0);
     end
 end
 
@@ -161,7 +161,7 @@ repeatPoints = [strfind(diff([0,x.standardizedBlock.inputs.wheelValues])~=0, [0 
     strfind(abs(diff([0,x.standardizedBlock.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
-x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]); 
+x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
 
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
@@ -199,7 +199,7 @@ for i = 1:length(fLst)
     load([fLst(i).folder x.fSep fLst(i).name]);
     pNum = dat.ops.iplane;
     nPLn = dat.ops.nplanes;
-
+    
     nFrm = t.hw.inputs(strcmp({t.hw.inputs.name},'neuralFrames')).arrayColumn;
     nFrm = t.rawDAQData(:,nFrm);
     sTim = t.rawDAQTimestamps(diff(nFrm)==1)';
@@ -252,7 +252,7 @@ flu.sNam = x.sessionNum;
 
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~exist(x.processedData, 'file'); whoD = {'flu'}; save(x.processedData, 'flu', 'whoD');
-else; whoD = [who('-file', x.processedData); 'flu']; save(x.processedData, 'flu', 'whoD', '-append'); 
+else; whoD = [who('-file', x.processedData); 'flu']; save(x.processedData, 'flu', 'whoD', '-append');
 end
 end
 

@@ -25,7 +25,8 @@ function syncfolder(p1, p2, syncdirect, includeTimeline)
 % Copyright: zhang@zhiqiang.org, 2010
 
 % the sync direct is two-way by default
-if ~exist('syncdirect', 'var'), syncdirect = 0; end;
+if ~exist('syncdirect', 'var'), syncdirect = 0; end
+if ~exist('includeTimeline', 'var'), includeTimeline = 0; end
 if ischar(syncdirect), syncdirect = str2double(syncdirect); end
 tmpRecycle = recycle;
 recycle on;
@@ -50,7 +51,10 @@ if isdir(p2) && p2(end)~='\', p2 = [p2, '\']; end
 files1 = sortstruct(dir(p1), 'name');
 files2 = sortstruct(dir(p2), 'name');
 
-
+if ~includeTimeline
+    files1 = files1(~contains({files1.name}', {'..';'Timeline'; '.npy'}));
+    files2 = files2(~contains({files2.name}', {'..';'Timeline'; '.npy'}));
+end
 %% compare the files and subdirectories one by one
 nf1 = 1; nf2 = 1;
 while nf1 <= numel(files1) || nf2 <= numel(files2)

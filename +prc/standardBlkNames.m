@@ -30,7 +30,7 @@ if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if ~isfield(e, 'responseTypeValues'); e.responseTypeValues = e.feedbackValues; end
 if isfield(p, 'backNoiseAmp'); p.backgroundNoiseAmplitude = p.backNoiseAmp; end
 if ~isfield(p, 'responseWindow'); p.responseWindow = 0; end
-if ~isempty(strfind(b.expDef, 'multiTemporalWorld'));
+if ~isempty(strfind(b.expDef, 'multiTemporalWorld'))
     p.postStimQuiescentThreshold = inf;
     p.postStimQuiescentDuration = 0;
 end
@@ -196,8 +196,9 @@ elseif isfield(e, 'preStimQuiescentDurationValues')
     if length(tDat) == length(v)-1; tDat = [tDat;0]; end
     [v.preStimQuiescentDuration] = tDat{:};
 end
-if ~isfield(e, 'responseWindow')
-    p.responseWindow = 0;
+
+if ~isfield(e, 'postStimQuiescentDurationValues')
+    e.postStimQuiescentDurationValues = e.newTrialValues*0;
 end
 
 if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog) || length(fields(b.galvoLog))==1
@@ -212,7 +213,7 @@ if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog) || length(fields(b.gal
     p.laserPower = 0;
     p.laserTypeProportions = [1 0 0]';
     b.galvoLog.trialNum = 1:length(e.newTrialTimes);
-    e.laserInitialisationTimes = b.galvoLog.trialNum*0;
+    e.laserInitialisationTimes = b.galvoLog.trialNum*0.001+e.newTrialTimes(b.galvoLog.trialNum);
     p.laserDuration = 0;
     e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
     [v.laserDuration] = deal(0);
@@ -225,11 +226,11 @@ if ~isfield(e, 'galvoAndLaserEndTimes')
     p.laserDuration = 1.5;
 end
 if ~isfield(b.galvoLog, 'tictoc')
-    e.laserInitialisationTimes = 0*e.newTrialValues;
+    e.laserInitialisationTimes = 0.001+e.newTrialTimes;
 else
     if any(isnan(b.galvoLog.delay_issueLaser(b.galvoLog.laserType>0))); keyboard; end
-    e.laserInitialisationTimes = 0*e.newTrialValues;
-    e.laserInitialisationTimes(b.galvoLog.trialNum) = b.galvoLog.tictoc;
+    e.laserInitialisationTimes = 0.001+e.newTrialTimes;
+    e.laserInitialisationTimes(b.galvoLog.trialNum) = b.galvoLog.tictoc + e.newTrialTimes(b.galvoLog.trialNum)';
 end
 if ~isfield(p, 'laserDuration'); p.laserDuration = 1.5; end
 e.laserTypeValues(~ismember(1:length(e.newTrialTimes), b.galvoLog.trialNum'))=0;
@@ -292,7 +293,7 @@ if sum(sum(p.laserTypeProportions(2:3,:))) == 0
     e.galvoPosValues = 0*e.newTrialValues+1;
     p.laserPower = 0;
     p.laserDuration = 0;
-    e.laserInitialisationTimes = 0*e.newTrialValues;
+    e.laserInitialisationTimes = 0.001+e.newTrialTimes;
     e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
     [v.laserDuration] = deal(0);
 end

@@ -31,7 +31,7 @@ if ~exist('rebuildList', 'var'); rebuildList = 0; end
 expInfo = prc.pathFinder('expInfo');
 includedMice = {'Dylan'; 'PC005'; 'PC006'; 'PC009'; 'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC014'; 'PC015'; 'PC016'; 'PC017'; 'PC018';'PC019'; ...
     'PC020'; 'PC021'; 'PC022'; 'PC023'; 'PC024'; 'PC025'; 'PC026'; 'PC027'; 'PC028'; 'PC029'; 'DJ001'; 'DJ002'; 'DJ003'; 'DJ004'; 'DJ005'; ...
-    'DJ006'; 'DJ007';};
+    'DJ006'; 'DJ007'; 'DJ008'};
 startedDates = {'', ''};
 retiredDates = {...
     'PC005' '2017-07-28'; ...
@@ -74,6 +74,8 @@ else
         [~, nIdx] = setdiff({lastBlockFiles.folder}',{expList.rawFolder}');
         newBlocks = lastBlockFiles(nIdx);
     else, newBlocks = lastWeekOnly;
+        [~, dIdx] = ismember({lastWeekOnly.folder}',{expList.rawFolder}');
+        expList(dIdx(dIdx~=0)) = [];
     end
 end
 
@@ -92,7 +94,8 @@ for i = 1:length(newBlocks)
     if datenum(expDate, 'yyyy-mm-dd') < includedMice{mouseIdx,2} || datenum(expDate, 'yyyy-mm-dd') > includedMice{mouseIdx,3}
         if exist([prc.pathFinder('rawbackup') subject '\' expDate], 'dir'); rmdir([prc.pathFinder('rawbackup') subject '\' expDate], 's'); end
         continue;
-    else,  prc.syncfolder([prc.pathFinder('expinfo') subject '\' expDate], [prc.pathFinder('rawbackup') subject '\' expDate], 2);
+    else, 
+        prc.syncfolder([prc.pathFinder('expinfo') subject '\' expDate '\' sessionNum], [prc.pathFinder('rawbackup') subject '\' expDate '\' sessionNum], 2);
     end
 
     fprintf('Adding recording %s %s %s\n', expDate, subject, sessionNum);
@@ -153,6 +156,7 @@ for i = 1:length(expList)
     expList(i).processedData = prc.pathFinder('processedData', expList(i).subject, expList(i).expDate, expList(i).sessionNum);
     expList(i).sharedData = prc.pathFinder('sharedData', expList(i).subject, expList(i).expDate, expList(i).sessionNum);
     expList(i).suite2POutput = prc.pathFinder('suite2POutput', expList(i).subject, expList(i).expDate, expList(i).sessionNum);
+    if expList(i).galvoLog ~= 0; expList(i).galvoLog = prc.pathFinder('galvoLog', expList(i).subject, expList(i).expDate, expList(i).sessionNum); end
 end
 
 %% This section section deals with cases of files on non-training rigs when multiple files are detected for a mouse on same day, rig, and expDef

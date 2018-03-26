@@ -97,6 +97,23 @@ v = x.standardizedBlock.paramsValues;  %Parameter values at start of trial
 e = x.standardizedBlock.events;        %Event structure
 n = x.newBlock;                        %newBlock, already populated with subject, expDate, sessionNum, rigName, and rigType
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
+
+eventsFields = fields(e);
+checkTimes = cellfun(@(x) find(e.(x)<e.expStartTimes(1)), eventsFields, 'uni', 0);
+checkTimes = checkTimes(cellfun(@(x) strcmp(x(end-4:end), 'Times'), eventsFields));
+if any(~cellfun(@isempty, checkTimes))
+    eventsFields = eventsFields(cellfun(@(x) strcmp(x(end-4:end), 'Times'), eventsFields));
+    if any(~contains(eventsFields(~cellfun(@isempty, checkTimes)), {'laserPowerTimes','galvoTypeTimes','laserDurationTimes','galvoCoordsTimes'}));
+        load('E:\Dropbox (Neuropixels)\MouseData\TimingErrors.mat');
+        if ~exist('errorStruct', 'var'); errorStruct = struct; idx = 1; else, idx = length(errorStruct)+1; end
+        fieldNames = fields(n);
+        for j = 1:(length(fieldNames)-2)
+            errorStruct(idx).(fieldNames{j}) = n.(fieldNames{j});
+        end
+        errorStruct(idx).fieldsIdentified = eventsFields(~cellfun(@isempty, checkTimes));
+        save('E:\Dropbox (Neuropixels)\MouseData\TimingErrors.mat', 'errorStruct');
+    end
+end
 vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
@@ -104,12 +121,12 @@ vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 if sum(vIdx) > 100
     %We remove the first 10 and last 10 correct trials for each session we use -1 because we only want to remove these extra trials from totalRepeats.
     vIdx = double(vIdx);
-    vIdx(find(vIdx==1, 10, 'first')) = -1;
-    vIdx(find(vIdx==1, 10, 'last')) = -1;
+    vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0, 5, 'first'))) = -1;
+    vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0, 5, 'last')):end) = -1;
     
     %Remove trials in which the laser "trasitionTimes" are more than 90% of the time until the TTL pulse that activates the laser. Otherwise, cannot
     %be confident that the laser was ready to receive the pulse.
-    trasitionTimes = e.laserInitialisationTimes(1:length(vIdx));
+    trasitionTimes = e.laserInitialisationTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx));
     timeToTTL = (e.galvoTTLTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx)))*0.9;
     vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
     vIdx = vIdx>0;

@@ -179,6 +179,88 @@
             end
         end
         
+        function viewWheelMovement(obj, plotType)
+            if ~exist('plotType', 'var'); plotType = 'mov'; end
+            figure;
+            for i  = 1:length(obj.subjects)
+                rawObj = obj.changeMouse({obj.subjects{i}}, {obj.expDate{i}}, 1);
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(rawObj.blocks{1});
+                switch plotType(1:3)
+                    case {'mov'}
+                        timeSeg = -0.1:0.01:0.5;
+                        colorTake = 'rbck';
+                        plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
+                        for tTyp = 1:4
+                            for response = 1:2
+                                blk = prc.combineBlocks(normBlock, normBlock.trialType==tTyp & normBlock.responseMade == response & (abs(normBlock.visDiff) == abs(normBlock.visValues(3)) | tTyp == 1));
+                                wheelMove = cellfun(@double, blk.wheelTimeValue(~cellfun(@isempty, blk.wheelTimeValue)), 'uni', 0);
+                                wheelMove = cell2mat(cellfun(@(x) interp1(x(:,1), x(:,2)/350, timeSeg, 'nearest'), wheelMove, 'uni', 0));
+                                plot(timeSeg,nanmean(wheelMove), colorTake(tTyp), 'linewidth', 2);
+                                hold on;
+                            end
+                        end
+                        xlim([timeSeg(1) timeSeg(end)]);
+                        ylim([-1 1]);
+                        set(gca, 'yTick', -1:0.5:1, 'yTickLabel', -360:180:360);
+                        plot(xlim, [0 0], '--k', 'linewidth', 1.5);
+                        box off;
+                        title(sprintf('%s: %d Sess', obj.subjects{i}, normBlock.nSessions));
+                end
+            end
+            figureSize = get(gcf, 'position');
+            
+            mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
+            plt.suplabel('\fontsize{20} Wheel Movement', 't', mainAxes);
+            plt.suplabel('\fontsize{20} Degrees pf rotation', 'y', mainAxes);
+            plt.suplabel('\fontsize{20} Time from stimulus on (s)', 'x', mainAxes);
+        end
+        
+        function viewPsychoCurves(obj, plotType)
+            if ~exist('plotType', 'var'); plotType = 'res'; end
+            figure;
+            for i  = 1:length(obj.subjects)
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+                switch plotType(1:3)
+                    case 'res'
+                        obj.axesHandles = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
+                        plt.psychoFits(normBlock);
+                        plt.dataWithErrorBars(normBlock)
+                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(normBlock.responseMade), normBlock.nSessions));
+                        xlim([min(normBlock.visValues), max(normBlock.visValues)]);
+                    case 'flp'
+                        obj.axesHandles = plt.getAxes(i, length(obj.subjects), [], [], [80 100 80 40], [100 60]);
+                        plt.psychoFits(normBlock, normBlock.visValues);
+                        plt.dataWithErrorBars(normBlock, 0, normBlock.visValues)
+                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(normBlock.responseMade), normBlock.nSessions));
+                        xlim([min(normBlock.audValues), max(normBlock.audValues)]);
+                    case 'vis'
+                        if ~isempty(obj.expDate)
+                            obj.runMouseReplicate({'UniLeft'; 'Bilateral'; 'UniRight'}, ['viewPsychoCurves(''' plotType ''')']);
+                            return;
+                        end
+                        allresponseTimes = obj.blocks{i}.responseTime < diff(obj.blocks{i}.laserOnOff, [], 2);
+                        normresponseTimes = normBlock.responseTime < diff(normBlock.laserOnOff, [], 2);
+                        galvoPos = obj.blocks{i}.galvoPosition;
+                        laserType = [1 2 1]; hemiMod = [-1 1 1];
+                        laserBlock = prc.combineBlocks(obj.blocks{i}, obj.blocks{i}.laserType == laserType(i) & galvoPos(:,1) == 2.5*hemiMod(i)&allresponseTimes);
+                        obj.axesHandles = plt.getAxes(i, length(obj.subjects), 500, 0.8, [80 100 80 40], [100 30]);
+                        
+                        plotOpt.lineStyle = '--';
+                        plt.psychoFits(prc.combineBlocks(normBlock, normresponseTimes), [], plotOpt);
+                        plt.psychoFits(laserBlock);
+                        plt.dataWithErrorBars(laserBlock, 0)
+                        title(sprintf('%s: %d Tri, %d Sess', obj.subjects{i}, length(laserBlock.responseMade), normBlock.nSessions));
+                        xlim([min(normBlock.visValues), max(normBlock.visValues)]);
+                        %                         set(gca, 'XTick', min(normBlock.visValues):1:max(normBlock.visValues));
+                end
+            end
+            figureSize = get(gcf, 'position');
+            mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
+            plt.suplabel('\fontsize{20} Auditory on {\color{red}right, \color{gray}centre, or \color{blue}left}', 't', mainAxes);
+            plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
+            plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
+        end
+        
         function viewJitterPlot(obj, plotType)
             if ~exist('plotType', 'var'); plotType = 'coh'; end
             figure;
@@ -221,25 +303,25 @@
         end
         
         function viewInactivationResults(obj)
+            brainPlot.brainImage=imread('BrainOutlineBW.png');     
             if ~isempty(obj.expDate)
-                runMouseReplicate(copy(obj), {'VisUni(L-R)', 'AudUni(L-R)', 'CohUni(VL-VR)', 'ConUni(AL-AR)'}, 'viewInactivationResults')
+                runMouseReplicate(copy(obj), {'VL', 'VR', 'AL', 'AR', 'CR', 'CL'}, 'viewInactivationResults')
                 return;
             end
             figure;
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.btlrMargins =  [50 100 10 10];
             axesOpt.gapBetweenAxes = [40 0];
-            axesOpt.numOfRows = 2;
+            axesOpt.numOfRows = 3;
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.figureHWRatio = 0.8;
             axesOpt.figureSize = 400;
-            respBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 2);
             for i  = 1:length(obj.subjects)
-                [brainPlot.plotData, brainPlot.pVals, brainPlot.gridXY] = fit.testLaserEffectAtEachSite(respBlock, obj.subjects{i});
                 axesOpt.idx = i;
                 obj.axesHandles = plt.getAxes(axesOpt);
-                brainPlot.title = obj.subjects{i};
-                plt.scanningBrainEffects(brainPlot);
+                [brainPlot.normBlock, brainPlot.laserBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 1);         
+                brainPlot.condition = obj.subjects{i};
+                plt.inactivatedBrain(brainPlot);
             end
         end
         
@@ -301,7 +383,7 @@
         
         function runMouseReplicate(obj, subjectNames, funString)
             for i = 1:length(obj.subjects)
-                replicatedObj = copy(obj);
+                replicatedObj = obj;
                 replicatedObj.subjects = subjectNames;
                 replicatedObj.blocks = repmat(replicatedObj.blocks(i), length(replicatedObj.subjects),1);
                 replicatedObj.params = repmat(replicatedObj.params(i), length(replicatedObj.subjects),1);
@@ -316,9 +398,7 @@
         function [normBlock, laserBlock] = getMaxNumberOfTrials(block, inactivation, excludedResponses)
             if ~exist('inactivation', 'var'); inactivation = 0; end
             if ~exist('excludedResponses', 'var'); excludedResponses = 0; end
-            if inactivation == 2
-                normBlock = prc.combineBlocks(block, block.laserSession~=0 & block.responseMade~=excludedResponses);
-            elseif mode(block.laserSession>0)==1 || inactivation
+            if mode(block.laserSession>0)==1 || inactivation
                 normBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType==0 & block.responseMade~=excludedResponses);
                 laserBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType~=0 & block.responseMade~=excludedResponses);
             else, normBlock = prc.combineBlocks(block, block.laserSession==0 & block.responseMade~=0);
