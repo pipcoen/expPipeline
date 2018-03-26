@@ -227,8 +227,8 @@ allConditions = [audAmplitude audInitialAzimuth audStimMobile visContrast(:,1) v
 uniqueConditions = unique([p.audAmplitude' p.audInitialAzimuth' p.audStimMobile' visContrastRight' visContrastLeft' p.requestedCoherence'], 'rows');
 
 %Create a set of unique conditions, where each row is a condition in the order: [incoherent conditions; right conditions; left conditions]. 
-leftCoherentInitialConditions = uniqueConditions(uniqueConditions(:,end)<0.5 | (uniqueConditions(:,5)>0&uniqueConditions(:,4)==0),:);
-rightCoherentInitialConditions = uniqueConditions(uniqueConditions(:,end)>0.5| (uniqueConditions(:,4)>0&uniqueConditions(:,5)==0),:);
+leftCoherentInitialConditions = uniqueConditions((uniqueConditions(:,end)<0.5&uniqueConditions(:,5)>0&uniqueConditions(:,4)>0) | (uniqueConditions(:,5)>0&uniqueConditions(:,4)==0),:);
+rightCoherentInitialConditions = uniqueConditions((uniqueConditions(:,end)>0.5&uniqueConditions(:,5)>0&uniqueConditions(:,4)>0) | (uniqueConditions(:,4)>0&uniqueConditions(:,5)==0),:);
 incoherentInitialConditions = uniqueConditions(uniqueConditions(:,end)==0.5 & (uniqueConditions(:,5)>0&uniqueConditions(:,4)>0),:);
 if size(leftCoherentInitialConditions,1)~= (size(rightCoherentInitialConditions,1)); warning('Imbalanced right and left conditions'); end
 uniqueConditions = [incoherentInitialConditions; rightCoherentInitialConditions; leftCoherentInitialConditions];
