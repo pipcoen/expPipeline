@@ -268,10 +268,9 @@
             axesOpt.figureHWRatio = 0.8;
             axesOpt.figureSize = 400;
             respBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 2);
-            respBlock = prc.combineBlocks(respBlock, respBlock.galvoPosition(:,2)~=4.5);
-            normBlock = prc.combineBlocks(respBlock, respBlock.laserType==0);
-            uniBlock = prc.combineBlocks(respBlock, respBlock.laserType==1);
-            bilBlock = prc.combineBlocks(respBlock, respBlock.laserType==2);
+            normBlock = prc.combineBlocks(respBlock, respBlock.galvoPosition(:,2)~=4.5 & respBlock.laserType==0);
+            uniBlock = prc.combineBlocks(respBlock, respBlock.galvoPosition(:,2)~=4.5 & respBlock.laserType==1);
+            bilBlock = prc.combineBlocks(respBlock, respBlock.galvoPosition(:,2)~=4.5 & respBlock.laserType==2);
             
             for i  = 1:length(obj.subjects)
                 switch lower(plotType)
@@ -282,16 +281,16 @@
                         
                         tempBlock = prc.getDefinedSubest(normBlock, obj.subjects{i});
                         scanPlot.data = scanPlot.data - prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
-                        axesOpt.numOfRows = 4;
-                        scanPlot.addTrialNumber = 1;
+                        
+                        
                     case {'dif'}
                         runMouseReplicate(copy(obj), {'VisUni(L-R)', 'AudUni(L-R)', 'CohUni(VL-VR)', 'ConUni(AL-AR)'}, 'viewInactivationResults(''dif'')');
-                        [scanPlot.plotData, scanPlot.pVals, scanPlot.gridXY, scanPlot.nTrials] = fit.testLaserEffectAtEachSite(respBlock, obj.subjects{i});
                 end
+                [brainPlot.plotData, brainPlot.pVals, brainPlot.gridXY, brainPlot.nTrials] = fit.testLaserEffectAtEachSite(respBlock, obj.subjects{i});
                 axesOpt.idx = i;
                 obj.axesHandles = plt.getAxes(axesOpt);
-                scanPlot.title = obj.subjects{i};
-                plt.scanningBrainEffects(scanPlot);
+                brainPlot.title = obj.subjects{i};
+                plt.scanningBrainEffects(brainPlot, 1);
             end
         end
         

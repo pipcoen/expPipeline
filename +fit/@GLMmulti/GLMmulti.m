@@ -36,8 +36,11 @@ classdef GLMmulti < matlab.mixin.Copyable
             
             uniA = obj.blockData.audValues;
             uniV = obj.blockData.visValues;
+            comb = unique([obj.blockData.visDiff obj.blockData.audDiff], 'rows');
             numA = length(uniA);
             numV = length(uniV);
+            numC = length(comb);
+            
             
             maxContrast = max(abs(uniV));
             audRepMat = repmat(uniA,1,200)';
@@ -46,7 +49,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             
             %%
             indiSum = @(pRange,diffVals) ...
-                sum(cell2mat(arrayfun(@(x,y,z) x.*(y{1}==z), pRange,repmat({diffVals},1,length(unique(diffVals))), unique(diffVals)', 'uni', 0)),2);
+                sum(cell2mat(arrayfun(@(x,y,z) x.*(all(y{1}==z{1},2)), pRange,repmat({diffVals},1,length(unique(diffVals, 'rows'))), num2cell(unique(diffVals, 'rows'),2)', 'uni', 0)),2);
             
             sqrtDiff = @(diffVals) ...
                 sqrt(abs(diffVals)).*sign(diffVals);
@@ -76,11 +79,32 @@ classdef GLMmulti < matlab.mixin.Copyable
                         indiSum(P(4:(3+numA))+in{3}(4:(3+numA)),in{2}));
                 case 'Simp-emp'
                     allValues = [cellfun(@(x) [num2str(x) 'Vis'], num2cell(uniV), 'uni', 0); cellfun(@(x) [num2str(x) 'Aud'], num2cell(uniA), 'uni', 0)];
-                    obj.prmLabels = ['bias'; allValues]';
+                    obj.prmLabels = ['bias'; allValues(:)]';
                     obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
                     obj.inputFun = @(b)([b.visDiff, b.audDiff]);
                     obj.modelFun = @(P,in)(P(1) + indiSum(P(2:(1+numV)),in(:,1)) + indiSum(P((2+numV):(1+numV+numA)),in(:,2)));
                     obj.evalPoints = [vGrid(:) aGrid(:)];
+                case 'Simp-aud'
+                    allValues = cellfun(@(x) [num2str(x) 'Aud'], num2cell(uniA), 'uni', 0);
+                    obj.prmLabels = ['bias'; allValues(:)]';
+                    obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
+                    obj.inputFun = @(b)([b.visDiff, b.audDiff]);
+                    obj.modelFun = @(P,in)(P(1) + indiSum(P(2:(1+numA)),in(:,2)));
+                    obj.evalPoints = [vGrid(:) aGrid(:)];
+                case 'Simp-vis'
+                    allValues = cellfun(@(x) [num2str(x) 'Vis'], num2cell(uniV), 'uni', 0);
+                    obj.prmLabels = ['bias'; allValues(:)]';
+                    obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
+                    obj.inputFun = @(b)([b.visDiff, b.audDiff]);
+                    obj.modelFun = @(P,in)(P(1) + indiSum(P(2:(1+numV)),in(:,1)));
+                    obj.evalPoints = [vGrid(:) aGrid(:)];
+                case 'Full-emp'
+                    allValues = [cellfun(@(x) [sprintf('%0.1f', x), 'VisAud'], num2cell(comb,2), 'uni', 0)];
+                    obj.prmLabels = ['bias'; allValues]';
+                    obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
+                    obj.inputFun = @(b)([b.visDiff, b.audDiff]);
+                    obj.modelFun = @(P,in)(P(1) + indiSum(P(2:(1+numC)),in));
+                    obj.evalPoints = comb;
                 otherwise
                     error('Model does not exist');
             end

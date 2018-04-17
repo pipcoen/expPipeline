@@ -10,24 +10,22 @@ subjectPath = [subject '\' expDate '\' sessionNum '\'];
 expRef = [expDate '_' sessionNum '_' subject];
 processedFileName = [subject '\' subject '_' expDate([3:4 6:7 9:10]) '_' sessionNum  'Proc.mat'];
 
-expInfo = '\\zubjects.cortexlab.net\Subjects\';
-processedFolder = 'E:\Dropbox (Neuropixels)\MouseData\ProcessedData\';
-sharedFolder = '\\zubjects.cortexlab.net\lab\Share\Pip\ProcessedData\';
-suite2POutput = 'E:\Dropbox (Neuropixels)\MouseData\Suite2POutput\';
-rawBackup = 'E:\Dropbox (Neuropixels)\MouseData\RawBehavior\';
-mouseRecord = 'E:\Dropbox (Neuropixels)\MouseData\MouseRecord.xlsx';
-
-if strcmp(hostname, 'ziggurat')
-    expInfo = '\\zubjects.cortexlab.net\Subjects\';
-    processedFolder = 'C:\Users\carandini\Dropbox (Neuropixels)\MouseData\ProcessedData\';
-    sharedFolder = '\\zubjects.cortexlab.net\lab\Share\Pip\ProcessedData\';
-    suite2POutput = 'C:\Users\carandini\Dropbox (Neuropixels)\MouseData\Suite2POutput\';
-    rawBackup = 'C:\Users\carandini\Dropbox (Neuropixels)\MouseData\RawBehavior\';
-    mouseRecord = 'C:\Users\carandini\Dropbox (Neuropixels)\MouseData\MouseRecord.xlsx';
+if contains(hostname, 'ziggurat')
+    stubName = 'C:\Users\carandini';
+elseif contains(hostname, 'ziptop')
+    stubName = 'C:';
+else, stubName = 'E:';
 end
 
+expInfo = '\\zubjects.cortexlab.net\Subjects\';
+processedFolder = [stubName '\Dropbox (Neuropixels)\MouseData\ProcessedData\'];
+sharedFolder = '\\zubjects.cortexlab.net\lab\Share\Pip\ProcessedData\';
+suite2POutput = [stubName '\Dropbox (Neuropixels)\MouseData\Suite2POutput\'];
+rawBackup = [stubName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
+mouseRecord = [stubName '\Dropbox (Neuropixels)\MouseData\MouseRecord.xlsx'];
+
 if contains(lower(pathType), {'directorycheck';'processedcheck';'explist'})
-    if strcmp(hostname, 'homerig'), directoryCheck = [1 0];
+    if contains(hostname, {'homerig'; 'ziptop'}), directoryCheck = [1 0];
     else; directoryCheck = cellfun(@(x) exist(x, 'dir'), {processedFolder;sharedFolder})>0;
     end
 end

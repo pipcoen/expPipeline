@@ -21,12 +21,21 @@ end
 selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'==0);
 if isempty(expList); warning(['No processed files matching ' subject]); blk = {}; prm = {}; raw = {}; return; end
 expDates = datenum(cell2mat({selectedFiles.expDate}'));
+if strcmp(requestedDates, 'behavior')
+    requestedDates = prc.behavioralDates(subject{1});
+end
 
 switch lower(requestedDates{1}(1:3))
     case 'las'
         if numel(requestedDates{1})>4
             lastDate = str2double(requestedDates{1}(5:end));
             selectedDates = expDates(end-min([lastDate length(expDates)])+1:end);
+        else; selectedDates = expDates(end);
+        end
+    case 'fir'
+        if numel(requestedDates{1})>5
+            lastDate = str2double(requestedDates{1}(6:end));
+            selectedDates = expDates(1:min([length(expDates), lastDate]));
         else; selectedDates = expDates(end);
         end
     case 'yes'; selectedDates = expDates(end-1);

@@ -1,4 +1,4 @@
-function [deltaRightGrid, pValGrid, gridXY] = testLaserEffectAtEachSite(block, testType, siteIdx)
+function [deltaRightGrid, pValGrid, gridXY, nTrials] = testLaserEffectAtEachSite(block, testType, siteIdx)
 switch testType
     case 'VisUni(L-R)'
         leftBlock = prc.combineBlocks(block, block.trialType==2 & block.correctResponse==1);
@@ -13,7 +13,7 @@ switch testType
         leftBlock = prc.combineBlocks(block, block.trialType==4 & block.audInitialAzimuth<0);
         rightBlock = prc.combineBlocks(block, block.trialType==4 & block.audInitialAzimuth>0);
 end
-nShuffles = 1000;
+nShuffles = 500;
 inactiveGrid = cell(nShuffles+1, 2);
 for i = 1:nShuffles+1
     for j = 1:2
@@ -28,6 +28,7 @@ for i = 1:nShuffles+1
     inactiveGrid{i,j} = inactiveGrid{i,j} - mean(normBlock.responseMade==2);
     end
 end 
+nTrials = prc.makeGrid(laserBlock, laserBlock.responseMade==2, @length, 'galvouni');
 leftResults = reshape(cell2mat(inactiveGrid(:,1)'), [size(gridXY{1}), nShuffles+1]);
 rightResults = reshape(cell2mat(inactiveGrid(:,2)'), [size(gridXY{1}), nShuffles+1]);
 diffGrid = leftResults + rightResults;

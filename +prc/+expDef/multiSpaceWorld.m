@@ -183,7 +183,7 @@ visInitialAzimuth(visContrast==0) = inf;              %Change case when visContr
 p.visInitialAzimuth(p.visContrast == 0) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
 
 %Galvo position is the position of the galvos on each trial. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
-%trials are when the laserTypeValue for that trial was 2. Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
+%trials are when the laserTypeValue for that trial was 2). Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
 %-ve index indicating the left himisphere). That's why we need to get the galvo posiiton on each trial by using the abs of this index and then
 %multiplying the ML coordinate by the sign of the original index.
 laserTypeValues = e.laserTypeValues(vIdx)';
@@ -341,9 +341,9 @@ n.grids.conditions(gridIdx) = uniqueConditionRowLabels;
 
 p.maxRepeatIncorrect = max(p.maxRepeatIncorrect);
 p.numberConditions = length(unique([audAmplitude, visContrast audInitialAzimuth visInitialAzimuth], 'rows'));
-p.audPerformance = round(mean(n.feedback(n.trialType==1 & n.laserType == 0))*100);
-p.visPerformance = round(mean(n.feedback(n.trialType==2 & n.laserType == 0))*100);
-p.mulPerformance = round(mean(n.feedback(n.trialType==3 & n.laserType == 0))*100);
+p.audPerformance = round(mean(n.feedback(n.trialType==1 & n.laserType == 0 & n.responseMade~=0)>0)*100);
+p.visPerformance = round(mean(n.feedback(n.trialType==2 & n.laserType == 0 & n.responseMade~=0)>0)*100);
+p.mulPerformance = round(mean(n.feedback(n.trialType==3 & n.laserType == 0 & n.responseMade~=0)>0)*100);
 p.validTrials = sum(vIdx);
 
 x.validTrials = vIdx;
