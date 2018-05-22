@@ -10,10 +10,16 @@ end
 switch condition
     case 'Bias'
         plotData = plotData(:,:,1);
-    case 'VR-VL'
-        plotData = plotData(:,:,3) - plotData(:,:,2);
-    case 'AR-AL'
-        plotData =plotData(:,:,4) - plotData(:,:,6);
+    case 'VR'
+        plotData = plotData(:,:,2);
+    case 'VL'
+        plotData = plotData(:,:,3);
+    case 'A0'
+        plotData = plotData(:,:,5);
+    case 'AR'
+        plotData = plotData(:,:,4);
+    case 'AL'
+        plotData = plotData(:,:,6);
 end
 title(condition);
 scatter(gridXY{1}(:), gridXY{2}(:), 150, plotData(:),'o','filled'); axis equal;  drawnow

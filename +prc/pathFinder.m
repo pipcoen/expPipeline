@@ -19,7 +19,7 @@ end
 
 expInfo = '\\zubjects.cortexlab.net\Subjects\';
 processedFolder = [stubName '\Dropbox (Neuropixels)\MouseData\ProcessedData\'];
-sharedFolder = '\\zubjects.cortexlab.net\lab\Share\Pip\ProcessedData\';
+sharedFolder = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
 suite2POutput = [stubName '\Dropbox (Neuropixels)\MouseData\Suite2POutput\'];
 rawBackup = [stubName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
 mouseRecord = [stubName '\Dropbox (Neuropixels)\MouseData\MouseRecord.xlsx'];

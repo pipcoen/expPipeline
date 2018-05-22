@@ -125,39 +125,44 @@
         end
         
         function getGLMPerturbations(obj, modelString)
-            if ~exist('modelString', 'var'); modelString = 'SqrtLogisticSplit'; end
+            if ~exist('modelString', 'var'); modelString = 'SqrtLogisticSplitDelta'; end
             if ~isempty(obj.expDate)
-                runMouseReplicate(copy(obj), {'Bias', 'VR-VL', 'AR-AL'}, 'getGLMPerturbations')
+                runMouseReplicate(copy(obj), {'Bias', 'VR', 'VL', 'A0', 'AR', 'AL'}, 'getGLMPerturbations')
                 return;
             end
             figure;
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.btlrMargins =  [50 100 10 10];
             axesOpt.gapBetweenAxes = [40 0];
-            axesOpt.numOfRows = 3;
+            axesOpt.numOfRows = 2;
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.figureHWRatio = 0.8;
             axesOpt.figureSize = 400;
+            
+            goodBlocks = spatialAnalysis.removePoorAuditoryDays(obj.blocks{1});
+            [normBlock, laserBlock] = spatialAnalysis.getMaxNumberOfTrials(goodBlocks, 1);
+            normBlock = prc.combineBlocks(normBlock, normBlock.galvoPosition(:,2)~=4.5);
+            laserBlock = prc.combineBlocks(laserBlock, laserBlock.galvoPosition(:,2)~=4.5 & laserBlock.laserType == 1);
+            obj.glmFit = fit.GLMmulti(normBlock);
+            obj.glmFit.GLMMultiModels(modelString);
+            obj.glmFit.fit;
+            [galvoBlocks, gridXY] = prc.makeGrid(laserBlock, laserBlock, [], 'galvouni', 2);
+            plotData = nan([size(galvoBlocks), length(obj.glmFit.prmInit)]);
+            
+            for j = find(~cellfun(@isempty, galvoBlocks))'
+                if length(galvoBlocks{j}.responseMade)<100; continue; end
+                subGLM = fit.GLMmulti(galvoBlocks{j});
+                subGLM.GLMMultiModels(modelString);
+                subGLM.prmInit = obj.glmFit.prmFits;
+                subGLM.fit;
+                [xIdx, yIdx] = ind2sub(size(galvoBlocks), j);
+                plotData(xIdx, yIdx, :) = subGLM.prmFits;
+                numTrials(xIdx, yIdx, 1) = length(galvoBlocks{j}.responseMade);
+            end
             for i  = 1:length(obj.subjects)
                 axesOpt.idx = i;
+                hold on; box off;
                 obj.axesHandles = plt.getAxes(axesOpt);
-                [normBlock, laserBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
-                obj.glmFit{i} = fit.GLMmulti(normBlock);
-                obj.glmFit{i}.setModel(modelString);
-                obj.glmFit{i}.fit;
-                [galvoBlocks, gridXY] = prc.makeGrid(laserBlock, laserBlock, [], 'galvouni', 2);
-                plotData = nan([size(galvoBlocks), length(obj.glmFit{i}.prmInit)]);
-                for j = find(~cellfun(@isempty, galvoBlocks))'
-                    if length(galvoBlocks{j}.responseMade)<100; continue; end
-                    galvoBlocks{j}.prmInit = obj.glmFit{i}.prmFits;
-                    subGLM = fit.GLMmulti(galvoBlocks{j});
-                    subGLM.setModel(modelString);
-                    hold on; box off;
-                    subGLM.fit;
-                    [xIdx, yIdx] = ind2sub(size(galvoBlocks), j);
-                    plotData(xIdx, yIdx, :) = subGLM.prmFits-(obj.glmFit{i}.prmFits);
-                    numTrials(xIdx, yIdx, 1) = length(galvoBlocks{j}.responseMade);
-                end
                 plt.inactivatedBrainPerturbations(plotData, gridXY, obj.subjects{i}, numTrials);
             end
         end
@@ -171,7 +176,8 @@
             axesOpt.figureSize = 500;
             for i  = 1:length(obj.subjects)
                 axesOpt.idx = i;
-                normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+                goodBlock = spatialAnalysis.removePoorAuditoryDays(obj.blocks{i});
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(goodBlock);
                 plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
                 obj.axesHandles = plt.getAxes(axesOpt);
                 switch plotType(1:3)
@@ -254,8 +260,8 @@
             if ~exist('plotType', 'var'); plotType = 'uni'; end
             if ~isempty(obj.expDate)
                 switch lower(plotType)
-                    case {'uni'}
-                        runMouseReplicate(copy(obj), {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'}, 'viewInactivationResults(''uni'')');
+                    case {'uni'; 'bil'}
+                        runMouseReplicate(copy(obj), {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'}, ['viewInactivationResults(''' lower(plotType) ''')']);
                     case {'dif'}
                         runMouseReplicate(copy(obj), {'VisUni(L-R)', 'AudUni(L-R)', 'CohUni(VL-VR)', 'ConUni(AL-AR)'}, 'viewInactivationResults(''dif'')');
                 end
@@ -275,8 +281,12 @@
             
             for i  = 1:length(obj.subjects)
                 switch lower(plotType)
-                    case {'uni'}
-                        tempBlock = prc.getDefinedSubest(uniBlock, obj.subjects{i});
+                    case {'uni'; 'bil'}
+                        if strcmpi(plotType, 'uni'); tempBlock = prc.getDefinedSubest(uniBlock, obj.subjects{i});
+                        elseif strcmpi(plotType, 'bil'); tempBlock = prc.getDefinedSubest(bilBlock, obj.subjects{i});
+                            normBlock.galvoPosition(:,1) = abs(normBlock.galvoPosition(:,1));
+                        end
+                        
                         [scanPlot.data, scanPlot.gridXY] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
                         [scanPlot.nTrials] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @length, 'galvouni');
                         
@@ -374,7 +384,7 @@
             for i = 1:length(subjects)
                 if excessData(2); continue; end
                 mouseIdx = strcmp({obj.blocks.subject}', subjects{i});
-                [conditionSets, ~, setIdx] = unique(cellfun(@(x) num2str(x(:)'),{obj.blocks(mouseIdx).uniqueConditions}','uni',0));
+                [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) num2str([x(:)', unique(y(:))]),{obj.blocks(mouseIdx).uniqueConditions}', {obj.blocks(mouseIdx).laserPower}','uni',0));
                 if length(conditionSets)>1
                     fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', subjects{i});
                     retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
@@ -425,6 +435,14 @@
                 laserBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType~=0 & block.responseMade~=excludedResponses);
             else, normBlock = prc.combineBlocks(block, block.laserSession==0 & block.responseMade~=0);
             end
+        end
+        
+        function block = removePoorAuditoryDays(block)
+            audBlocks = prc.combineBlocks(block, block.trialType==1 & block.laserType == 0 & block.responseMade~=0);
+            sessList = unique(audBlocks.sessionIdx);
+            audPerfomance = arrayfun(@(x) mean(audBlocks.feedback(audBlocks.sessionIdx == x)==1), sessList);
+            audTrials = arrayfun(@(x) length(audBlocks.feedback(audBlocks.sessionIdx == x)==1), sessList);
+            block = prc.combineBlocks(block, ismember(block.sessionIdx, sessList(audPerfomance>0.7 & audTrials > 50)));
         end
         
         function alterFigure(currentFigureHandle, ~)
