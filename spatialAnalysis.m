@@ -33,7 +33,7 @@
         end
         
         function viewBoxPlots(obj, plotType, alter)
-            if ~exist('plotType', 'var'); plotType = 'mul'; end
+            if ~exist('plotType', 'var'); plotType = 'res'; end
             if ~exist('alter', 'var'); alter = 0; figure; else; axesOpt.reposition = 0; end
             if isgraphics(alter,'figure'); clf; end
             
@@ -95,30 +95,30 @@
         end
         
         function viewGLMFit(obj, modelString)
-            if ~exist('modelString', 'var'); modelString = 'SqrtLogisticSplit'; end
+            if ~exist('modelString', 'var'); modelString = 'SqrtLogisticSplitDelta'; end
             figure;
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.btlrMargins = [80 100 80 40];
             axesOpt.gapBetweenAxes = [100 60];
             for i  = 1:length(obj.subjects)
                 axesOpt.idx = i;
-                [normBlock, laserBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
-                laserBlock = prc.combineBlocks(laserBlock, laserBlock.laserSession==1);
-                galvoPos = laserBlock.galvoPosition;
+                [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+%                 laserBlock = prc.combineBlocks(laserBlock, laserBlock.laserSession==1);
+%                 galvoPos = laserBlock.galvoPosition;
 %                 selectedPos = ismember(galvoPos, [0.6 3; 0.6 2; 1.8,2], 'rows');
-                                                selectedPos = ismember(galvoPos, [1.8 -4; 3 -4; 3 -3], 'rows');
+%                                                 selectedPos = ismember(galvoPos, [1.8 -4; 3 -4; 3 -3], 'rows');
                 %                                 selectedPos = ismember(galvoPos, [3 -2; 1.8, -2], 'rows');
                 %                                 selectedPos = ismember(galvoPos, [3 -1; 4.2, -1;3 0; 4.2, 0], 'rows');
 %                 selectedPos = ismember(galvoPos, [-5, -4;-5, -3;-5, -2;], 'rows');
-                laserBlock = prc.combineBlocks(laserBlock, selectedPos>0);
+%                 laserBlock = prc.combineBlocks(laserBlock, selectedPos>0);
                 %                 laserBlock = normBlock;
                 obj.axesHandles = plt.getAxes(axesOpt);
-                obj.glmFit{i} = fit.GLMmulti(laserBlock);
-                obj.glmFit{i}.setModel(modelString);
+                obj.glmFit{i} = fit.GLMmulti(normBlock);
+                obj.glmFit{i}.GLMMultiModels(modelString);
                 obj.glmFit{i}.fit;
                 obj.glmFit{i}.plotFit;
                 hold on; box off;
-                plt.dataWithErrorBars(laserBlock, 0);
+                plt.dataWithErrorBars(normBlock, 1);
                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
                 yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
             end
@@ -282,15 +282,15 @@
             for i  = 1:length(obj.subjects)
                 switch lower(plotType)
                     case {'uni'; 'bil'}
-                        if strcmpi(plotType, 'uni'); tempBlock = prc.getDefinedSubest(uniBlock, obj.subjects{i});
-                        elseif strcmpi(plotType, 'bil'); tempBlock = prc.getDefinedSubest(bilBlock, obj.subjects{i});
+                        if strcmpi(plotType, 'uni'); tempBlock = prc.getDefinedSubset(uniBlock, obj.subjects{i});
+                        elseif strcmpi(plotType, 'bil'); tempBlock = prc.getDefinedSubset(bilBlock, obj.subjects{i});
                             normBlock.galvoPosition(:,1) = abs(normBlock.galvoPosition(:,1));
                         end
                         
                         [scanPlot.data, scanPlot.gridXY] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
                         [scanPlot.nTrials] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @length, 'galvouni');
                         
-                        tempBlock = prc.getDefinedSubest(normBlock, obj.subjects{i});
+                        tempBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});
                         scanPlot.data = scanPlot.data - prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
                         axesOpt.numOfRows = 4;
                         scanPlot.addTrialNumber = 1;
