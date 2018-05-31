@@ -346,6 +346,10 @@ p.visPerformance = round(mean(n.feedback(n.trialType==2 & n.laserType == 0 & n.r
 p.mulPerformance = round(mean(n.feedback(n.trialType==3 & n.laserType == 0 & n.responseMade~=0)>0)*100);
 p.validTrials = sum(vIdx);
 
+if p.laserOnsetDelays(1) ~= p.laserOnsetDelays(2)
+timelineInfo = prc.extractTimelineInfo(x); 
+end
+
 x.validTrials = vIdx;
 newParams = p;
 newBlock = n;
