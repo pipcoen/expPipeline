@@ -132,7 +132,7 @@ if sum(vIdx) > 100
     
     if  p.laserPower>0 && p.laserOnsetDelays(1) ~= p.laserOnsetDelays(2)
         timelineInfo = prc.extractTimelineInfo(x);
-        vIdx(timelineInfo.badTrials) = -1;
+        
     end
     
     vIdx = vIdx>0;

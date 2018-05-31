@@ -40,11 +40,11 @@ t.TTL_offsets = t.timebase(logical([diff(t.TTL)==-1; 0]));
 %
 %             t.laserOnTimes = t.TTL_onsets + 5/1000;
 
-t.TTL_onsets = t.TTL_onsets(1:numTrials);
-blockTimelineDelay = median(t.TTL_onsets - b.TTL_onsets);
+o.TTL_onsets = t.TTL_onsets(1:numTrials);
+blockTimelineDelay = median(o.TTL_onsets - b.TTL_onsets);
 o.trialStartTimes = b.trialStartTimes + blockTimelineDelay; %Get corrected trial start times
-o.expectedScreenOnTime = b.stimOnTimes + blockTimelineDelay; %Get expected time of stimulus onset
-o.expectedTTLTime = b.TTL_onsets + blockTimelineDelay; %Get expected time of TTL onset
+o.expScreenOnTime = b.stimOnTimes + blockTimelineDelay; %Get expected time of stimulus onset
+o.expTTLTime = b.TTL_onsets + blockTimelineDelay; %Get expected time of TTL onset
 
 %Now go through each trial, and identify the time of the laser
 %and stimulus onset
@@ -97,9 +97,9 @@ try
     o.laserTrials = find(b.events.laserTypeValues>0);
     error = o.laserOnsetDelay(o.laserTrials) - b.IntendedOnsetDelay(o.laserTrials);
     o.badTrials = o.laserTrials(abs(error) > 0.1);
-    o.goodTrials = setdiff(1:numTrials,o.badTrials);
+    o.goodTrials = setdiff(1:numTrials,badTrials);
 %     D = structfun(@(f) f(goodTrials,:), D, 'uni', 0); %?
-    fprintf('%d bad trials out of %d laser trials\n',length(o.badTrials),length(o.laserTrials));
+    fprintf('%d bad trials out of %d laser trials\n',length(badTrials),length(laserTrials));
 catch me
     disp(me);
 end
