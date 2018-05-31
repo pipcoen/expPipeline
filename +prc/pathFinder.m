@@ -34,7 +34,7 @@ switch lower(pathType)
     case 'origblock'; pathOut = [expInfo subjectPath expRef '_Block.mat'];
     case 'origblockfolder'; pathOut = [expInfo subjectPath(1:end-1)];
     case 'rawblock'; pathOut = [rawBackup subjectPath expRef '_Block.mat'];
-    case 'rawtimeline'; pathOut = [rawBackup subjectPath expRef '_Timeline.mat'];
+    case 'rawtimeline'; pathOut = [expInfo subjectPath expRef '_Timeline.mat'];
     case 'galvolog'; pathOut = [rawBackup subjectPath expRef '_galvoLog.mat'];
     case 'rawparameters'; pathOut = [rawBackup subjectPath expRef '_parameters.mat'];
     case 'processeddata'; pathOut = [processedFolder processedFileName];
