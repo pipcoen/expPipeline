@@ -82,10 +82,11 @@ files2Run = processListIdx(processListIdx>0)';
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
-srtIdx = 0;
+srtIdx = 1715;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedMice); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name
     if contains(expList(i).subject, {'PC008'}); continue; end      %SKIP PC008 for now...
+    if contains(expList(i).expDef, {'Temporal'}); continue; end      %SKIP PC008 for now...
     
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;
@@ -121,7 +122,7 @@ for i = files2Run(files2Run>srtIdx)
     if isempty(which(func2str(x.blockFunction))); continue; end
     if any([~varIdx(1) redoBlocks])
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
-        convBlockFile(x, 0);
+        convBlockFile(x);
     end
 end
 
@@ -132,12 +133,11 @@ cellfun(@prc.updateParamChangeSpreadsheet, changedMice(contains(changedMice, 'PC
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
-function x = convBlockFile(x, testTag)
+function x = convBlockFile(x)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 
-if ~strcmpi(x.rigType, 'training') || x.oldParams.laserPower>0
-    x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
+if ~strcmpi(x.rigType, 'training')
     x.oldBlock.blockTimeOffset = prc.alignBlockTimes(x.oldBlock, x.timeline);
 end
 if x.galvoLog~=0; x.galvoLog = load(x.galvoLog); end
@@ -166,7 +166,6 @@ x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
-if testTag; save x x; return; end
 [blk, prm, raw] = x.blockFunction(x); %#ok
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~exist(fileparts(strrep(x.processedData,'dData','dDataLite')), 'dir'); mkdir(fileparts(strrep(x.processedData,'dData','dDataLite'))); end

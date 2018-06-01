@@ -97,23 +97,6 @@ v = x.standardizedBlock.paramsValues;  %Parameter values at start of trial
 e = x.standardizedBlock.events;        %Event structure
 n = x.newBlock;                        %newBlock, already populated with subject, expDate, sessionNum, rigName, and rigType
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
-
-eventsFields = fields(e);
-checkTimes = cellfun(@(x) find(e.(x)<e.expStartTimes(1)), eventsFields, 'uni', 0);
-checkTimes = checkTimes(cellfun(@(x) strcmp(x(end-4:end), 'Times'), eventsFields));
-if any(~cellfun(@isempty, checkTimes))
-    eventsFields = eventsFields(cellfun(@(x) strcmp(x(end-4:end), 'Times'), eventsFields));
-    if any(~contains(eventsFields(~cellfun(@isempty, checkTimes)), {'laserPowerTimes','galvoTypeTimes','laserDurationTimes','galvoCoordsTimes'}));
-        load('C:\Users\carandini\Dropbox (Neuropixels)\MouseData\TimingErrors.mat');
-        if ~exist('errorStruct', 'var'); errorStruct = struct; idx = 1; else, idx = length(errorStruct)+1; end
-        fieldNames = fields(n);
-        for j = 1:(length(fieldNames)-2)
-            errorStruct(idx).(fieldNames{j}) = n.(fieldNames{j});
-        end
-        errorStruct(idx).fieldsIdentified = eventsFields(~cellfun(@isempty, checkTimes));
-        save('C:\Users\carandini\Dropbox (Neuropixels)\MouseData\TimingErrors.mat', 'errorStruct');
-    end
-end
 vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
@@ -131,6 +114,7 @@ if sum(vIdx) > 100
     vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
     
     if  p.laserPower>0 && p.laserOnsetDelays(1) ~= p.laserOnsetDelays(2)
+        x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
         timelineInfo = prc.extractTimelineInfo(x);
         vIdx(timelineInfo.badTrials) = -1;
     end
@@ -316,17 +300,17 @@ n.visValues = (unique(uniqueDiff(:,2)));
 n.visAltitude = [v(vIdx).visAltitude]';
 n.visSigma = [v(vIdx).visSigma]';
 n.galvotype = e.galvoTypeValues(vIdx)';
-n.galvotype = e.galvoTypeValues(vIdx)';
+n.galvoPosition = galvoPosition;
 n.waveformType = [v(vIdx).waveformType]';
 n.laserType = e.laserTypeValues(vIdx)';
 n.laserPower = (e.laserPowerValues(vIdx)');
 n.laserSession = sum(unique(n.laserType))+(n.laserPower*0);
-if exist(timelineInfo)
+if exist('timelineInfo', 'var')
     n.laserOnsetDelay = timelineInfo.laserOnsetDelay(vIdx);
-    n.laserOnOff = [timelineInfo.laserOnTime(vIdx), e.galvoAndLaserEndTimes(vIdx)']-trialStartTimes;
+    n.laserOnOff = [timelineInfo.laserOnTime(vIdx), timelineInfo.laserOnTime(vIdx)+[v(vIdx).laserDuration]']-trialStartTimes;
 else
     n.laserOnOff = [e.galvoTTLTimes(vIdx)', e.galvoAndLaserEndTimes(vIdx)']-trialStartTimes;
-    n.laserOnsetDelay = zeros(length(vIdx,1);
+    n.laserOnsetDelay = n.laserType*0;
 end
 n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.uniqueConditions = uniqueConditions;
@@ -334,16 +318,6 @@ n.uniqueDiff = uniqueDiff;
 n.uniqueConditionRowLabels = uniqueConditionRowLabels;
 n.conditionLabel = conditionLabel;
 n.conditionRowIdx = conditionRowIdx;
-
-% Add back trials where a response was made after timeouts
-
-
-% responseAfterTimeout = [0 diff(e.responseTypeValues(1:length(vIdx))~=0)]==1;
-% firstResponseAfterNewTrial = ;
-% 
-% responseAfterTimeOut = double([0 e.timeOutCountValues(2:length(x.validTrials))==0])';
-% responseAfterTimeOut(responseAfterTimeOut>0) = e.timeOutCountValues(find(responseAfterTimeOut)-1);
-% responseAfterTimeOutString = (responseAfterTimeOut == (e.repeatNumValues(1:length(vIdx>0))'-1) & e.repeatNumValues(1:length(vIdx>0))'>1);
 
 
 %Create some useful grids of aud and vis values. Add these to the block.
@@ -374,7 +348,7 @@ blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStart
     'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'trialType';'audAmplitude';'audInitialAzimuth';'audValueLeftRight';...
     'audDiff';'audValues';'audType';'visContrast';'visInitialAzimuth';'visValueLeftRight';'visDiff';'visValues';'visAltitude';'visSigma';'galvotype';...
     'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'sequentialTimeOuts';'uniqueConditions';'uniqueDiff';'conditionLabel'; ...
-    'conditionRowIdx'; 'uniqueConditionRowLabels';'grids'; 'timeOutsBeforeResponse'; 'repeatsAfterResponse'};
+    'conditionRowIdx'; 'uniqueConditionRowLabels';'grids'; 'timeOutsBeforeResponse'; 'repeatsAfterResponse'; 'laserOnsetDelay'; 'waveformType'};
 
 prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'galvoType';'laserPower';'laserTypeProportions';'backgroundNoiseAmplitude';'maxRepeatIncorrect' ...
     ;'visContrast';'audAmplitude';'clickDuration';'clickRate';'visAltitude';'visSigma';'audInitialAzimuth';'visInitialAzimuth';'openLoopDuration' ...
