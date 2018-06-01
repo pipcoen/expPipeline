@@ -2,10 +2,12 @@ function logLik = GLMMultiModels(obj, tag, P)
 if ~exist('P', 'var'); obj.modelString = tag; end
 [obj.blockData.audValues, uniA] = deal(unique(obj.blockData.audDiff));
 [obj.blockData.visValues, uniV] = deal(unique(obj.blockData.visDiff));
-obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',600,1)];
 
-% [audGrid,visGrid] = meshgrid(uniA,uniV);
-if strcmpi(tag, 'eval'); visDiff = obj.evalPoints(:,1); audDiff = obj.evalPoints(:,2);
+[audGrid,visGrid] = meshgrid(uniA,uniV);
+comb = unique([obj.blockData.visDiff obj.blockData.audDiff], 'rows');
+if strcmpi(tag, 'eval')
+    visDiff = obj.evalPoints(:,1); audDiff = obj.evalPoints(:,2);
+    obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',600,1)];
 else, audDiff = obj.blockData.audDiff; visDiff = obj.blockData.visDiff;
 end
 
@@ -19,6 +21,27 @@ switch obj.modelString
             audContribution = arrayfun(@(x,y,z) x*(y{1}==z), P(4:end), repmat({audDiff},1,length(uniA)), sort(uniA, 'descend')', 'uni', 0);
             logLik = P(1)+visContribution+sum(cell2mat(audContribution),2);
         end
+        
+    case 'Simp-emp'
+        stimulusParams = [cellfun(@(x) [num2str(x) 'Vis'], num2cell(uniV), 'uni', 0); cellfun(@(x) [num2str(x) 'Aud'], num2cell(uniA), 'uni', 0)];
+        obj.prmLabels = ['bias'; stimulusParams(:)]';
+        if exist('P', 'var')
+            visContribution = arrayfun(@(x,y,z) x*(y{1}==z), P(2:(length(uniV)+1)), repmat({visDiff},1,length(uniV)), sort(uniV, 'descend')', 'uni', 0);
+            audContribution = arrayfun(@(x,y,z) x*(y{1}==z), P((length(uniV)+2):end), repmat({audDiff},1,length(uniA)), sort(uniA, 'descend')', 'uni', 0);
+            
+            logLik = P(1)+sum(cell2mat(visContribution), 2)+sum(cell2mat(audContribution),2);
+        end
+        obj.evalPoints = [visGrid(:) audGrid(:)];
+        
+    case 'Full-emp'
+        stimulusParams = cellfun(@(x) [sprintf('%0.1f', x), 'VisAud'], num2cell(comb,2), 'uni', 0);
+        obj.prmLabels = ['bias'; stimulusParams]';
+        if exist('P', 'var')
+            repeatedValues = repmat({[visDiff, audDiff]},1,size(comb,1));
+            stimulusContributions = arrayfun(@(x,y,z) x.*(all(y{1}==z{1},2)),P(2:end),repeatedValues, num2cell(comb,2)', 'uni', 0);           
+            logLik = P(1)+sum(cell2mat(stimulusContributions), 2);
+        end
+        obj.evalPoints = comb;
 end
 if isempty(obj.prmBounds) || size(obj.prmBounds,2)~= length(obj.prmLabels)
     obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));

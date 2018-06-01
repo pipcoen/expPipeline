@@ -103,15 +103,6 @@
             for i  = 1:length(obj.subjects)
                 axesOpt.idx = i;
                 [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
-%                 laserBlock = prc.combineBlocks(laserBlock, laserBlock.laserSession==1);
-%                 galvoPos = laserBlock.galvoPosition;
-%                 selectedPos = ismember(galvoPos, [0.6 3; 0.6 2; 1.8,2], 'rows');
-%                                                 selectedPos = ismember(galvoPos, [1.8 -4; 3 -4; 3 -3], 'rows');
-                %                                 selectedPos = ismember(galvoPos, [3 -2; 1.8, -2], 'rows');
-                %                                 selectedPos = ismember(galvoPos, [3 -1; 4.2, -1;3 0; 4.2, 0], 'rows');
-%                 selectedPos = ismember(galvoPos, [-5, -4;-5, -3;-5, -2;], 'rows');
-%                 laserBlock = prc.combineBlocks(laserBlock, selectedPos>0);
-                %                 laserBlock = normBlock;
                 obj.axesHandles = plt.getAxes(axesOpt);
                 obj.glmFit{i} = fit.GLMmulti(normBlock);
                 obj.glmFit{i}.GLMMultiModels(modelString);

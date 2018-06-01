@@ -138,7 +138,7 @@ x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 
 if ~strcmpi(x.rigType, 'training') || x.oldParams.laserPower>0
     x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
-%    x.oldBlock.blockTimeOffset = prc.alignBlockTimes(x.oldBlock, x.timeline);
+    x.oldBlock.blockTimeOffset = prc.alignBlockTimes(x.oldBlock, x.timeline);
 end
 if x.galvoLog~=0; x.galvoLog = load(x.galvoLog); end
 x.oldBlock.galvoLog = x.galvoLog;

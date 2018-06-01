@@ -14,8 +14,9 @@ classdef GLMmulti < matlab.mixin.Copyable
     methods
         function obj = GLMmulti(inputblockData)
             %% Input blockData must be a struct with fields: conditions and responseMade
-            inputblockData.visDiff = inputblockData.visDiff./max(abs(inputblockData.visDiff));
-            inputblockData.audDiff = inputblockData.audDiff./max(abs(inputblockData.audDiff));
+            inputblockData.origMax = [max(abs(inputblockData.visDiff)) max(abs(inputblockData.audDiff))];
+            inputblockData.visDiff = inputblockData.visDiff./inputblockData.origMax(1);
+            inputblockData.audDiff = inputblockData.audDiff./inputblockData.origMax(2);
             obj.blockData = inputblockData;
             tab = tabulate(obj.blockData.responseMade)/100;
             obj.initGuess = sum(tab(:,3).*log2(tab(:,3)));
@@ -92,9 +93,10 @@ classdef GLMmulti < matlab.mixin.Copyable
             pHatCalculated = obj.calculatepHat(obj.prmFits,'eval');
             for audVal = obj.blockData.audValues(:)'
                 plotIdx = obj.evalPoints(:,2)==audVal;
-                plot(gca, obj.evalPoints(plotIdx,1), pHatCalculated(plotIdx,2), 'Color', colorChoices(obj.blockData.audValues==audVal,:), 'linewidth', 2);
+                plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,2), ...
+                    'Color', colorChoices(obj.blockData.audValues==audVal,:), 'linewidth', 2);
             end
-            maxContrast = max(abs(obj.evalPoints(:,1)));
+            maxContrast =obj.blockData.origMax(1);
             xlim([-maxContrast maxContrast])
             set(gca, 'xTick', (-maxContrast):(maxContrast/4):maxContrast, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
             title(obj.modelString);
