@@ -132,7 +132,7 @@ if sum(vIdx) > 100
     
     if  p.laserPower>0 && p.laserOnsetDelays(1) ~= p.laserOnsetDelays(2)
         timelineInfo = prc.extractTimelineInfo(x);
-        vIdx(timelineInfo.badTrials) = -1;
+        
     end
     
     vIdx = vIdx>0;
@@ -316,8 +316,7 @@ n.visValues = (unique(uniqueDiff(:,2)));
 n.visAltitude = [v(vIdx).visAltitude]';
 n.visSigma = [v(vIdx).visSigma]';
 n.galvotype = e.galvoTypeValues(vIdx)';
-n.galvotype = e.galvoTypeValues(vIdx)';
-n.waveformType = [v(vIdx).waveformType]';
+n.galvoPosition = galvoPosition;
 n.laserType = e.laserTypeValues(vIdx)';
 n.laserPower = (e.laserPowerValues(vIdx)');
 n.laserSession = sum(unique(n.laserType))+(n.laserPower*0);

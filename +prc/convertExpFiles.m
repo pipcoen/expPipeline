@@ -136,7 +136,7 @@ function x = convBlockFile(x, testTag)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 
-if ~strcmpi(x.rigType, 'training')
+if ~strcmpi(x.rigType, 'training') || x.oldParams.laserPower>0
     x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
     x.oldBlock.blockTimeOffset = prc.alignBlockTimes(x.oldBlock, x.timeline);
 end
