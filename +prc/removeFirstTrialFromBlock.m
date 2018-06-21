@@ -9,7 +9,7 @@ end
 x.oldBlock.events.trialNumValues = x.oldBlock.events.trialNumValues-trial2Idx+1;
 x.oldBlock.paramsTimes(1:(trial2Idx-1)) = [];
 x.oldBlock.paramsValues(1:(trial2Idx-1)) = [];
-if isstruct(x.galvoLog)
+if isstruct(x.galvoLog) && length(fieldnames(x.galvoLog))>1
     galvoIdx = find(x.galvoLog.trialNum>=trial2Idx, 1);
     fieldList = fieldnames(x.galvoLog);
     for i = 1:length(fieldList)-1
