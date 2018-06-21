@@ -5,9 +5,8 @@ trial2Start = x.oldBlock.events.endTrialTimes(trial2Idx-1)+0.0001;
 for i = 1:2:length(fieldList)
     if strcmp(fieldList{i}, 'rTotValues'); continue; end 
     if isempty(x.oldBlock.events.(fieldList{i})); continue; end 
-    if length(x.oldBlock.events.(fieldList{i+1})) == 1; continue; end 
     cutOff = find(x.oldBlock.events.(fieldList{i+1})<trial2Start, 1, 'last');
-    eventRatio = size(x.oldBlock.events.(fieldList{i}),2)/size(x.oldBlock.events.(fieldList{i+1}),2);
+    eventRatio = length(x.oldBlock.events.(fieldList{i}))/length(x.oldBlock.events.(fieldList{i+1}));
     if round(eventRatio) ~= eventRatio; keyboard; end
     x.oldBlock.events.(fieldList{i})(:,1:(cutOff*eventRatio)) = [];
     x.oldBlock.events.(fieldList{i+1})(:,1:cutOff) = [];
