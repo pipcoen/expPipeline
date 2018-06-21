@@ -82,7 +82,7 @@ files2Run = processListIdx(processListIdx>0)';
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
-srtIdx = 376;
+srtIdx = 274;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedMice); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name
     if contains(expList(i).subject, {'PC008'}); continue; end      %SKIP PC008 for now...
@@ -135,13 +135,13 @@ end
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
 function x = convBlockFile(x)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
-if x.galvoLog~=0; x.galvoLog = load(x.galvoLog); end
-x = prc.removeFirstTrialFromBlock(x);
+[x.oldBlockm x.galvoLog] = prc.removeFirstTrialFromBlock(x.oldBlock);
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 
 if ~strcmpi(x.rigType, 'training')
     x.oldBlock.blockTimeOffset = prc.alignBlockTimes(x.oldBlock, x.timeline);
 end
+if x.galvoLog~=0; x.galvoLog = load(x.galvoLog); end
 x.oldBlock.galvoLog = x.galvoLog;
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
 x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;

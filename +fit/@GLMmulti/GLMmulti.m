@@ -7,22 +7,25 @@ classdef GLMmulti < matlab.mixin.Copyable
         prmInit;
         blockData;
         pHat;
+        logLik;
         evalPoints;
         initGuess;
     end
     
     methods
-        function obj = GLMmulti(inputblockData)
+        function obj = GLMmulti(inputBlockData, modelString)
             %% Input blockData must be a struct with fields: conditions and responseMade
-            inputblockData.origMax = [max(abs(inputblockData.visDiff)) max(abs(inputblockData.audDiff))];
-            inputblockData.visDiff = inputblockData.visDiff./inputblockData.origMax(1);
-            inputblockData.audDiff = inputblockData.audDiff./inputblockData.origMax(2);
-            obj.blockData = inputblockData;
+            inputBlockData.origMax = [max(abs(inputBlockData.visDiff)) max(abs(inputBlockData.audDiff))];
+            inputBlockData.visDiff = inputBlockData.visDiff./inputBlockData.origMax(1);
+            inputBlockData.audDiff = inputBlockData.audDiff./inputBlockData.origMax(2);
+            obj.blockData = inputBlockData;
+            obj.blockData.selectedTrials = ones(size(inputBlockData.audDiff,1),1);
             tab = tabulate(obj.blockData.responseMade)/100;
             obj.initGuess = sum(tab(:,3).*log2(tab(:,3)));
+            if exist('modelString', 'var'); obj.GLMMultiModels(modelString); end
         end
         
-        function obj = fit(obj)
+        function fit(obj)
             %Non crossvalidated fitting
             if isempty(obj.modelString); error('Set model first'); end
             options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',10000);
@@ -33,30 +36,28 @@ classdef GLMmulti < matlab.mixin.Copyable
             end
         end
         
-        function [obj,logLik] = fitCV(obj,nFolds)
+        function fitCV(obj,nFolds)
             %Crossvalidated fitting
             if isempty(obj.modelString); error('Set model first'); end
-            if ~exist('nFolds', 'var') || isempty(nFolds); nFolds = length(obj.blockData.responseMade); end
+            if ~exist('nFolds', 'var') || isempty(nFolds); nFolds = 10; end
             
             options = optimoptions('fmincon','UseParallel',0,'MaxFunEvals',100000,'MaxIter',2000);
             cvObj = cvpartition(obj.blockData.responseMade,'KFold',nFolds);
-            
             obj.prmFits = nan(cvObj.NumTestSets,length(obj.prmLabels));
             obj.pHat = [];
-            allInputs = obj.inputFun(obj.blockData);
-            logLik = nan(cvObj.NumTestSets,1);
+            obj.logLik = nan(cvObj.NumTestSets,1);
             for i = 1:cvObj.NumTestSets
+                cvTrainObj = copy(obj); cvTrainObj.blockData = prc.combineBlocks(cvTrainObj.blockData, cvObj.training(i));
                 disp(['Model: ' obj.modelString '. Fold: ' num2str(i) '/' num2str(cvObj.NumTestSets)]);
                 
-                fittingObjective = @(b) (obj.calculateLogLik(b,  allInputs(cvObj.training(i),:), obj.blockData.responseMade(cvObj.training(i))));
+                fittingObjective = @(b) (cvTrainObj.calculateLogLik(b));
                 [obj.prmFits(i,:),~,exitflag] = fmincon(fittingObjective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
                 if ~any(exitflag == [1,2]); obj.prmFits(i,:) = nan(1,length(obj.prmLabels)); end
                 
-                pHatTrained = obj.calculatepHat(obj.prmFits(i,:), allInputs(cvObj.test(i),:));
-                
-                testIdx = sub2ind(size(pHatTrained), 1:size(pHatTrained, 1), obj.blockData.responseMade(cvObj.test(i))');
-                obj.pHat(cvObj.test(i)) = pHatTrained(testIdx);
-                logLik(i)=mean(-log2(obj.pHat(cvObj.test(i))));
+                cvTestObj = copy(obj); cvTestObj.blockData = prc.combineBlocks(cvTestObj.blockData, cvObj.test(i));
+                pHatTested = cvTestObj.calculatepHat(obj.prmFits(i,:));
+                obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.responseMade));
+                obj.logLik(i) = mean(-log2(obj.pHat(cvObj.test(i))));
             end
         end
         
@@ -93,7 +94,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             pHatCalculated = obj.calculatepHat(obj.prmFits,'eval');
             for audVal = obj.blockData.audValues(:)'
                 plotIdx = obj.evalPoints(:,2)==audVal;
-                plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,2), ...
+                plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,end), ...
                     'Color', colorChoices(obj.blockData.audValues==audVal,:), 'linewidth', 2);
             end
             maxContrast =obj.blockData.origMax(1);
@@ -123,7 +124,8 @@ classdef GLMmulti < matlab.mixin.Copyable
         
         function logLik = calculateLogLik(obj,testParams)
             pHatCalculated = obj.calculatepHat(testParams);
-            logLik = -sum(log2(pHatCalculated(:,1).*(obj.blockData.responseMade==1)+pHatCalculated(:,2).*(obj.blockData.responseMade==2)));
+            responseMade = obj.blockData.responseMade+(min(obj.blockData.responseMade(:)) == 0);
+            logLik = -sum(log2(pHatCalculated(sub2ind(size(pHatCalculated),(1:size(pHatCalculated,1))', responseMade))));
         end
         
     end

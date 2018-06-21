@@ -104,8 +104,10 @@ vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 if sum(vIdx) > 100
     %We remove the first 10 and last 10 correct trials for each session we use -1 because we only want to remove these extra trials from totalRepeats.
     vIdx = double(vIdx);
-    vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0, 5, 'first'))) = -1;
-    vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0, 5, 'last')):end) = -1;
+    stimStartTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
+    quickResponses = (e.feedbackTimes(1:length(vIdx)) - stimStartTimes(1:length(vIdx)))<1.5;
+    vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 10, 'first'))) = -1;
+    vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 10, 'last')):end) = -1;
     
     %Remove trials in which the laser "trasitionTimes" are more than 90% of the time until the TTL pulse that activates the laser. Otherwise, cannot
     %be confident that the laser was ready to receive the pulse.
@@ -152,7 +154,6 @@ end
 %responseTime are the times taken between the stimulus starting and the response being made (including open loop period). Must use 
 %"1:length(stimPeriodStart)" because if a trial is interupped there can be more stimPeriodStart values than feedback values. 
 stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)'; 
-vIdx(e.newTrialTimes(1:length(stimPeriodStart))' > stimPeriodStart) = 0;
 stimPeriodStart = stimPeriodStart(vIdx);
 feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
@@ -201,7 +202,6 @@ r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audA
 
 %Get closed loop start times, relative to the stimulus start times (likely to all be the same for a constant delay)
 closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)';
-if e.closedLoopOnOffValues(1)==0; closedLoopStart = [0;closedLoopStart]; end
 closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
 
 %Calculate an approximate time to the first wheel movement. This is different from the response time in that it is based on wheel movement, rather

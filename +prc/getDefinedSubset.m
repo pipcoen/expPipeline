@@ -1,5 +1,5 @@
 function b = getDefinedSubset(b, subsetTag)
-minVis = 0.1;
+minVis = 0.04;
 switch lower(subsetTag)
     case 'vl'; b = prc.combineBlocks(b, b.trialType==2 & b.correctResponse==1 & b.visContrast>minVis);
     case 'vr'; b = prc.combineBlocks(b, b.trialType==2 & b.correctResponse==2 & b.visContrast>minVis);

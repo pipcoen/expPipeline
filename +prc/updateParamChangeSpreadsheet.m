@@ -20,15 +20,15 @@ xlsData(cellfun(@(x) any(isnan(x)), xlsData(:,1)),:) = [];
 laserTypes = cellfun(@(x) unique(double(x(:)))', {blks.laserType}', 'uni', 0);
 laserPowers = cellfun(@(x) unique(double(x(:)))', {blks.laserPower}', 'uni', 0);
 numberLaserSites = cellfun(@(x, y) size(x, 1)*any(y>0), {prms.galvoCoords}', laserPowers, 'uni', 0);
-clikRate = cellfun(@unique, {prms.clickRate}', 'uni', 0);
+clickRate = cellfun(@unique, {prms.clickRate}', 'uni', 0);
 
-combineParams = cellfun(@(w,x,y,z,a) [w repmat([x,y,z,a],size(w,1),1)],{blks.uniqueConditions}',laserTypes, laserPowers, numberLaserSites, clikRate, 'uni', 0);
+combineParams = cellfun(@(w,x,y,z,a) [w repmat([x,y,z,a],size(w,1),1)],{blks.uniqueConditions}',laserTypes, laserPowers, numberLaserSites, clickRate, 'uni', 0);
 [~, ~, setIdx] = uniquecell(combineParams);
 changeIdx = find([1 diff(setIdx)']~=0)';
 
 laserTypes = laserTypes(changeIdx);
 laserPowers = laserPowers(changeIdx);
-clikRate = clikRate(changeIdx);
+clickRate = clickRate(changeIdx);
 numberLaserSites = numberLaserSites(changeIdx);
 numberOfSessions = diff([changeIdx; length(setIdx)+1]);
 datesInFile = cellfun(@(x) datenum(x, 'dd/mm/yyyy'), xlsData(:,1));
@@ -50,7 +50,7 @@ for i = 1:length(datesOfChange)
     xlsData{idx, 1} = datesOfChange(i);
     xlsData{idx, 3} = strtrim(sprintf('%g ',visContrasts{i}'));
     xlsData{idx, 4} = strtrim(sprintf('%g ',audAmplitudes{i}'));
-    xlsData{idx, 5} = clikRate{i};
+    xlsData{idx, 5} = clickRate{i};
     xlsData{idx, 5+1} = strtrim(sprintf('%g ',audInitialAzimuths{i}'));
     xlsData{idx, 6+1} = num2str(trialTypes{i}');
     xlsData{idx, 7+1} = numberOfConditions(i);

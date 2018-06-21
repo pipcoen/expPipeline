@@ -94,7 +94,7 @@ o.laserOnsetDelay = o.laserOnTime - o.screenOnTime;
 
 %Remove trials where the discrepancy between real and intended onset delay times (on laser trials) is huge
 try
-    o.laserTrials = find(b.events.laserTypeValues>0);
+    o.laserTrials = find(b.events.laserTypeValues(1:length(b.events.endTrialValues))>0);
     error = o.laserOnsetDelay(o.laserTrials) - b.IntendedOnsetDelay(o.laserTrials);
     o.badTrials = o.laserTrials(abs(error) > 0.1);
     o.goodTrials = setdiff(1:numTrials,o.badTrials);

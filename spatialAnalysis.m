@@ -61,7 +61,7 @@
                 switch lower(plotType(1:3))
                     case 'res'
                         boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean);
-                        if isempty(obj.figureHandles) || ~ismember(obj.figureHandles, gcf); obj.figureHandles(end+1) = gcf; end
+                        if isempty(obj.figureHandles) || ~any(ismember(obj.figureHandles, gcf)); obj.figureHandles(end+1) = gcf; end
                         set(gcf, 'Tag', 'boxRes', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
                     case 'gng'
                         [~,normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 1, -1);
@@ -75,7 +75,11 @@
                         boxPlot.axisLimits = [0 max(boxPlot.plotData(:))];
                     case 'rea'
                         boxPlot.plotData = prc.makeGrid(normBlock, round(normBlock.responseTime*1e3), @median, 1);
-                        boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];                      
+                        boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];           
+                    case 'tim'
+                        [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 0, 5);
+                        boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==0, @mean);
+                        boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
                 end
                 axesOpt.idx = i;
                 axesOpt.totalNumOfAxes = length(obj.subjects);
@@ -94,25 +98,33 @@
             set(colorBar.handle, 'position', [1-75/figureSize(3), 0.2, 30/figureSize(3), 0.6])
         end
         
-        function viewGLMFit(obj, modelString)
-            if ~exist('modelString', 'var'); modelString = 'SqrtLogisticSplitDelta'; end
+        function viewGLMFit(obj, modelString, cvFolds)
+            if ~exist('modelString', 'var'); modelString = 'SqrtLogisticSplitNest'; end
+            if ~exist('cvFolds', 'var'); cvFolds = 0; end
             figure;
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.btlrMargins = [80 100 80 40];
             axesOpt.gapBetweenAxes = [100 60];
             for i  = 1:length(obj.subjects)
                 axesOpt.idx = i;
-                [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+                if contains(lower(modelString), 'nest')
+                    [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 0, 5);
+                    normBlock = prc.combineBlocks(normBlock, normBlock.timeOutsBeforeResponse == 0);
+                    obj.glmFit{i} = fit.GLMmultiNest(normBlock, modelString);
+                else
+                    [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+                    obj.glmFit{i} = fit.GLMmulti(normBlock, modelString);
+                end
                 obj.axesHandles = plt.getAxes(axesOpt);
-                obj.glmFit{i} = fit.GLMmulti(normBlock);
-                obj.glmFit{i}.GLMMultiModels(modelString);
                 obj.glmFit{i}.fit;
                 obj.glmFit{i}.plotFit;
                 hold on; box off;
                 plt.dataWithErrorBars(normBlock, 1);
                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
                 yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
+                if cvFolds; obj.glmFit{i}.fitCV(cvFolds); end
             end
+            obj.figureHandles = [];
         end
         
         function getGLMPerturbations(obj, modelString)
@@ -424,7 +436,7 @@
             elseif mode(block.laserSession>0)==1 || inactivation
                 normBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType==0 & block.responseMade~=excludedResponses);
                 laserBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType~=0 & block.responseMade~=excludedResponses);
-            else, normBlock = prc.combineBlocks(block, block.laserSession==0 & block.responseMade~=0);
+            else, normBlock = prc.combineBlocks(block, block.laserSession==0 & block.responseMade~=excludedResponses);
             end
         end
         
