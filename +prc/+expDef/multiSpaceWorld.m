@@ -101,13 +101,13 @@ vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
 %Note: we cannot perform this stage before the stage above as it will mess with the calculation of totalRepeats 
-if sum(vIdx) > 100
+if sum(vIdx) > 150
     %We remove the first 10 and last 10 correct trials for each session we use -1 because we only want to remove these extra trials from totalRepeats.
     vIdx = double(vIdx);
     stimStartTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
     quickResponses = (e.feedbackTimes(1:length(vIdx)) - stimStartTimes(1:length(vIdx)))<1.5;
-    vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 10, 'first'))) = -1;
-    vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 10, 'last')):end) = -1;
+    vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 5, 'first'))) = -1;
+    vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 5, 'last')):end) = -1;
     
     %Remove trials in which the laser "trasitionTimes" are more than 90% of the time until the TTL pulse that activates the laser. Otherwise, cannot
     %be confident that the laser was ready to receive the pulse.

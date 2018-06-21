@@ -3,7 +3,7 @@ fieldList = fieldnames(x.oldBlock.events);
 trial2Idx = max(find(x.oldBlock.events.repeatNumValues==1,2));
 trial2Start = x.oldBlock.events.endTrialTimes(trial2Idx-1)+0.0001;
 for i = 1:2:length(fieldList)
-    if strcmp(fieldList{i}, 'rTotValues'); continue; end 
+    if contains(fieldList{i}, {'rTotValues'; 'totalRewardValues'}); continue; end 
     if isempty(x.oldBlock.events.(fieldList{i})); continue; end 
     if length(x.oldBlock.events.(fieldList{i+1})) == 1; continue; end 
     cutOff = find(x.oldBlock.events.(fieldList{i+1})<trial2Start, 1, 'last');
@@ -18,10 +18,11 @@ x.oldBlock.paramsValues(1:(trial2Idx-1)) = [];
 if isstruct(x.galvoLog) && length(fieldnames(x.galvoLog))>1
     galvoIdx = find(x.galvoLog.trialNum>=trial2Idx, 1);
     fieldList = fieldnames(x.galvoLog);
-    for i = 1:length(fieldList)-1
+    for i = 1:length(fieldList)
+        if strcmp(fieldList{i}, 'stereotaxCalib'); continue; end
         x.galvoLog.(fieldList{i})(1:(galvoIdx-1),:) = [];
     end
-    x.galvoLog.trialNum = x.galvoLog.trialNum-galvoIdx+1;
+    x.galvoLog.trialNum = x.galvoLog.trialNum-trial2Idx+1;
 end
 end
 

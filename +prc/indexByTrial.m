@@ -21,7 +21,7 @@ if ~exist('paramsForSubtraction', 'var'); timesToSubtract = 0*prmTimes; end
 [eventCount, ~, trialIdx] = histcounts(prmTimes, sort([trialTimes(:,1);trialTimes(:,2)+realmin]));
 prmValues(trialIdx==0,:) = []; trialIdx(trialIdx==0) = [];
 
-%idxBounds finds the bounds where the trialIdx starts and ends, then removes all even indices are these lie between trials (afert end and before
+%idxBounds finds the bounds where the trialIdx starts and ends, then removes all even indices are these lie between trials (after end and before
 %start. We also remove the eventcounts corresponding to these inter-trial spaces
 idxBounds = [find(diff([-10;trialIdx])>0) find(diff([trialIdx;1e6])>0)];
 idxBounds(mod(unique(trialIdx),2)==0,:) = [];

@@ -38,7 +38,8 @@ end
 if ~isfield(p, 'postQuiescentDelay'); p.postQuiescentDelay = 0; [v.postQuiescentDelay] = deal(0); end
 if ~isfield(p, 'laserOnsetDelays'); p.laserOnsetDelays = [0;0]; [v.laserOnsetDelays] = deal([0;0]); end
 if ~isfield(p, 'postQuiescentDelay'); p.postQuiescentDelay = 0; [v.postQuiescentDelay] = deal(0); end
-if ~isfield(p, 'waveformType'); p.waveformType = 1; [v.waveformType] = deal(1); end
+if ~isfield(p, 'waveformType'); p.waveformType = 1; end
+if ~isfield(v, 'waveformType'); [v.waveformType] = deal(1); end
 
 
 if isfield(e, 'sPreValues')
