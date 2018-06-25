@@ -331,9 +331,8 @@ p.numberConditions = length(unique([audAmplitude, visContrast audInitialAzimuth 
 p.audPerformance = round(mean(n.feedback(n.trialType==1 & n.laserType == 0 & n.responseMade~=0)>0)*100);
 p.visPerformance = round(mean(n.feedback(n.trialType==2 & n.laserType == 0 & n.responseMade~=0)>0)*100);
 p.mulPerformance = round(mean(n.feedback(n.trialType==3 & n.laserType == 0 & n.responseMade~=0)>0)*100);
+p.validResponses = sum(n.responseMade~=0);
 p.validTrials = sum(vIdx);
-
-
 
 x.validTrials = vIdx;
 newParams = p;
@@ -355,7 +354,7 @@ prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'
     ;'delayAfterIncorrect';'laserDuration'; 'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'rewardSize';'noiseBurstAmplitude' ...
     ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal'; 'responseWindow'; 'responseWindow' ...
     ;'totalTrials';'minutesOnRig';'galvoCoords';'numberConditions';'audPerformance';'visPerformance';'mulPerformance';'validTrials'; 'numRepeats' ...
-    ;'laserOnsetDelays';'postQuiescentDelay';'waveformType'};
+    ;'laserOnsetDelays';'postQuiescentDelay';'waveformType'; 'validResponses'};
 
 if any(~contains(fields(newBlock), blockFields)) || any(~contains(blockFields, fields(newBlock)))
     error('Field mistmatch in block file');

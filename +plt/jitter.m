@@ -2,8 +2,8 @@ function jitter(data, opt)
 createOpt = ~exist('opt', 'var');
 if createOpt || ~isfield(opt, 'centerOperation'); opt.centerOperation = @nanmean; end
 if createOpt || ~isfield(opt, 'errorOperation'); opt.errorOperation = @nanstd; end
-if createOpt || ~isfield(opt, 'jitterOffset'); opt.scatterOffset = 0.2; end
-if createOpt || ~isfield(opt, 'jitterSpread'); opt.jitterSpread = 0.2; end
+if createOpt || ~isfield(opt, 'jitterOffset'); opt.scatterOffset = 0.1; end
+if createOpt || ~isfield(opt, 'jitterSpread'); opt.jitterSpread = 0.15; end
 if createOpt || ~isfield(opt, 'xTickLocations'); opt.xTickLocations = 1:1:length(data); end
 if createOpt || ~isfield(opt, 'xTickLabels'); opt.xTickLabels = []; end
 if createOpt || ~isfield(opt, 'showNumbers'); opt.showNumbers = 0; end
@@ -40,9 +40,11 @@ for i = 1:length(data)
     jitterValues = (rand(length(data{i}),1)-0.5)*opt.jitterSpread + lineXLocation-2*opt.scatterOffset;
     plot(jitterValues,data{i}, 'o', loopOptions);
 end
-[~, significance] = cellfun(@(x) opt.significanceTest(data{x(1)}, data{x(2)}), opt.pairs2test);
-xPositionOfPairs = cellfun(@(x) opt.xTickLocations(x), opt.pairs2test, 'uni',0);
+if ~isempty(opt.pairs2test)
+    [~, significance] = cellfun(@(x) opt.significanceTest(data{x(1)}, data{x(2)}), opt.pairs2test);
+    xPositionOfPairs = cellfun(@(x) opt.xTickLocations(x), opt.pairs2test, 'uni',0);
+    plt.sigstar(xPositionOfPairs,significance);
+end
 if ~isempty(opt.yLimits); ylim(opt.yLimits); end
-plt.sigstar(xPositionOfPairs,significance);
 set(gca,'XTick', opt.xTickLocations, 'XTickLabel',opt.xTickLabels);
 

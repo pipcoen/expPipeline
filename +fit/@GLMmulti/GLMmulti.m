@@ -34,6 +34,8 @@ classdef GLMmulti < matlab.mixin.Copyable
             if ~any(exitflag == [1,2])
                 obj.prmFits = nan(1,length(obj.prmLabels));
             end
+            obj.pHat = obj.calculatepHat(obj.prmFits);
+            obj.logLik = obj.calculateLogLik(obj.prmFits)./length(obj.blockData.responseMade);
         end
         
         function fitCV(obj,nFolds)
@@ -56,7 +58,8 @@ classdef GLMmulti < matlab.mixin.Copyable
                 
                 cvTestObj = copy(obj); cvTestObj.blockData = prc.combineBlocks(cvTestObj.blockData, cvObj.test(i));
                 pHatTested = cvTestObj.calculatepHat(obj.prmFits(i,:));
-                obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.responseMade));
+                if min(cvTestObj.blockData.responseMade) == 0; idxMod = 1; else, idxMod = 0; end
+                obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.responseMade+idxMod));
                 obj.logLik(i) = mean(-log2(obj.pHat(cvObj.test(i))));
             end
         end
@@ -66,7 +69,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             numTrials = prc.makeGrid(obj.blockData, obj.blockData.responseMade~=0, @length, 1);
             numRightTurns = prc.makeGrid(obj.blockData, obj.blockData.responseMade==2, @sum, 1);
             
-            audValues = obj.blockData.audValues;
+            audValues = [obj.blockData.audValues]./abs(max(obj.blockData.audValues));
             colorChoices = plt.selectRedBlueColors(audValues);
             
             [prob,confInterval] = arrayfun(@(x,z) binofit(x, z, 0.05), numRightTurns, numTrials, 'uni', 0);
@@ -75,7 +78,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             highBound = cell2mat(cellfun(@(x) permute(x(:,2), [3,2,1]), confInterval, 'uni', 0));
             
             for audVal = audValues(:)'
-                idx = find(obj.blockData.grids.audValues==audVal & numTrials>0);
+                idx = find(sign(obj.blockData.grids.audValues)==audVal & numTrials>0);
                 err = [prob(idx)-lowBound(idx), highBound(idx) - prob(idx)];
                 errorbar(obj.blockData.grids.visValues(idx),prob(idx),err(:,1),err(:,2),'.','MarkerSize',20, 'Color', colorChoices(audValues==audVal,:));
                 hold on;
@@ -88,13 +91,14 @@ classdef GLMmulti < matlab.mixin.Copyable
         end
         
         function figureHand = plotFit(obj)
-            if size(obj.prmFits,1)~=1; error('Model not fitted (non-crossvalidated) yet'); end
+            if isempty(obj.prmFits); error('Model not fitted (non-crossvalidated) yet'); end
+            params2use = mean(obj.prmFits,1);
             hold on;
             colorChoices = plt.selectRedBlueColors(obj.blockData.audValues);
-            pHatCalculated = obj.calculatepHat(obj.prmFits,'eval');
+            pHatCalculated = obj.calculatepHat(params2use,'eval');
             for audVal = obj.blockData.audValues(:)'
                 plotIdx = obj.evalPoints(:,2)==audVal;
-                plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,end), ...
+                plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,1), ...
                     'Color', colorChoices(obj.blockData.audValues==audVal,:), 'linewidth', 2);
             end
             maxContrast =obj.blockData.origMax(1);

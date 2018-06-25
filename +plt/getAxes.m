@@ -1,6 +1,6 @@
-function [axesHandle, figureHandle] = getAxes(axesOpt)
-if ~isfield(axesOpt, 'idx'); axesOpt.idx = 1; end
-if ~isfield(axesOpt, 'totalNumOfAxes'); axesOpt.idx = 1; end
+function [axesHandle, figureHandle] = getAxes(axesOpt, idx)
+if ~exist('idx', 'var'); idx = 1; end
+if ~isfield(axesOpt, 'totalNumOfAxes'); axesOpt.totalNumOfAxes = 1; end
 if ~isfield(axesOpt, 'figureSize'); axesOpt.figureSize = 400; end
 if ~isfield(axesOpt, 'figureHWRatio'); axesOpt.figureHWRatio = 1; end
 if ~isfield(axesOpt, 'gapBetweenAxes'); axesOpt.gapBetweenAxes = 25; end
@@ -22,7 +22,7 @@ axesOpt.btlrMargins(1:2) = axesOpt.btlrMargins(1:2)/axesOpt.figureSize(2);
 axesOpt.btlrMargins(3:4) = axesOpt.btlrMargins(3:4)/axesOpt.figureSize(1);
 axesOpt.gapBetweenAxes = axesOpt.gapBetweenAxes./axesOpt.figureSize;
 
-axesHandle = plt.tightSubplot(numOfRows, numOfCols, axesOpt.idx, axesOpt.gapBetweenAxes, axesOpt.btlrMargins(1:2), axesOpt.btlrMargins(3:4));
+axesHandle = plt.tightSubplot(numOfRows, numOfCols, idx, axesOpt.gapBetweenAxes, axesOpt.btlrMargins(1:2), axesOpt.btlrMargins(3:4));
 if axesOpt.reposition; set(gcf, 'position', [screenSize(1:2)+screenSize(3:4)-axesOpt.figureSize-[0 75], axesOpt.figureSize]); end
 figureHandle = gcf;
 end

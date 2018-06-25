@@ -15,11 +15,11 @@ switch condition
     case 'VL'
         plotData = plotData(:,:,3);
     case 'A0'
-        plotData = plotData(:,:,5);
+        plotData = plotData(:,:,7);
     case 'AR'
-        plotData = plotData(:,:,4);
-    case 'AL'
         plotData = plotData(:,:,6);
+    case 'AL'
+        plotData = plotData(:,:,8);
 end
 title(condition);
 scatter(gridXY{1}(:), gridXY{2}(:), 150, plotData(:),'o','filled'); axis equal;  drawnow

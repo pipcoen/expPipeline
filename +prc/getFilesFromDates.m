@@ -19,11 +19,10 @@ end
 
 % get list of references and dates for subject
 selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'==0);
+temporalFiles = contains({selectedFiles.expDef}', 'Temporal');
+selectedFiles(temporalFiles)  = [];
 if isempty(expList); warning(['No processed files matching ' subject]); blk = {}; prm = {}; raw = {}; return; end
 expDates = datenum(cell2mat({selectedFiles.expDate}'));
-if strcmp(requestedDates, 'behavior')
-    requestedDates = prc.behavioralDates(subject{1});
-end
 
 switch lower(requestedDates{1}(1:3))
     case 'las'
