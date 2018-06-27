@@ -29,15 +29,15 @@ switch obj.modelString
         if any(contains(obj.modelString, {'splitV'})); splitV = 0; else; splitV = 1; end
         if contains(obj.modelString, 'AudDom'); domIdx = confTrials; else; domIdx = zeros(length(confTrials),1); end
         if splitV; obj.prmLabels = [{'bias';'visScale';'N';'C50'}; audTags];
-        else, obj.prmLabels = [{'bias';'visScaleR';'visScaleL';'N';'C50'}; audTags];
-        end
+        else obj.prmLabels = [{'bias';'visScale';'N';'C50'}; audTags];
+        obj.prmLabels = [{'bias';'visScale';'N';'C50'}; audTags];
         
         TOSrt = length(obj.prmLabels);
         if nested; obj.prmLabels = [obj.prmLabels; cellfun(@(x) [x 'TO'], obj.prmLabels(~contains(obj.prmLabels, {'N';'C50'})), 'uni', 0)]; end
         if addConf; obj.prmLabels = [obj.prmLabels; 'confWeight']; end
         if exist('P', 'var')
             if splitV; visContributionLR = (P(2)*(getC50(abs(visDiff), P(3), P(4))).*sign(visDiff)).*(~domIdx);
-            else, visContributionLR = P(2)*(getC50(abs(visDiff.*(visDiff>0)), P(4), P(5))) + P(3)*getC50(abs(visDiff.*(visDiff<0)), P(4), P(5));
+            else, visContributionLR = P(2)*(getC50(abs(visDiff.*(visDiff>0)), P(4), P(5))) + P(3)*getC50(abs(visDiff.*(visDiff<0)), P(4), P(5))
             end
             audContributionLR = arrayfun(@(x,y,z) x*(y{1}==z), P(5:TOSrt), repAud, uniA', 'uni', 0);
             logOddsLR = P(1)+visContributionLR*aOnly*bOnly + sum(cell2mat(audContributionLR),2)*vOnly*bOnly;
@@ -55,14 +55,20 @@ switch obj.modelString
         
     case {'SimpLogSplitDelta'}
         obj.prmLabels = [{'bias';'visScaleR';'visScaleL';'N';'C50'}; audTags];
-        freeP = zeros(1,length(obj.prmLabels));
-        if ~isfield(obj.blockData, 'freeP'); freeP = freeP+1; elseif ~isempty(obj.blockData.freeP); freeP(obj.blockData.freeP) = 1; end
+        TOSrt = length(obj.prmLabels);
+        if nested; obj.prmLabels = [obj.prmLabels, cellfun(@(x) [x 'TO'], obj.prmLabels, 'uni', 0), 'conflictTO']; end
         if exist('P', 'var')
             POld = obj.prmInit;
-            visContributionLR = ((P(2)*freeP(2)+POld(2))*(getC50(abs(visDiff.*(visDiff>0)), P(4)*freeP(4)+POld(4), P(5)*freeP(5)+POld(5))) + ...
-                (P(3)*freeP(3)+POld(3))*getC50(abs(visDiff.*(visDiff<0)), P(4)*freeP(4)+POld(4), P(5)*freeP(5)+POld(5)));
-            audContributionLR = arrayfun(@(x,y,z) x* (y{1}==z), POld(6:end)+(P(6:end).*freeP(6:end)), repAud, uniA', 'uni', 0);
-            logOddsLR = P(1)*freeP(1)+POld(1)+visContributionLR+sum(cell2mat(audContributionLR),2);
+            P = P+POld;
+            visContributionLR = (POld(2)*(getC50(abs(visDiff.*(visDiff>0)), POld(4), POld(5))) + ...
+                POld(3)*getC50(abs(visDiff.*(visDiff<0)), POld(4), POld(5)));
+            audContributionLR = arrayfun(@(x,y,z) x* (y{1}==z), POld(6:end), repAud, uniA', 'uni', 0);
+            logOddsLR = freeP(1)*P(1)+visContributionLR+sum(cell2mat(audContributionLR),2);
+            if nested
+                visContributionTO = P(TOSrt+2)*(sqrt(abs(visDiff).*(visDiff>0))) + P(TOSrt+3)*(sqrt(abs(visDiff).*(visDiff<0)));
+                audContributionTO = arrayfun(@(x,y,z) x*(y{1}==z), P(TOSrt+4:TOSrt+TOSrt), repAud, uniA', 'uni', 0);
+                logOddsTO = P(TOSrt+1)+visContributionTO+sum(cell2mat(audContributionTO),2) + P(end)*double(confTrials);
+            end
         end
         obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',600,1)];
         

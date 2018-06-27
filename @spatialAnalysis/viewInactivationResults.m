@@ -15,7 +15,7 @@ axesOpt.btlrMargins =  [50 100 10 10];
 axesOpt.gapBetweenAxes = [40 0];
 axesOpt.figureHWRatio = 0.8;
 axesOpt.figureSize = 400;
-respBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 2, 5);
+respBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 2);
 respBlock = prc.combineBlocks(respBlock, respBlock.galvoPosition(:,2)~=4.5);
 normBlock = prc.combineBlocks(respBlock, respBlock.laserType==0);
 uniBlock = prc.combineBlocks(respBlock, respBlock.laserType==1);
@@ -39,7 +39,7 @@ for i  = 1:length(obj.subjects)
         case {'unisig'}
             tempBlock = prc.getDefinedSubset(respBlock, obj.subjects{i});
             tempBlock = prc.combineBlocks(tempBlock, tempBlock.timeOutsBeforeResponse==0);
-            nShuffles = 10000;
+            nShuffles = 100;
             inactiveGrid = cell(nShuffles+1, 1);
             for j = 1:length(inactiveGrid)
                 if j > 1
@@ -48,8 +48,8 @@ for i  = 1:length(obj.subjects)
                 end
                 normBlock = prc.combineBlocks(tempBlock, tempBlock.laserType==0);
                 laserBlock = prc.combineBlocks(tempBlock, tempBlock.laserType==1);
-                [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock.responseMade==0, @mean, 'galvouni');
-                inactiveGrid{j} = inactiveGrid{j} - mean(normBlock.responseMade==0);
+                [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock.responseMade==2, @mean, 'galvouni');
+                inactiveGrid{j} = inactiveGrid{j} - mean(normBlock.responseMade==2);
             end
             
             scanPlot.data = reshape(cell2mat(inactiveGrid'), [size(scanPlot.gridXY{1}), nShuffles+1]);

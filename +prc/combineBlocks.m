@@ -20,7 +20,6 @@ tkIdx = criterion>0;
 if ~any(tkIdx); combinedBlocks = []; return; end
 
 fieldNames = fields(blocks);
-combinedBlocks.sessionIdx = combinedBlocks.sessionIdx;
 combinedBlocks.nSessions = length(unique(combinedBlocks.sessionIdx));
 for i = fieldNames'
     field = i{1};

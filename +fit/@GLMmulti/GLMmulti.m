@@ -98,7 +98,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             pHatCalculated = obj.calculatepHat(params2use,'eval');
             for audVal = obj.blockData.audValues(:)'
                 plotIdx = obj.evalPoints(:,2)==audVal;
-                plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,1), ...
+                plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,2), ...
                     'Color', colorChoices(obj.blockData.audValues==audVal,:), 'linewidth', 2);
             end
             maxContrast =obj.blockData.origMax(1);
@@ -129,7 +129,7 @@ classdef GLMmulti < matlab.mixin.Copyable
         function logLik = calculateLogLik(obj,testParams)
             pHatCalculated = obj.calculatepHat(testParams);
             responseMade = obj.blockData.responseMade+(min(obj.blockData.responseMade(:)) == 0);
-            logLik = -sum(log2(pHatCalculated(sub2ind(size(pHatCalculated),(1:size(pHatCalculated,1))', responseMade))));
+            logLik = -mean(log2(pHatCalculated(sub2ind(size(pHatCalculated),(1:size(pHatCalculated,1))', responseMade))));
         end
         
     end

@@ -19,7 +19,7 @@ box off; set(gca, 'ycolor', 'w', 'xcolor', 'w', 'xTick', -5:1:5, 'yTick', -5:4, 
 % plot(0,0, 'dk', 'markersize', 10, 'markerfacecolor', 'k');
 colormap(plt.redblue(64));
 caxis([-0.7 0.7]);
-title(scanPlot.title);
+if isfield(scanPlot, 'title'); title(scanPlot.title); end
 if scanPlot.addTrialNumber
     nTrials = scanPlot.nTrials(:);
     vIdx = nTrials(:)>0;

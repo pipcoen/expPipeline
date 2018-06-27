@@ -4,7 +4,7 @@ if ~exist('errorOn', 'var'); errorOn = 1; end
 
 colorChoices = plt.selectRedBlueColors(splitValues);
 numTrials = prc.makeGrid(blk, blk.responseMade, @length, 1);
-numRightTurns = prc.makeGrid(blk, blk.responseMade==0, @sum, 1);
+numRightTurns = prc.makeGrid(blk, blk.responseMade==2, @sum, 1);
 [prob,confInterval] = arrayfun(@(x,z) binofit(x, z, 0.05), numRightTurns, numTrials, 'uni', 0);
 centerPoints = cell2mat(cellfun(@(x) permute(x, [3,1,2]), prob, 'uni', 0));
 lowBound = cell2mat(cellfun(@(x) permute(x(:,1), [3,2,1]), confInterval, 'uni', 0));

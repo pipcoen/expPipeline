@@ -81,7 +81,7 @@
             obj.glmFit.GLMMultiModels(modelString);
             obj.glmFit.fit;
             [galvoBlocks, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock, [], 'galvouni', 2);
-            scanPlot.data = nan(size(galvoBlocks));
+            scanPlot.plotData = nan([size(galvoBlocks), length(obj.glmFit.prmInit)]);
             numTrials = zeros(size(galvoBlocks));
             for j = find(~cellfun(@isempty, galvoBlocks))'
                 if length(galvoBlocks{j}.responseMade)<500; continue; end
@@ -103,13 +103,13 @@
 %                     logLik(k,1) = subGLM.calculateLogLik(subGLM.prmFits);
 %                 end                               
                 [xIdx, yIdx] = ind2sub(size(galvoBlocks), j);
-                scanPlot.data(xIdx, yIdx) = maxLL-minLL;
+                plotData(xIdx, yIdx, :) = maxLL-minLL;
                 numTrials(xIdx, yIdx, 1) = length(galvoBlocks{j}.responseMade);
             end
             for i  = 1:length(obj.subjects)
                 hold on; box off;
                 obj.axesHandles = plt.getAxes(axesOpt, i);
-                plt.scanningBrainEffects(scanPlot);
+                plt.scanningBrainEffects(plotData, gridXY, obj.subjects{i}, numTrials);
             end
         end
         
