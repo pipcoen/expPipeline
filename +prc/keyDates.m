@@ -1,5 +1,5 @@
 function dateRange = keyDates(subjectID, dataTag)
-switch lower(dataTag)
+switch lower(dataTag{1})
     case 'behavior'
         switch subjectID
             case 'all'; dateRange = {'PC011','PC012','PC013','PC015','PC022','PC027','PC029','DJ007','DJ008','DJ010'}';

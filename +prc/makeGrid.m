@@ -27,8 +27,7 @@ repSessions = arrayfun(@(x) zeros(size(gridIdx))+x, sessions, 'uni', 0);
 repSessions = num2cell(cat(3,repSessions{:}));
 
 switch split
-    case 0; gridData = (cellfun(@(x) operation(data(all(conditions==x,2))), gridIdx, 'uni', 0));
-        gridData = cell2mat(gridData);
+    case 0; gridData = cell2mat(cellfun(@(x) operation(data(all(conditions==x,2))), gridIdx, 'uni', 0));
     case 1; gridData = cell2mat(cellfun(@(x,y) operation(data(all(conditions==x,2) & blocks.sessionIdx==y)), fullGrid, repSessions, 'uni', 0));
     case 2; gridData = cellfun(@(x) prc.combineBlocks(data, all(conditions==x,2)), gridIdx, 'uni', 0);
 end

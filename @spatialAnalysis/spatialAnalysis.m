@@ -74,6 +74,7 @@
             axesOpt = struct('totalNumOfAxes', length(obj.subjects), 'btlrMargins', [50 100 10 10], 'gapBetweenAxes', [40 0], ...
                 'numOfRows', 2, 'figureHWRatio', 0.8, 'figureSize', 400);
 
+            figure;
             [normBlock, laserBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 1);
             normBlock = prc.combineBlocks(normBlock, normBlock.galvoPosition(:,2)~=4.5);
             laserBlock = prc.combineBlocks(laserBlock, laserBlock.galvoPosition(:,2)~=4.5 & laserBlock.laserType == 1);
@@ -88,20 +89,13 @@
                 subGLM = fit.GLMmulti(galvoBlocks{j});
                 subGLM.GLMMultiModels(modelString);
                 subGLM.prmInit = obj.glmFit.prmFits;
-                subGLM.blockData.freeP = [];
-                minLL = subGLM.calculateLogLik(obj.glmFit.prmFits);
-                subGLM.blockData.freeP = 1:length(obj.glmFit.prmFits);
+                subGLM.blockData.freeP = 1:3;
                 subGLM.fit;
-                maxLL = subGLM.calculateLogLik(subGLM.prmFits+subGLM.prmInit);
-                
-%                 cellfun(@(x) length(x.responseMade), galvoBlocks(cellfun(@(x) ~isempty(x), galvoBlocks)))
-%                 for k = 1:8
-%                     subGLM.GLMMultiModels(['SimpLogSplitDelta' num2str(k)]);
-%                     subGLM.prmInit = obj.glmFit.prmFits;
-%                     subGLM.fit;
-%                     subGLM.prmFits(k) = subGLM.prmFits(k) + subGLM.prmInit(k);
-%                     logLik(k,1) = subGLM.calculateLogLik(subGLM.prmFits);
-%                 end                               
+                minLL = subGLM.calculateLogLik(subGLM.prmFits);
+                subGLM.blockData.freeP = [1:3 5:8];%(obj.glmFit.prmFits);
+                subGLM.fit;
+                maxLL = subGLM.calculateLogLik(subGLM.prmFits);
+                       
                 [xIdx, yIdx] = ind2sub(size(galvoBlocks), j);
                 scanPlot.data(xIdx, yIdx) = maxLL-minLL;
                 numTrials(xIdx, yIdx, 1) = length(galvoBlocks{j}.responseMade);
@@ -109,6 +103,7 @@
             for i  = 1:length(obj.subjects)
                 hold on; box off;
                 obj.axesHandles = plt.getAxes(axesOpt, i);
+                scanPlot.colorBarLimits = [-0.1 0.1];
                 plt.scanningBrainEffects(scanPlot);
             end
         end
