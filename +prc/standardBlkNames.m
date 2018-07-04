@@ -229,7 +229,9 @@ if ~isfield(e, 'galvoTTLTimes')
     e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
 end
 if ~isfield(e, 'galvoAndLaserEndTimes')
-    e.galvoAndLaserEndTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1)+e.laserDurationValues(1:sum(e.stimPeriodOnOffValues==1));
+    e.galvoAndLaserEndTimes = e.galvoTTLTimes+e.laserDurationValues(1:length(e.galvoTTLTimes));
+end
+if ~isfield(p, 'laserDuration')
     p.laserDuration = 1.5;
 end
 if ~isfield(b.galvoLog, 'tictoc')

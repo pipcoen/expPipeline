@@ -26,11 +26,11 @@
             if ~iscell(expDate); expDate = {expDate}; end
             if ~exist('combineMice', 'var'); combineMice = 0; end
             if ~exist('dataType', 'var'); dataType = 'bloprm'; end
-            if ~exist('subjects', 'var') || any(strcmp(subjects, 'all')); subjects = prc.keyDates('all', expDate{1}); end
+            if ~exist('subjects', 'var') || any(strcmp(subjects, 'all')); subjects = prc.keyDates({'all'}, expDate); end
             if ~iscell(subjects); subjects = {subjects}; end
             if length(expDate) < length(subjects); expDate = repmat(expDate, length(subjects),1); end
             expDate = expDate(:); subjects = subjects(:);
-            expDate = cellfun(@(x,y) prc.keyDates(x,y), subjects(:), expDate(:), 'uni', 0);
+            expDate = arrayfun(@(x,y) prc.keyDates(x,y), subjects(:), expDate(:), 'uni', 0);
             obj = changeMouse(obj, subjects, expDate, combineMice, dataType);
         end
         
@@ -89,7 +89,7 @@
                 subGLM = fit.GLMmulti(galvoBlocks{j});
                 subGLM.GLMMultiModels(modelString);
                 subGLM.prmInit = obj.glmFit.prmFits;
-                subGLM.blockData.freeP = 1:3;
+                subGLM.blockData.freeP = [];
                 subGLM.fit;
                 minLL = subGLM.calculateLogLik(subGLM.prmFits);
                 subGLM.blockData.freeP = [1:3 5:8];%(obj.glmFit.prmFits);
