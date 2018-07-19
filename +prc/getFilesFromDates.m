@@ -9,6 +9,7 @@ if ~exist('subject', 'var'); error('Must specify subject'); end
 if ~exist('requestedDates', 'var') || isempty(requestedDates); requestedDates = {'last'}; end
 if ~exist('dataType', 'var'); dataType = 'all'; end
 if ~iscell(requestedDates); requestedDates = {requestedDates}; end
+if iscell(requestedDates{1}); requestedDates = requestedDates{1}; end
 
 expList = load(prc.pathFinder('expList')); expList = expList.expList;
 existDirectories = prc.pathFinder('directoryCheck'); 

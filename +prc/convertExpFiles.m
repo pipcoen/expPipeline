@@ -85,7 +85,7 @@ files2Run = processListIdx(processListIdx>0)';
 srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedMice); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name
-    if contains(expList(i).expDef, {'Temporal'}); continue; end      %SKIP PC008 for now...
+%     if contains(expList(i).expDef, {'Temporal'}); continue; end      %SKIP PC008 for now...
     
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;
