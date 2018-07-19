@@ -297,6 +297,7 @@ end
 n.actualCoherenceRight = actualCoherenceRight;
 n.actualCoherenceLeft = actualCoherenceLeft;
 
+if ~isfield(p, 'periodicClicks'); p.periodicClicks = 0; [v.periodicClicks] = deal(0); end
 p.maxRepeatIncorrect = max(p.maxRepeatIncorrect);
 p.numberConditions = length(unique([audAmplitude audInitialAzimuth visContrast(:,1) visContrast(:,2) requestedCoherence], 'rows')); 
 p.coherentPerformance = round(mean(n.feedback(n.requestedCoherence ~=0.5 & n.laserType == 0))*100); 
@@ -325,7 +326,8 @@ prmFields =  {'subject';'expDate';'sessionNum';'rigName';'rigType';'wheelGain';'
     ;'delayAfterIncorrect';'laserDuration'; 'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'rewardSize';'noiseBurstAmplitude' ...
     ;'noiseBurstDuration';'stimDuration';'preStimQuiescentRange';'preStimQuiescentThreshold';'rewardTotal'; 'responseWindow' ...
     ;'totalTrials';'minutesOnRig';'galvoCoords';'numberConditions';'coherentPerformance';'validTrials' ...
-    ; 'numRepeats'; 'audStimMobile'; 'requestedCoherence'; 'minInterClickGap'; 'minLeftRightGap'; 'postStimQuiescentThreshold'; 'postStimQuiescentDuration'; 'periodicClicks'};
+    ;'numRepeats'; 'audStimMobile'; 'requestedCoherence'; 'minInterClickGap'; 'minLeftRightGap'; 'postStimQuiescentThreshold'; 'postStimQuiescentDuration'; 'periodicClicks' ...
+    ;'laserOnsetDelays';'postQuiescentDelay';'waveformType'};
 
 if any(~contains(fields(newBlock), blockFields)) || any(~contains(blockFields, fields(newBlock)))
     error('Field mistmatch in block file');
