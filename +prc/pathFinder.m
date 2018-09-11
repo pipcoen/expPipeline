@@ -40,6 +40,8 @@ switch lower(pathType)
     case 'processeddata'; pathOut = [processedFolder processedFileName];
     case 'shareddata'; pathOut = [sharedFolder processedFileName];
     case 'suite2poutput'; pathOut = [suite2POutput subjectPath(1:end-1)];
+    case 'rawprobedata'; pathOut = [expInfo subject '\' expDate '\ephys'];
+    case 'kilosortoutput'; pathOut = [expInfo subject '\' expDate '\ephys\kilosort'];
     case 'explist'
         if directoryCheck(1); pathOut = [processedFolder 'expList.mat'];
         elseif  directoryCheck(2); pathOut = [sharedFolder 'expList.mat'];

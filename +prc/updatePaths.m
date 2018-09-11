@@ -12,6 +12,8 @@ for i = 1:length(expList)
     expList(i).processedData = prc.pathFinder('processedData', expList(i).subject, expList(i).expDate, expList(i).sessionNum);
     expList(i).sharedData = prc.pathFinder('sharedData', expList(i).subject, expList(i).expDate, expList(i).sessionNum);
     expList(i).suite2POutput = prc.pathFinder('suite2POutput', expList(i).subject, expList(i).expDate, expList(i).sessionNum);
+    expList(i).rawProbeData = prc.pathFinder('rawProbeData', expList(i).subject, expList(i).expDate, expList(i).sessionNum);
+    expList(i).kilosortOutput = prc.pathFinder('kilosortOutput', expList(i).subject, expList(i).expDate, expList(i).sessionNum);
     if expList(i).galvoLog ~= 0; expList(i).galvoLog = prc.pathFinder('galvoLog', expList(i).subject, expList(i).expDate, expList(i).sessionNum); end
 end
 if saveList

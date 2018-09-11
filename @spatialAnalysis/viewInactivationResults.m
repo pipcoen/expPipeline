@@ -39,7 +39,7 @@ for i  = 1:length(obj.subjects)
         case {'unisig'}
             tempBlock = prc.getDefinedSubset(respBlock, obj.subjects{i});
             tempBlock = prc.combineBlocks(tempBlock, tempBlock.timeOutsBeforeResponse==0);
-            nShuffles = 1000;
+            nShuffles = 5000;
             inactiveGrid = cell(nShuffles+1, 1);
             for j = 1:length(inactiveGrid)
                 if j > 1

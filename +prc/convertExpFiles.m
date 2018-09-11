@@ -1,9 +1,9 @@
-function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
+function convertExpFiles(instructBlk, instruct2P, instructEPhys, selectedMice)
 %% A funciton process experimental recodings into more concise, matching, local copies for future analysis.
 
 %Inputs(default values)
-%redoBlocks(0)------EITHER, a single RAW block file to process (must be that block's directory) A tag to redo all block files
-%redoSuite2P(0)-----A tag to redo all 2P files
+%instructBlk(0)------EITHER, a single RAW block file to process (must be that block's directory) A tag to redo all block files
+%instruct2P(0)-----A tag to redo all 2P files
 %selectedMice('0')-Run for a specific mouse, or group of mice containing this string
 
 %Outputs
@@ -34,10 +34,11 @@ function convertExpFiles(redoBlocks, redoSuite2P, selectedMice)
 %"whoD" is simply a list of which variables are in the file. It is much faster to load this when processing rather than check the file contents.
 
 %% Set default values, load experimental list, check which processed files already exist, etc.
-if ~exist('redoBlocks', 'var') || isempty(redoBlocks); redoBlocks = 0; end
-if ~exist('redoSuite2P', 'var') || isempty(redoSuite2P); redoSuite2P = 0; end
-if ~exist('selectedMice', 'var') || isempty(redoSuite2P); selectedMice = {'PC'; 'DJ'; 'Dylan'}; end
-if redoBlocks == 2
+if ~exist('instructBlk', 'var') || isempty(instructBlk); instructBlk = 0; end
+if ~exist('instruct2P', 'var') || isempty(instruct2P); instruct2P = 0; end
+if ~exist('instructEPhys', 'var') || isempty(instructEPhys); instructEPhys = 0; end
+if ~exist('selectedMice', 'var') || isempty(instruct2P); selectedMice = {'PC'; 'DJ'; 'Dylan'}; end
+if instructBlk == 2
     paths = cellfun(@dir, {'*_Block.mat'; '*_parameters.mat'}, 'uni', 0);
     if any(cellfun(@isempty, paths))
         error('Must be in directory of raw block file');
@@ -70,7 +71,7 @@ listNotExcluded = ~[expList.excluded]';                                %Index of
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
 %probably processed and then excluded at a later date)
-if ~any([redoBlocks redoSuite2P])
+if ~any([instructBlk instruct2P instructEPhys])
     processListIdx = find(listNotExcluded & ~all(existProcessed, 2));
 else, processListIdx = find(listNotExcluded | any(existProcessed, 2));
 end
@@ -104,10 +105,10 @@ for i = files2Run(files2Run>srtIdx)
     end
     warning('on', 'MATLAB:load:variableNotFound');
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
-    varIdx = contains({'blk', 'flu'}, ['ignore'; whoD]);
+    varIdx = contains({'blk', 'flu', 'kil'}, ['ignore'; whoD]);
     
-    %Loop to run conv2PData on any 2P files that are missing the flu variable, or if redoSuite2P is set to 1
-    if any([~varIdx(2) redoSuite2P])
+    %Loop to run conv2PData on any 2P files that are missing the flu variable, or if instruct2P is set to 1
+    if any([~varIdx(2) instruct2P])
         switch lower(x.rigType)
             case 'twophoton'
                 fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i);
@@ -116,10 +117,25 @@ for i = files2Run(files2Run>srtIdx)
         end
     end
     
-    %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if redoBlocks is set to 1. First, check whether the processing
+    %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
+    %function for the particular experiment definition file exists. If it does, process the block.
+    if any([~varIdx(3) instructEPhys]) && strcmp(x.rigType, 'ephys');
+        fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
+        convEphysFile(x);
+    end
+    
+    
+%     %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
+%     %function for the particular experiment definition file exists. If it does, process the block.
+%     if any([~varIdx(3) instructEPhys])
+%         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
+%         convBlockFile(x);
+%     end
+    
+    %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
     %function for the particular experiment definition file exists. If it does, process the block.
     if isempty(which(func2str(x.blockFunction))); continue; end
-    if any([~varIdx(1) redoBlocks])
+    if any([~varIdx(1) instructBlk])
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x);
     end
@@ -127,8 +143,8 @@ end
 
 %Run the prc.updateParamChangeSpreadsheet on all mice that have new files. This keeps track of when parameters have changed for the mice.
 if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
-changedMice = uniquecell({expList(files2Run).subject}');
-cellfun(@prc.updateParamChangeSpreadsheet, changedMice(contains(changedMice, 'PC')));
+% changedMice = uniquecell({expList(files2Run).subject}');
+% cellfun(@prc.updateParamChangeSpreadsheet, changedMice(contains(changedMice, 'PC')));
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
@@ -176,6 +192,11 @@ else
     whoD = unique([who('-file', x.processedData); 'blk'; 'prm'; 'raw']); save(x.processedData, 'blk', 'prm', 'whoD', 'raw', '-append');  %#ok
     save(strrep(x.processedData,'dData','dDataLite'), 'blk', 'prm');
 end
+end
+
+%%
+function x = convEphysFile(x)
+if ~exist(x.kilosortOutput, 'dir') || ~exist([x.kilosortOutput '/spike_templates.npy'], 'file'); kil.preProcessPhase3(x.subject, x.expDate); end
 end
 
 %%

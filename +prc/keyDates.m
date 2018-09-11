@@ -26,11 +26,13 @@ switch lower(dataTag{1})
         end
     case 'uniscan'
         switch subjectID{1}
-            case 'all'; dateRange = {'PC022','PC027','PC029','DJ008'}';
+            case 'all'; dateRange = {'PC022','PC027','PC029','DJ008','DJ006','DJ007'}';
             case 'PC022'; dateRange = {'rng', '2018-02-06', '2018-03-20'}; %Regular trials within inactivation
             case 'PC027'; dateRange = {'rng', '2018-02-05', '2018-03-21'}; %Regular trials within inactivation
             case 'PC029'; dateRange = {'rng', '2018-06-12', '2018-07-18'};
             case 'DJ008'; dateRange = {'rng', '2018-06-12', '2018-07-18'};
+            case 'DJ006'; dateRange = {'rng', '2018-08-06', '2019-07-18'};
+            case 'DJ007'; dateRange = {'rng', '2018-08-06', '2019-07-18'};
             otherwise, dateRange = dataTag;
                 %PC022 dateRange = {'rng', '2017-11-02', '2017-11-21'}; %Data without any inactivation, but fewer trials
         end

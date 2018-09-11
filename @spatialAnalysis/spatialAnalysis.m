@@ -116,11 +116,10 @@
             axesOpt.gapBetweenAxes = [100 60];
             axesOpt.figureSize = 500;
             for i  = 1:length(obj.subjects)
-                axesOpt.idx = i;
 %                 goodBlock = spatialAnalysis.removePoorAuditoryDays(obj.blocks{i});
                 normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                 plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
-                obj.axesHandles = plt.getAxes(axesOpt);
+                obj.axesHandles = plt.getAxes(axesOpt, i);
                 switch plotType(1:3)
                     case 'rea'
                         gridData = prc.makeGrid(normBlock, round(normBlock.timeToWheelMove*1e3), @median, 1);
