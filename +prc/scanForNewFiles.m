@@ -1,4 +1,4 @@
-function expList = scanForNewFiles(rebuildList)
+function expList = scanForNewFiles(rebuildList, checkDirectories)
 %% A funciton to check for new files for specified mice, copy them to a local directory, and update a related experimental list object
 
 % Inputs(default values)
@@ -28,6 +28,7 @@ function expList = scanForNewFiles(rebuildList)
 %#ok<*AGROW>
 %% Define which mice should be included and which start/end dates (defaults to all files for that mouse)
 if ~exist('rebuildList', 'var'); rebuildList = 0; end
+if ~exist('checkDirectories', 'var'); checkDirectories = 0; end
 expInfo = prc.pathFinder('expInfo');
 % includedMice = {'PC013'};
 includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029';...
@@ -169,7 +170,13 @@ if ~addedFiles; fprintf('No new files found\n'); end
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
 expList = prc.updatePaths(expList);
 
-
+if checkDirectories
+    for i = 1:length(expList)
+        if expList(i).excluded == 1; continue; end
+        txtF = [dir([fileparts(expList(i).rawFolder) '\*Exclude*.txt']); dir([expList(i).rawFolder '\*Exclude*.txt'])];
+        if ~isempty(txtF); expList(i).excluded = 1; end
+    end
+end
 %% This section section deals with cases of files on non-training rigs when multiple files are detected for a mouse on same day, rig, and expDef
 folderList = cellfun(@fileparts, {expList.rawFolder}', 'uni', 0);
 folderList = cellfun(@(x,y,z) [x, y, z], folderList, {expList.rigName}', {expList.expDef}', 'uni', 0);

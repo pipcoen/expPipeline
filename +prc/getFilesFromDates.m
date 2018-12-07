@@ -20,7 +20,7 @@ end
 
 % get list of references and dates for subject
 selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'==0);
-excludedFiles = contains({selectedFiles.expDef}', {'Temporal'; 'stimSparseNoiseUncorrAsync'; 'stimKalatsky'});
+excludedFiles = contains({selectedFiles.expDef}', {'Temporal'; 'stimSparseNoiseUncorrAsync'; 'stimKalatsky'; 'Passive'});
 selectedFiles(excludedFiles)  = [];
 if isempty(expList); warning(['No processed files matching ' subject]); blk = {}; prm = {}; raw = {}; return; end
 expDates = datenum(cell2mat({selectedFiles.expDate}'));

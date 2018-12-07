@@ -9,8 +9,9 @@ if ~isfield(scanPlot, 'pVals')
     spotSize = APCoord*0+200;
 else
     spotSize = scanPlot.pVals(:);
-    spotSize = ((APCoord*0+1) + double(spotSize<0.01)*1.5 + double(spotSize<0.001)*1.5 + double(spotSize<0.0001)*1.5)*30;
+    spotSize = ((APCoord*0+1) + double(spotSize<0.001) + double(spotSize<0.0005)*2 + double(spotSize<0.0001)*4);
 end
+spotSize = spotSize*(200./max(spotSize(:)));
 scatter(MLCoord, APCoord, spotSize, plotData,'o', 'filled'); axis equal; drawnow
 grid on;
 xlim([-5.5 6])

@@ -23,12 +23,10 @@ if strcmp(ops.datatype , 'openEphys')
 end
 
 % Run kilosort
-[rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
-rez                = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
-rez                = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)
-
-% AutoMerge. rez2Phy will use for clusters the new 5th column of st3 if you run this)
-%     rez = merge_posthoc2(rez);
+rez = preprocessDataSub(ops);
+rez = clusterSingleBatches(rez);
+rez = learnAndSolve8b(rez);
+rez = splitAllClusters(rez);
 
 % Convert results to phy, save
 resultsDir = [dataPath '\results'];

@@ -25,6 +25,7 @@ for i = fieldNames'
     field = i{1};
     if strcmp(field, 'sessionNum'); continue; end
     if strcmp(field, 'nSessions'); continue; end
+%     if strcmp(field, 'rigName'); continue; end
     tDat = vertcat(blocks(:).(field));
     if size(tDat,1) == nTrials; tDat = tDat(tkIdx,:); end
 

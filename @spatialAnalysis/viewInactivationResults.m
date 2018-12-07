@@ -16,7 +16,12 @@ axesOpt.gapBetweenAxes = [40 0];
 axesOpt.figureHWRatio = 0.8;
 axesOpt.figureSize = 400;
 respBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 2);
+respBlock = spatialAnalysis.removePoorAuditoryDays(respBlock);
 respBlock = prc.combineBlocks(respBlock, respBlock.galvoPosition(:,2)~=4.5);
+respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=0.5);
+respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=2);
+respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=3.5);
+respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=5);
 normBlock = prc.combineBlocks(respBlock, respBlock.laserType==0);
 uniBlock = prc.combineBlocks(respBlock, respBlock.laserType==1);
 bilBlock = prc.combineBlocks(respBlock, respBlock.laserType==2);
@@ -28,6 +33,7 @@ for i  = 1:length(obj.subjects)
             elseif strcmpi(plotType, 'bil'); tempBlock = prc.getDefinedSubset(bilBlock, obj.subjects{i});
                 normBlock.galvoPosition(:,1) = abs(normBlock.galvoPosition(:,1));
             end
+            tempBlock = prc.combineBlocks(tempBlock, tempBlock.timeOutsBeforeResponse==0);
             
             [scanPlot.data, scanPlot.gridXY] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
             [scanPlot.nTrials] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @length, 'galvouni');
@@ -39,7 +45,7 @@ for i  = 1:length(obj.subjects)
         case {'unisig'}
             tempBlock = prc.getDefinedSubset(respBlock, obj.subjects{i});
             tempBlock = prc.combineBlocks(tempBlock, tempBlock.timeOutsBeforeResponse==0);
-            nShuffles = 5000;
+            nShuffles = 10000;
             inactiveGrid = cell(nShuffles+1, 1);
             for j = 1:length(inactiveGrid)
                 if j > 1

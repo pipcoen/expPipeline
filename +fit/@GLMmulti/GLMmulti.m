@@ -35,7 +35,7 @@ classdef GLMmulti < matlab.mixin.Copyable
                 obj.prmFits = nan(1,length(obj.prmLabels));
             end
             obj.pHat = obj.calculatepHat(obj.prmFits);
-            obj.logLik = obj.calculateLogLik(obj.prmFits)./length(obj.blockData.responseMade);
+            obj.logLik = obj.calculateLogLik(obj.prmFits);%./length(obj.blockData.responseMade);
         end
         
         function fitCV(obj,nFolds)
@@ -60,7 +60,7 @@ classdef GLMmulti < matlab.mixin.Copyable
                 pHatTested = cvTestObj.calculatepHat(obj.prmFits(i,:));
                 if min(cvTestObj.blockData.responseMade) == 0; idxMod = 1; else, idxMod = 0; end
                 obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.responseMade+idxMod));
-                obj.logLik(i) = mean(-log2(obj.pHat(cvObj.test(i))));
+                obj.logLik(i) = -mean(log2(obj.pHat(cvObj.test(i))));
             end
         end
         
@@ -104,7 +104,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             maxContrast =obj.blockData.origMax(1);
             xlim([-maxContrast maxContrast])
             set(gca, 'xTick', (-maxContrast):(maxContrast/4):maxContrast, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
-            title(obj.modelString);
+            title([obj.blockData.subject, obj.modelString]);
             hold off;
             figureHand = gca;
         end

@@ -9,7 +9,7 @@ ops.fproc               = [dataPath '\temp_wh.dat']; % residual from RAM of prep
 ops.root                = dataPath; % 'openEphys' only: where raw files are		
 		
 ops.fs                  = sampleRate;        % sampling rate		(omit if already in chanMap file)
-ops.Nfilt               = 960;           % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
+ops.Nfilt               = 1024;           % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
 ops.nNeighPC            = 12; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
 ops.nNeigh              = 16; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
 		
@@ -19,7 +19,7 @@ ops.nSkipCov            = 1; % compute whitening matrix from every N-th batch (1
 ops.whiteningRange      = 32; % how many channels to whiten together (Inf for whole probe whitening, should be fine if Nchan<=32)		
 		
 % define the channel map as a filename (string) or simply an array		
-ops.chanMap             = 'E:\Dropbox (Personal)\XMatlabProg\GitHub\expPipeline\helper\forPRBimecP3opt3.mat'; % make this file using createChannelMapFile.m		
+ops.chanMap             = 'D:\Dropbox (Personal)\XMatlabProg\GitHub\expPipeline\helper\forPRBimecP3opt3.mat'; % make this file using createChannelMapFile.m		
 ops.criterionNoiseChannels = 0.2; % fraction of "noise" templates allowed to span all channel groups (see createChannelMapFile for more info). 		
 % ops.chanMap = 1:ops.Nchan; % treated as linear probe if a chanMap file		
 
@@ -41,18 +41,28 @@ ops.NT                  = 32*1024+ ops.ntbuff;% this is the batch size (try decr
 % the following options can improve/deteriorate results. 		
 % when multiple values are provided for an option, the first two are beginning and ending anneal values, 		
 % the third is the value used in the final pass. 		
-ops.Th               = [4 10 10];    % threshold for detecting spikes on template-filtered data ([6 12 12])		
-ops.lam              = [5 20 20];   % large means amplitudes are forced around the mean ([10 30 30])		
+ops.Th               = [12 10];    % threshold for detecting spikes on template-filtered data ([6 12 12])		
+ops.ThS              = [8 8];    
+ops.ThPre            = 8;    
+ops.lam              = 10^2;   % large means amplitudes are forced around the mean ([10 30 30])		
 ops.nannealpasses    = 4;            % should be less than nfullpasses (4)		
-ops.momentum         = 1./[20 400];  % start with high momentum and anneal (1./[20 1000])		
+ops.momentum         = [20 400];  % start with high momentum and anneal (1./[20 1000])		
 ops.shuffle_clusters = 1;            % allow merges and splits during optimization (1)		
 ops.mergeT           = .1;           % upper threshold for merging (.1)		
+ops.mergeThreshold   = .1;           % upper threshold for merging (.1)		
 ops.splitT           = .1;           % lower threshold for splitting (.1)		
-		
+ops.trange           = [0 inf];
+ops.useRAM           = 0;
+ops.ccsplit          = 0.97; 
+ops.minFR            = 1/50; % minimum spike rate (Hz)
+ops.sigmaMask        = 30; % spatial constant in um for computing residual variance of spike
+ops.nPCs             = 3; % how many PCs to project the spikes into
+
+
 % options for initializing spikes from data		
 ops.initialize      = 'no'; %'fromData' or 'no'		
 ops.spkTh           = -6;      % spike threshold in standard deviations (4)		
-ops.loc_range       = [3  1];  % ranges to detect peaks; plus/minus in time and channel ([3 1])		
+ops.loc_range       = [5  4];  % ranges to detect peaks; plus/minus in time and channel ([3 1])		
 ops.long_range      = [30  6]; % ranges to detect isolated peaks ([30 6])		
 ops.maskMaxChannels = 5;       % how many channels to mask up/down ([5])		
 ops.crit            = .65;     % upper criterion for discarding spike repeates (0.65)		

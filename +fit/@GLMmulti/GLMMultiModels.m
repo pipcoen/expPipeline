@@ -50,7 +50,7 @@ switch obj.modelString
             end
             
         end
-        obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',600,1)];
+        obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
         obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
         
     case {'SimpLogSplitDelta'}

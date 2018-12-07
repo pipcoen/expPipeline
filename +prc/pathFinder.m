@@ -14,7 +14,9 @@ if contains(hostname, 'ziggurat')
     stubName = 'C:\Users\carandini';
 elseif contains(hostname, 'ziptop')
     stubName = 'C:';
-else, stubName = 'E:';
+elseif contains(hostname, 'homerig')
+    stubName = 'E:';    
+else, stubName = 'D:';
 end
 
 expInfo = '\\zubjects.cortexlab.net\Subjects\';

@@ -1,6 +1,6 @@
 function preProcessPhase3(animal,day,testData)
 % AP_preprocess_phase3(animal,day,testData)
-if exist('testData','var') && testData; dataPaths =  {'E:\testData'};
+if exist('testData','var') && testData; dataPaths =  {'C:\Temp\ephys'};
 else, dataPaths = {['\\zubjects.cortexlab.net\Subjects\' animal '\' day '\ephys']};
 end
 savePaths = {['\\zubjects.cortexlab.net\Subjects\' animal '\' day '\ephys\kilosort']};
@@ -17,28 +17,39 @@ for currSite = 1:length(dataPaths)
     currDataPath = dataPaths{currSite};
     currSavePath = savePaths{currSite};
     
-    if ~exist(currSavePath,'dir')
-        mkdir(currSavePath)
-    end
+    if ~exist(currSavePath,'dir'); mkdir(currSavePath); end
+    if exist([currDataPath filesep 'experiment1'],'dir'); newStructure = 1; else, newStructure = 0; end
+    
     
     % Filenames are semi-hardcoded in open ephys convention
-    apDataDir = dir([currDataPath '\experiment*_10*-0_0.dat']);
-    syncDir = dir([currDataPath '\experiment*_all_channels_0.events']);
-    settingsDir = dir([currDataPath '\settings*.xml']);
-    
-    apDataFileName = [currDataPath filesep apDataDir.name];
-    syncFilename = [currDataPath filesep syncDir.name];
-    settingsFilename = [currDataPath filesep settingsDir.name];
+    if ~newStructure
+        apDataDir = dir([currDataPath '\experiment*_10*-0_0.dat']);
+        syncDir = dir([currDataPath '\experiment*_all_channels_0.events']);
+        settingsDir = dir([currDataPath '\settings*.xml']);
+        
+        apDataFileName = [currDataPath filesep apDataDir.name];
+        syncFilename = [currDataPath filesep syncDir.name];
+        settingsFilename = [currDataPath filesep settingsDir.name];
+    else
+        apDataFileName = [currDataPath '\experiment1\recording1\continuous\Neuropix-3a-100.0\continuous.dat'];
+        syncTimestampsFilename = [currDataPath '\experiment1\recording1\events\Neuropix-3a-100.0\TTL_1\timestamps.npy' ];
+        syncFilename = [currDataPath '\experiment1\recording1\events\Neuropix-3a-100.0\TTL_1\channel_states.npy'];
+        settingsFilename = [currDataPath '\experiment1\recording1\structure.oebin'];
+    end
     
     %% Get and save recording parameters
-    
-    % Get index of electrophysiology channels in recordings
-    ephysSettings = kil.xml2struct(settingsFilename);
-    
+   
     % Get sample rate, gain, cutoff frequency (separate numbers and suffixes)
-    apGain = textscan(ephysSettings.SETTINGS.SIGNALCHAIN.PROCESSOR{1}.EDITOR.NEUROPIXELS.Attributes.apGainValue,'%d%s');
-    lfpGain = textscan(ephysSettings.SETTINGS.SIGNALCHAIN.PROCESSOR{1}.EDITOR.NEUROPIXELS.Attributes.lfpGainValue,'%d%s');
-    filterCut = textscan(ephysSettings.SETTINGS.SIGNALCHAIN.PROCESSOR{1}.EDITOR.NEUROPIXELS.Attributes.filterCut,'%d%s');
+    if  ~newStructure
+        ephysSettings = kil.xml2struct(settingsFilename);
+        apGain = textscan(ephysSettings.SETTINGS.SIGNALCHAIN.PROCESSOR{1}.EDITOR.NEUROPIXELS.Attributes.apGainValue,'%d%s');
+        lfpGain = textscan(ephysSettings.SETTINGS.SIGNALCHAIN.PROCESSOR{1}.EDITOR.NEUROPIXELS.Attributes.lfpGainValue,'%d%s');
+        filterCut = textscan(ephysSettings.SETTINGS.SIGNALCHAIN.PROCESSOR{1}.EDITOR.NEUROPIXELS.Attributes.filterCut,'%d%s');
+    else
+        apGain = {500};
+        lfpGain = {125};
+        filterCut = {300};
+    end
     
     % (0.195x for int16 to uV? how's this change with gain, just another x?)
     
@@ -59,24 +70,45 @@ for currSite = 1:length(dataPaths)
     
     formatSpec = '%s = %s\r\n';
     fid = fopen(paramFilename,'w');
-    for curr_param = 1:size(params,1)
-        fprintf(fid,formatSpec,params{curr_param,:});
+    for currParam = 1:size(params,1)
+        fprintf(fid,formatSpec,params{currParam,:});
     end
     fclose(fid);
     
     %% Get/save digital input events
     % Get/save digital input event times,
-    [syncData, syncTimestamps, syncInfo] = load_open_ephys_data_faster(syncFilename);
-    syncChannels = unique(syncData);
-    sync = struct('timestamps',cell(size(syncChannels)),'values',cell(size(syncChannels)));
-    for currSync = 1:length(syncChannels)
-        syncEvents = syncData == (syncChannels(currSync));
-        sync(currSync).timestamps = syncTimestamps(syncEvents);
-        sync(currSync).values = logical(syncInfo.eventId(syncEvents));
+    if ~newStructure
+        [syncData, syncTimestamps, syncInfo] = load_open_ephys_data_faster(syncFilename);
+        syncChannels = unique(syncData);
+        sync = struct('timestamps',cell(size(syncChannels)),'values',cell(size(syncChannels)));
+        for currSync = 1:length(syncChannels)
+            syncEvents = syncData == (syncChannels(currSync));
+            sync(currSync).timestamps = syncTimestamps(syncEvents);
+            sync(currSync).values = logical(syncInfo.eventId(syncEvents));
+        end
+        syncSaveFilename = [currSavePath '\sync.mat'];
+        save(syncSaveFilename,'sync');
+    else
+        % This way of getting start times is garbage too, assume AP
+        % band is listed third (1 = software, 2 = AP, 3 = LFP)
+        % (unused at the moment - I guess that assumes start time = 0)
+        % Get/save digital input event times,
+        syncData = readNPY(syncFilename);
+        syncTimestamps = readNPY(syncTimestampsFilename);
+        syncTimestamps = double(syncTimestamps)/apSampleRate;
+        
+        syncChannels = unique(abs(syncData));
+        sync = struct('timestamps',cell(size(syncChannels)),'values',cell(size(syncChannels)));
+        for currSync = 1:length(syncChannels)
+            syncEvents = abs(syncData) == (syncChannels(currSync));
+            sync(currSync).timestamps = syncTimestamps(syncEvents);
+            sync(currSync).values = sign(syncData(syncEvents)) == 1;
+        end
+        
+        syncSaveFilename = [currSavePath '\sync.mat'];
+        save(syncSaveFilename,'sync');
     end
     
-    syncSaveFilename = [currSavePath '\sync.mat'];
-    save(syncSaveFilename,'sync');
     
     %% Run kilosort
     
@@ -97,6 +129,7 @@ for currSite = 1:length(dataPaths)
         mkdir(KilosortPath)
     end
     copyfile(apDataFileName,apTempFilename);
+    
     disp('Done');
     
     % Subtract common median across AP-band channels (hardcode channels?)
@@ -117,7 +150,7 @@ for currSite = 1:length(dataPaths)
     resultsPath = [KilosortPath '\results'];
     copyfile(resultsPath,currSavePath);
     
-    %% Copy kilosort results and raw data to phy folder for clustering    
+    %% Copy kilosort results and raw data to phy folder for clustering
     % Clear out whatever's currently in phy
     rmdir(localPhyPath,'s');
     mkdir(localPhyPath);

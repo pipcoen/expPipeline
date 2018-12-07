@@ -1,4 +1,4 @@
-function syncfolder(p1, p2, syncdirect, includeTimeline)
+function syncfolder(p1, p2, syncdirect, includeTimeline, includeVideo)
 %prc.syncfolder sync two folds
 %
 %  prc.syncfolder(p1, p2, syncdirect), sync between p1 and p2. p1 and p2 are
@@ -27,6 +27,7 @@ function syncfolder(p1, p2, syncdirect, includeTimeline)
 % the sync direct is two-way by default
 if ~exist('syncdirect', 'var'), syncdirect = 0; end
 if ~exist('includeTimeline', 'var'), includeTimeline = 0; end
+if ~exist('includeVideo', 'var'), includeVideo = 0; end
 if ischar(syncdirect), syncdirect = str2double(syncdirect); end
 tmpRecycle = recycle;
 recycle on;
@@ -47,13 +48,13 @@ end
 if isdir(p1) && p1(end)~='\', p1 = [p1, '\']; end
 if isdir(p2) && p2(end)~='\', p2 = [p2, '\']; end
 
-% get the files and subdirectories, and sort them by alphabetically
+% get the files and subdirectories, and sort them by alphabetically 
 files1 = sortstruct(dir(p1), 'name');
 files2 = sortstruct(dir(p2), 'name');
 
 if ~includeTimeline
     files1 = files1(~contains({files1.name}', {'..';'Timeline'; '.npy'}));
-    files2 = files2(~contains({files2.name}', {'..';'Timeline'; '.npy'}));
+    files2 = files2(~contains({files2.name}', {'.mj2'}));
 end
 %% compare the files and subdirectories one by one
 nf1 = 1; nf2 = 1;

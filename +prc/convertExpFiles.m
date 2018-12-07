@@ -117,9 +117,9 @@ for i = files2Run(files2Run>srtIdx)
         end
     end
     
-    %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
-    %function for the particular experiment definition file exists. If it does, process the block.
-    if any([~varIdx(3) instructEPhys]) && strcmp(x.rigType, 'ephys');
+%     Loop to run convBlockFile on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
+%     function for the particular experiment definition file exists. If it does, process the block.
+    if any([~varIdx(3) instructEPhys]) && strcmp(x.rigType, 'ephys') && instructEPhys~=-1
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convEphysFile(x);
     end
@@ -154,8 +154,8 @@ if x.galvoLog~=0; x.galvoLog = load(x.galvoLog); end
 x = prc.removeFirstTrialFromBlock(x);
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 
-if ~strcmpi(x.rigType, 'training')
-    x.oldBlock.blockTimeOffset = prc.alignBlockTimes(x.oldBlock, x.timeline);
+if ~contains(x.rigType, 'training')
+%     x.oldBlock.blockTimeOffset = prc.alignBlockTimes(x.oldBlock, x.timeline); %%%%NEED TO FIX%%%
 end
 x.oldBlock.galvoLog = x.galvoLog;
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
@@ -196,7 +196,12 @@ end
 
 %%
 function x = convEphysFile(x)
-if ~exist(x.kilosortOutput, 'dir') || ~exist([x.kilosortOutput '/spike_templates.npy'], 'file'); kil.preProcessPhase3(x.subject, x.expDate); end
+if ~exist(x.kilosortOutput, 'dir') || ~exist([x.kilosortOutput '/spike_templates.npy'], 'file')
+    kil.preProcessPhase3(x.subject, x.expDate);
+    kil.liklihoodNoise(x.kilosortOutput);
+elseif ~exist([x.kilosortOutput '\cluster_pNoise.tsv'], 'file')
+    kil.liklihoodNoise(x.kilosortOutput);
+end
 end
 
 %%

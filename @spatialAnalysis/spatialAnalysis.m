@@ -42,30 +42,37 @@
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.btlrMargins = [80 100 80 40];
             axesOpt.gapBetweenAxes = [100 60];
+            axesOpt.numOfRows = 2;
+            axesOpt.figureHWRatio = 1.1;
             for i  = 1:length(obj.subjects)
                 if contains(lower(modelString), 'nest')
                     [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 0, 5);
                     normBlock = prc.combineBlocks(normBlock, normBlock.timeOutsBeforeResponse == 0);
                     normBlock.responseMade(normBlock.responseTime>1.5) = 0;
-                    if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmultiNest(normBlock, modelString); end
+                        if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmultiNest(normBlock, modelString); end
                 else
-                    [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
-%                     [~, normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
-%                     galvoIdx = ismember(normBlock.galvoPosition, [-1.8, -3; -1.8, -4;3, -4;-3,-3], 'rows');
-%                     galvoIdx = ismember(normBlock.galvoPosition, [-0.6, 2; -0.6, 3; -1.8,2], 'rows');
-%                     normBlock = prc.combineBlocks(normBlock, normBlock.laserType==1 & galvoIdx);
+                    [~, normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+%                     [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+%                     galvoIdx = ismember(normBlock.galvoPosition, [1.8, -4;3,-4;3,-3], 'rows');
+                    galvoIdx = ismember(normBlock.galvoPosition, [4.2, -2;4.2,-3], 'rows');
+%                     galvoIdx = ismember(normBlock.galvoPosition, [0.6, 2; 0.6, 3; 1.8,2], 'rows');
+                    normBlock = prc.combineBlocks(normBlock, normBlock.laserType==1 & galvoIdx);
                     if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmulti(normBlock, modelString); end
                 end
                 obj.axesHandles = plt.getAxes(axesOpt, i);
                 if ~contains(lower(modelString), 'plot'); obj.glmFit{i}.fit; end
                 obj.glmFit{i}.plotFit;
                 hold on; box off;
-                plt.dataWithErrorBars(normBlock, 1);
+                plt.dataWithErrorBars(normBlock,0);
                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
                 yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
                 if length(obj.subjects) == 1; set(gcf, 'position', get(gcf, 'position').*[1 0.9 1 1.15]); end
                 if cvFolds; obj.glmFit{i}.fitCV(cvFolds); end
             end
+            figureSize = get(gcf, 'position');
+            mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
+            plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
+            plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
             obj.figureHandles = [];
         end
         
@@ -112,9 +119,10 @@
             if ~exist('plotType', 'var'); plotType = 'res'; end
             figure;
             axesOpt.totalNumOfAxes = length(obj.subjects);
-            axesOpt.btlrMargins = [120 100 120 40];
+            axesOpt.btlrMargins = [80 100 80 40];
             axesOpt.gapBetweenAxes = [100 60];
-            axesOpt.figureSize = 500;
+            axesOpt.numOfRows = 2;
+            axesOpt.figureHWRatio = 1.1;
             for i  = 1:length(obj.subjects)
 %                 goodBlock = spatialAnalysis.removePoorAuditoryDays(obj.blocks{i});
                 normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
@@ -127,12 +135,16 @@
                     case 'res'
                         gridData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean, 1);
                         plt.gridSplitByRows(gridData, normBlock.visValues*100, normBlock.audValues, plotOpt);
+                        xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
+                        yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
                 end
-                figureSize = get(gcf, 'position');
-                mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
-                plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
-                plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
+                box off;
+                title(obj.subjects{i});
             end
+            figureSize = get(gcf, 'position');
+            mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
+            plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
+            plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);        
         end
         
         function scatterReactionTimes(obj, plotType)
@@ -210,6 +222,8 @@
             
             if combineMice
                 combinedName = cell2mat(unique({obj.blocks.subject}')');
+                tDat = {obj.blocks.subject}'; [obj.blocks.subjectIdx] = tDat{:};
+                tDat = {obj.params.subject}'; [obj.params.subjectIdx] = tDat{:};
                 [obj.blocks.subject] = deal(combinedName);
                 [obj.params.subject] = deal(combinedName);
                 obj.subjects = {combinedName};
@@ -262,7 +276,7 @@
                 replicatedObj.params = repmat(replicatedObj.params(i), length(replicatedObj.subjects),1);
                 replicatedObj.expDate = [];
                 eval(['replicatedObj.' funString ';']);
-                suptitle(obj.subjects(i));
+                plt.suplabel(obj.subjects{i}, 't');
             end
         end
     end
