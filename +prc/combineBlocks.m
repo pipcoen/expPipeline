@@ -15,7 +15,7 @@ if length(unique(arrayfun(@(x) num2str(x.uniqueConditions(:)'),blocks,'uni',0)))
     warning('Can only semi-concatenate blocks of same parameter sets. Some fields will be empty')
 else, unableToMerge = 0;
 end
-
+%test
 tkIdx = criterion>0;
 if ~any(tkIdx); combinedBlocks = []; return; end
 
