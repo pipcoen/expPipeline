@@ -221,11 +221,16 @@
             excessData = [isempty(obj.params), isempty(obj.blocks), isempty(rawData)];
             
             if combineMice
-                combinedName = cell2mat(unique({obj.blocks.subject}')');
-                tDat = {obj.blocks.subject}'; [obj.blocks.subjectIdx] = tDat{:};
-                tDat = {obj.params.subject}'; [obj.params.subjectIdx] = tDat{:};
-                [obj.blocks.subject] = deal(combinedName);
-                [obj.params.subject] = deal(combinedName);
+                if ~excessData(1)
+                    combinedName = cell2mat(unique({obj.params.subject}')');
+                    tDat = {obj.params.subject}'; [obj.params.subjectIdx] = tDat{:};
+                    [obj.params.subject] = deal(combinedName);                
+                end
+                if ~excessData(2)
+                    combinedName = cell2mat(unique({obj.blocks.subject}')');
+                    tDat = {obj.blocks.subject}'; [obj.blocks.subjectIdx] = tDat{:};
+                    [obj.blocks.subject] = deal(combinedName);
+                end
                 obj.subjects = {combinedName};
                 subjects = {combinedName};
             end

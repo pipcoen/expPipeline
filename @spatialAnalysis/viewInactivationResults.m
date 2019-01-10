@@ -16,16 +16,16 @@ axesOpt.gapBetweenAxes = [40 0];
 axesOpt.figureHWRatio = 0.8;
 axesOpt.figureSize = 400;
 respBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 2);
-% respBlock = spatialAnalysis.removePoorAuditoryDays(respBlock);
-% respBlock = prc.combineBlocks(respBlock, respBlock.galvoPosition(:,2)~=4.5);
-% respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=0.5);
-% respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=2);
-% respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=3.5);
-% respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=5);
+respBlock = spatialAnalysis.removePoorAuditoryDays(respBlock);
+respBlock = prc.combineBlocks(respBlock, respBlock.galvoPosition(:,2)~=4.5);
+respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=0.5);
+respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=2);
+respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=3.5);
+respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=5);
 normBlock = prc.combineBlocks(respBlock, respBlock.laserType==0);
 uniBlock = prc.combineBlocks(respBlock, respBlock.laserType==1);
 bilBlock = prc.combineBlocks(respBlock, respBlock.laserType==2);
-bilBlock.galvoPosition(:,1) = abs(bilBlock.galvoPosition(:,1));
+% bilBlock.galvoPosition(:,1) = abs(bilBlock.galvoPosition(:,1));
 
 for i  = 1:length(obj.subjects)
     switch lower(plotType)
@@ -39,7 +39,7 @@ for i  = 1:length(obj.subjects)
             
             [scanPlot.data, scanPlot.gridXY] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
             [scanPlot.nTrials] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @length, 'galvouni');
-            
+            a
             tempBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});
             scanPlot.data = scanPlot.data - prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
             axesOpt.numOfRows = 4;
