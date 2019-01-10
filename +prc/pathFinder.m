@@ -14,7 +14,7 @@ if contains(hostname, 'ziggurat')
     stubName = 'C:\Users\carandini';
 elseif contains(hostname, 'ziptop')
     stubName = 'C:';
-elseif contains(hostname, 'homerig')
+elseif contains(hostname, {'homerig'; 'zort'})
     stubName = 'E:';    
 else, stubName = 'D:';
 end
