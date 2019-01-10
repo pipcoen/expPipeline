@@ -12,10 +12,7 @@ else, combinedBlocks.sessionIdx = cell2mat(arrayfun(@(x) blocks(x).trialStartEnd
 end
 uniqueMice = unique({blocks.subjectIdx});
 combinedBlocks.subjectIdx = [combinedBlocks.sessionIdx*0];
-for i = 1:length(uniqueMice)
-mouseIdx = contains({blocks.subjectIdx}, uniqueMice{i})
-combinedBlocks.subjectIdx
-end
+
 if length(unique(arrayfun(@(x) num2str(x.uniqueConditions(:)'),blocks,'uni',0))) > 1
     unableToMerge = 1;
     warning('Can only semi-concatenate blocks of same parameter sets. Some fields will be empty')
