@@ -31,7 +31,7 @@ if ~exist('rebuildList', 'var'); rebuildList = 0; end
 if ~exist('checkDirectories', 'var'); checkDirectories = 0; end
 expInfo = prc.pathFinder('expInfo');
 % includedMice = {'PC013'};
-includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029';...
+includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...
                 'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'};
 
 startedDates = {'', ''};
@@ -57,15 +57,14 @@ rigList = {'training', {'zym'; 'zred'; 'zgrey'; 'zool'}; ...
 
 %% Check for all files generated in the past 3 weeks for included mice.
 lastBlockFiles = [];
-lastWeekOnly = [];
-lastWeek = datestr(datenum(datetime('now'))-7:datenum(datetime('now')), 'yyyy-mm-dd');
+files2Check = 15;
+% lastWeek = datestr(datenum(datetime('now'))-7:datenum(datetime('now')), 'yyyy-mm-dd');
 for i = 1:size(includedMice,1)
-    lastWeeks = datestr(datenum(includedMice{i,3})-20:datenum(includedMice{i,3}), 'yyyy-mm-dd');
-    detectedFiles = arrayfun(@(x) dir([expInfo '/' includedMice{i} '/' lastWeeks(x,:) '/**/' '20*parameters.mat']), 1:length(lastWeeks), 'uni', 0);
+    recentDates = datestr(datenum(includedMice{i,3})-files2Check:datenum(includedMice{i,3}), 'yyyy-mm-dd');
+    sessionPaths = arrayfun(@(x) dir([expInfo includedMice{i} '/' recentDates(x,:)]), 1:size(recentDates,1), 'uni', 0);
+    sessionPaths = catStructs(cellfun(@(x) x(~isnan(str2double({x.name}))), sessionPaths, 'uni', 0));
+    detectedFiles = arrayfun(@(x) dir([x.folder '/' x.name '/20*parameters.mat']), sessionPaths', 'uni', 0);
     lastBlockFiles = cat(1, lastBlockFiles, detectedFiles{:});
-    
-    detectedFiles = arrayfun(@(x) dir([expInfo '/' includedMice{i} '/' lastWeek(x,:) '/**/' '20*parameters.mat']), 1:size(lastWeek,1), 'uni', 0);
-    lastWeekOnly = cat(1, lastWeekOnly, detectedFiles{:});
 end
 
 %% Build list of unregistered files from the last week (or find all files if rebuilding list)
@@ -73,17 +72,13 @@ if rebuildList == 1
     expList = struct;
     newParams = cat(1, cellfun(@(x) dir([expInfo '/' x '/**/20*parameters.mat']), includedMice(:,1), 'uni', 0));
     newParams = cat(1, newParams{:});
-else
-    expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
-    if rebuildList ~= 2
+else,     expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
+    if isempty(lastBlockFiles), fprintf('No new files found\n'); return
+    else
         [~, nIdx] = setdiff({lastBlockFiles.folder}',{expList.rawFolder}');
         newParams = lastBlockFiles(nIdx);
-    else, newParams = lastWeekOnly;
-        [~, dIdx] = ismember({lastWeekOnly.folder}',{expList.rawFolder}');
-        expList(dIdx(dIdx~=0)) = [];
     end
 end
-
 
 %% Loop to created struture for new files and add them to the expList
 addedFiles  = 0;
@@ -121,11 +116,7 @@ for i = 1:length(newParams)
     
     %If a text file with "Exclude" in the name is detected in the experiment directory, exclude this experiment.
     %This exclude is placed here to avoid wasting time in loading unwanted block files, and
-    txtF = [dir([fileparts(newParams(i).folder) '\*Exclude*.txt']); dir([newParams(i).folder '\*Exclude*.txt'])];
     tempLoc = prc.updatePaths(expList(end), 0);
-    if ~isempty(txtF); expList(end).excluded = 1; else, expList(end).excluded = 0; end
-    if expList(end).excluded; expList(end).rigName = 'nan'; expList(end).rigType = 'nan'; continue; end
-    
     if exist(tempLoc.rawBlock, 'file'); load(tempLoc.rawBlock, 'block'); b = block;
     else, clear b; load([tempLoc.rawFolder '\' newParams(i).name], 'parameters'); 
         if exist(tempLoc.rawTimeline, 'file'); load(tempLoc.rawTimeline); 
@@ -136,6 +127,7 @@ for i = 1:length(newParams)
             b.duration = Timeline.lastTimestamp;
         end
     end
+       
     if ~contains(b.rigName, cat(1,rigList{:,2})); error([b.rigName ' not recognized']); end
     if isfield(b, 'expDef'); [~, expList(end).expDef] = fileparts(b.expDef); end
     expList(end).rigName = b.rigName;
@@ -155,6 +147,9 @@ for i = 1:length(newParams)
     %If a ChoiceWorld experiment, or experiment lasts less than 60s, then ignore (Pip doesn't use Choiceworld)
     if strcmp(expList(end).expDef, 'ChoiceWorld'); expList(end).excluded = 1; continue; end
     if expList(end).expDuration < 60; expList(end).excluded = 1; continue; end
+    
+    txtF = [dir([fileparts(newParams(i).folder) '\*Exclude*.txt']); dir([newParams(i).folder '\*Exclude*.txt'])];
+    if ~isempty(txtF); expList(end).excluded = 1; else, expList(end).excluded = 0; end
     
     %If a text file with "NewFOV" in the name is detected in the experiment directory, alter suite2Poutput to account for multiple fields of view.
     txtF = dir([newParams(i).folder '\*NewFOV*.txt']);

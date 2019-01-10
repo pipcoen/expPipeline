@@ -48,14 +48,19 @@ end
 if isdir(p1) && p1(end)~='\', p1 = [p1, '\']; end
 if isdir(p2) && p2(end)~='\', p2 = [p2, '\']; end
 
-% get the files and subdirectories, and sort them by alphabetically 
+% get the files and subdirectories, and sort them by alphabetically
 files1 = sortstruct(dir(p1), 'name');
 files2 = sortstruct(dir(p2), 'name');
 
 if ~includeTimeline
     files1 = files1(~contains({files1.name}', {'..';'Timeline'; '.npy'}));
+    files2 = files2(~contains({files2.name}', {'..';'Timeline'; '.npy'}));
+end
+if ~includeVideo
+    files1 = files1(~contains({files1.name}', {'.mj2'}));
     files2 = files2(~contains({files2.name}', {'.mj2'}));
 end
+
 %% compare the files and subdirectories one by one
 nf1 = 1; nf2 = 1;
 while nf1 <= numel(files1) || nf2 <= numel(files2)

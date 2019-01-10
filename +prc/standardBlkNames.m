@@ -19,11 +19,6 @@ f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFun
     'iAziTimes'; 'iAziValues'; 'aViCValues'; 'aViCTimes'; 'visCValues'; 'visCTimes'; 'audCValues'; 'audCTimes'; 'reflectAzimuthAndCorrectResponse'; ...
     'aViMTimes'; 'aViMValues'; 'corRValues'; 'corRTimes'; 'sPreTimes'; 'sPreValues'; 'stimContinuous'; 'galvoCoordID'};
 
-totalTimeOffset = b.experimentStartedTime-e.expStartTimes;
-if isfield(b, 'blockTimeOffset'); totalTimeOffset = totalTimeOffset-b.blockTimeOffset(1); end
-fieldList = fieldnames(e);
-for i = 2:2:length(fieldList); eval(['e.' fieldList{i} ' = e.' fieldList{i} ' + totalTimeOffset;']); end
-
 if isfield(e, 'fBckTimes'); e.feedbackTimes = e.fBckTimes; e.feedbackValues = e.fBckValues; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
@@ -40,7 +35,6 @@ if ~isfield(p, 'laserOnsetDelays'); p.laserOnsetDelays = [0;0]; [v.laserOnsetDel
 if ~isfield(p, 'postQuiescentDelay'); p.postQuiescentDelay = 0; [v.postQuiescentDelay] = deal(0); end
 if ~isfield(p, 'waveformType'); p.waveformType = 1; end
 if ~isfield(v, 'waveformType'); [v.waveformType] = deal(1); end
-
 
 if isfield(e, 'sPreValues')
     e.stimPeriodOnOffTimes = e.sPreTimes;
@@ -158,10 +152,6 @@ end
 if isfield(e, 'corRValues'); tDat = num2cell(e.corRValues'); [v.correctResponse] = tDat{:};
 elseif isfield(e, 'correctResponseValues'); tDat = num2cell(e.correctResponseValues'); [v.correctResponse] = tDat{:};
 end
-
-fieldList = fieldnames(b.inputs);
-fieldList = fieldList(cellfun(@(x) ~isempty(strfind(x, 'Times')>0), fieldList));
-for i = 1:length(fieldList); eval(['b.inputs.' fieldList{i} ' = b.inputs.' fieldList{i} ' + totalTimeOffset;']); end
 
 if isfield(p, 'interactPunishDelays')
     p.openLoopDuration = p.interactPunishDelays(1);
@@ -311,6 +301,6 @@ standardizedParams = prc.chkThenRemoveFields(p, f2Re);
 standardizedBlock = b;
 standardizedBlock.paramsValues = prc.chkThenRemoveFields(v, f2Re(~contains(f2Re, 'correctResponse')));
 standardizedBlock.events = prc.chkThenRemoveFields(e, f2Re);
-standardizedBlock.paramsTimes = b.paramsTimes+totalTimeOffset;
+% standardizedBlock.paramsTimes = b.paramsTimes+totalTimeOffset; %%% Never use anyway
 end
 
