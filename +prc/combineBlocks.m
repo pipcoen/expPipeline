@@ -10,9 +10,6 @@ if length(blocks) == 1
     end
 else, combinedBlocks.sessionIdx = cell2mat(arrayfun(@(x) blocks(x).trialStartEnd(:,1)*0+x, 1:length(blocks), 'uni', 0)');
 end
-uniqueMice = unique({blocks.subjectIdx});
-combinedBlocks.subjectIdx = [combinedBlocks.sessionIdx*0];
-
 if length(unique(arrayfun(@(x) num2str(x.uniqueConditions(:)'),blocks,'uni',0))) > 1
     unableToMerge = 1;
     warning('Can only semi-concatenate blocks of same parameter sets. Some fields will be empty')
@@ -28,7 +25,7 @@ for i = fieldNames'
     field = i{1};
     if strcmp(field, 'sessionNum'); continue; end
     if strcmp(field, 'nSessions'); continue; end
-    if strcmp(field, 'subjectIdx'); continue; end
+    
     if contains(field, 'rig'); continue; end
     tDat = vertcat(blocks(:).(field));
     if size(tDat,1) == nTrials; tDat = tDat(tkIdx,:); end
