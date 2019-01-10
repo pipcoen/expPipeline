@@ -34,6 +34,10 @@ for i  = subjects2Run
             normBlock = prc.combineBlocks(normBlock, normBlock.timeOutsBeforeResponse==0);
             set(gcf, 'Tag', 'boxGNG', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
             boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade~=0, @mean);
+        case 'las'
+            [~,normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 1);
+            set(gcf, 'Tag', 'boxLas', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
+            boxPlot.plotData = prc.makeGrid(normBlock, normBlock.laserType~=0, @sum);
         case 'num'
             boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @length);
             set(gcf, 'Tag', 'boxNum', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);

@@ -100,7 +100,7 @@ p = x.standardizedParams;              %Parameter values at start of entire sess
 vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
-%Note: we cannot perform this stage before the stage above as it will mess with the calculation of totalRepeats 
+%Note: we cannot perform this stage before the stage above as it will mess with the calculation of totalRepeats
 if sum(vIdx) > 150
     %We remove the first 10 and last 10 correct trials for each session we use -1 because we only want to remove these extra trials from totalRepeats.
     vIdx = double(vIdx);
@@ -126,7 +126,7 @@ end
 
 %% The number of repeats and timeouts for each trial type presented
 %maxRepeatIdx is the set of indices when repeat numbers decrease (i.e. when a maxRepeat is reached, or a repeated trial is performed correctly.
-%potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat. 
+%potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat.
 %totalRepeats is the total number of times each trial was repeated (we subtract 1 so it will be zero if a trial was correct the first time)
 timeOutsBeforeResponse = 0*vIdx';
 sequentialTimeOuts = 0*vIdx';
@@ -149,11 +149,11 @@ for i = find(vIdx)
     end
 end
 %% Populate fields of "n" with basic trial data
-%stimPeriodStart extracts times when stimPeriodOnOffValues is 1 (which is when this period starts). 
+%stimPeriodStart extracts times when stimPeriodOnOffValues is 1 (which is when this period starts).
 %We also remove times when the first newTrialTime is greater than that the first stimPeriodStart, an error that can occur on the first trial.
-%responseTime are the times taken between the stimulus starting and the response being made (including open loop period). Must use 
-%"1:length(stimPeriodStart)" because if a trial is interupped there can be more stimPeriodStart values than feedback values. 
-stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)'; 
+%responseTime are the times taken between the stimulus starting and the response being made (including open loop period). Must use
+%"1:length(stimPeriodStart)" because if a trial is interupped there can be more stimPeriodStart values than feedback values.
+stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)';
 stimPeriodStart = stimPeriodStart(vIdx);
 feedbackTimes = e.feedbackTimes(vIdx)';
 feedbackValues = e.feedbackValues(vIdx)';
@@ -227,12 +227,12 @@ responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
 allConditions = [audAmplitude visContrast audInitialAzimuth visInitialAzimuth];
 uniqueConditions = unique([p.audAmplitude' p.visContrast' p.audInitialAzimuth' p.visInitialAzimuth'], 'rows');
 
-%Create a set of unique conditions, where each row is a condition in the order: [zero conditions; right conditions; left conditions]. 
+%Create a set of unique conditions, where each row is a condition in the order: [zero conditions; right conditions; left conditions].
 leftInitialConditions = uniqueConditions(uniqueConditions(:,end-1)< 0 | ((isinf(uniqueConditions(:,end-1)) | ~(uniqueConditions(:,end-1))) & uniqueConditions(:,end)<0),:);
 if size(leftInitialConditions,1)~=floor(size(uniqueConditions,1)/2); warning('Why are half conditions not left conditions?'); end
 zeroConditions = uniqueConditions(all([any(uniqueConditions(:,[1,3])==0,2) any(uniqueConditions(:,[2,4])==0,2)],2),:);
 rightInitialConditions = [leftInitialConditions(:,1:2) leftInitialConditions(:,end-1:end)*-1];
-rightInitialConditions(isinf(rightInitialConditions)) = inf; 
+rightInitialConditions(isinf(rightInitialConditions)) = inf;
 rightInitialConditions = [rightInitialConditions; uniqueConditions(~ismember(uniqueConditions, [zeroConditions; leftInitialConditions; rightInitialConditions], 'rows'),:)];
 uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialConditions];
 
@@ -270,11 +270,11 @@ end
 visValueLeftRight = [visContrast.*double(visInitialAzimuth<0), double(visContrast.*double(visInitialAzimuth>0))];
 audDiff = uniqueDiff(conditionRowIdx, 1);
 visDiff = uniqueDiff(conditionRowIdx, 2);
-%Create vectors that indicate the separated values for contrast and audio azimuth on left and right (used for modeling) 
+%Create vectors that indicate the separated values for contrast and audio azimuth on left and right (used for modeling)
 
 %Populate n with all fields;
 n.trialStartEnd = [trialStartTimes trialEndTimes];
-n.StimPeriodStart = stimPeriodStart;
+n.stimPeriodStart = stimPeriodStart;
 n.closedLoopStart = closedLoopStart;
 n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.correctResponse = (correctResponse>0)+1;
@@ -316,7 +316,7 @@ n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.uniqueConditions = uniqueConditions;
 n.uniqueDiff = uniqueDiff;
 n.uniqueConditionRowLabels = uniqueConditionRowLabels;
-n.conditionLabel = conditionLabel;
+n.conditionLabel = conditionLabel; 
 n.conditionRowIdx = conditionRowIdx;
 
 
@@ -343,7 +343,7 @@ newBlock = n;
 for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.responseTime>5) = {[]}; end
 
 %% Check that all expected fields exist
-blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStartEnd';'StimPeriodStart';'closedLoopStart';'rewardAvailable'; ...
+blockFields = {'subject'; 'expDate';'sessionNum';'rigName';'rigType';'trialStartEnd';'stimPeriodStart';'closedLoopStart';'rewardAvailable'; ...
     'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'trialType';'audAmplitude';'audInitialAzimuth';'audValueLeftRight';...
     'audDiff';'audValues';'audType';'visContrast';'visInitialAzimuth';'visValueLeftRight';'visDiff';'visValues';'visAltitude';'visSigma';'galvotype';...
     'galvoPosition';'laserType';'laserPower';'laserSession';'laserOnOff';'sequentialTimeOuts';'uniqueConditions';'uniqueDiff';'conditionLabel'; ...

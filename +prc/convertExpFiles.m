@@ -1,4 +1,4 @@
-function convertExpFiles(instructBlk, instruct2P, instructEPhys, selectedMice)
+function convertExpFiles(instructTag, dataType, selectedMice)
 %% A funciton process experimental recodings into more concise, matching, local copies for future analysis.
 
 %Inputs(default values)
@@ -34,31 +34,16 @@ function convertExpFiles(instructBlk, instruct2P, instructEPhys, selectedMice)
 %"whoD" is simply a list of which variables are in the file. It is much faster to load this when processing rather than check the file contents.
 
 %% Set default values, load experimental list, check which processed files already exist, etc.
-if ~exist('instructBlk', 'var') || isempty(instructBlk); instructBlk = 0; end
-if ~exist('instruct2P', 'var') || isempty(instruct2P); instruct2P = 0; end
-if ~exist('instructEPhys', 'var') || isempty(instructEPhys); instructEPhys = 0; end
-if ~exist('selectedMice', 'var') || isempty(instruct2P); selectedMice = {'PC'; 'DJ'; 'Dylan'}; end
-if instructBlk == 2
-    paths = cellfun(@dir, {'*_Block.mat'; '*_parameters.mat'}, 'uni', 0);
-    if any(cellfun(@isempty, paths))
-        error('Must be in directory of raw block file');
-    else
-        splitStr = regexp(paths{1}.folder,'[\\/]','split');
-        x.sessionNum = splitStr{end}; x.expDate = splitStr{end-1}; x.subject = splitStr{end-2};
-        x.rawBlock = paths{1}.name; x.rawParams =paths{2}.name; x.rigType = 'training';
-        x.galvoLog = 0;
-        x.rigName = 'default';
-        convBlockFile(x, 1);
-        return;
-    end
-end
+if ~exist('instructTag', 'var') || isempty(instructTag); instructTag = 0; end
+if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
+if ~exist('selectedMice', 'var'); selectedMice = {'PC'; 'DJ'}; end
 
 %Checks whether both the DropBox and zserver directories exists. If they both do, sync the folders so data is everywere
 existDirectories = prc.pathFinder('directoryCheck');
 if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
-expList = prc.scanForNewFiles;
+expList = prc.scanForNewFiles(2);
 if all(existDirectories==[0,1])
     newPathList = {expList.sharedData}';
     [expList.processedData] = newPathList{:};
@@ -71,7 +56,7 @@ listNotExcluded = ~[expList.excluded]';                                %Index of
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
 %probably processed and then excluded at a later date)
-if ~any([instructBlk instruct2P instructEPhys])
+if ~instructTag
     processListIdx = find(listNotExcluded & ~all(existProcessed, 2));
 else, processListIdx = find(listNotExcluded | any(existProcessed, 2));
 end
@@ -81,13 +66,27 @@ for i = deleteList'
 end
 files2Run = processListIdx(processListIdx>0)';
 
+ePhys2Check = find((listNotExcluded & all(existProcessed, 2)) & strcmp({expList.rigType}', 'ephys'))';
+additionalChecks = 0*ePhys2Check;
+for i = ePhys2Check
+   whoD = load(processedFiles{i,1}, 'whoD'); whoD = whoD.whoD;
+   if ~contains('kil', whoD);additionalChecks(ePhys2Check==i) = i; end
+end
+files2Run = unique(sort([files2Run additionalChecks]));
+
+expDefs2Run = unique({expList(files2Run).expDef}');
+expDefs2Remove = expDefs2Run(cellfun(@(x) isempty(which(['prc.expDef.' x])), expDefs2Run));
+if ~isempty(expDefs2Remove)
+    fprintf('Warning: the following expDefs will be skipped: \n');
+    fprintf('-%s \n', expDefs2Remove{:});
+    files2Run(contains({expList(files2Run).expDef}', expDefs2Remove)) = [];
+end
+
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
 srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
-    if ~contains(expList(i).subject, selectedMice); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name
-%     if contains(expList(i).expDef, {'Temporal'}); continue; end      %SKIP PC008 for now...
-    
+    if ~contains(expList(i).subject, selectedMice); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name    
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;
     x.existProcessed = existProcessed(i,:);
@@ -105,37 +104,28 @@ for i = files2Run(files2Run>srtIdx)
     end
     warning('on', 'MATLAB:load:variableNotFound');
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
-    varIdx = contains({'blk', 'flu', 'kil'}, ['ignore'; whoD]);
+    varIdx = contains({'blk', 'kil', 'flu'}, ['ignore'; whoD]);
+    
+    %Loop to run conv on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
+    %function for the particular experiment definition file exists. If it does, process the block.
+%     if any([~varIdx(2) (any(contains({'all'; 'kil'}, dataType)) & instructTag)]) && strcmpi(x.rigType, 'ephys')
+%         convBlockFile(x);
+%         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
+%         convEphysFile(x);
+%     end
     
     %Loop to run conv2PData on any 2P files that are missing the flu variable, or if instruct2P is set to 1
-    if any([~varIdx(2) instruct2P])
+    if any([~varIdx(3) (any(contains({'all'; 'flu'}, dataType)) & instructTag)]) && contains(lower(x.rigType), {'twophoton';'widefield'})
         switch lower(x.rigType)
             case 'twophoton'
                 fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i);
                 conv2PData(x);
             case 'widefield'; continue; %convWidefieldData(x);
         end
-    end
+    end 
     
-%     Loop to run convBlockFile on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
-%     function for the particular experiment definition file exists. If it does, process the block.
-    if any([~varIdx(3) instructEPhys]) && strcmp(x.rigType, 'ephys') && instructEPhys~=-1
-        fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
-        convEphysFile(x);
-    end
-    
-    
-%     %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
-%     %function for the particular experiment definition file exists. If it does, process the block.
-%     if any([~varIdx(3) instructEPhys])
-%         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
-%         convBlockFile(x);
-%     end
-    
-    %Loop to run convBlockFile on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
-    %function for the particular experiment definition file exists. If it does, process the block.
-    if isempty(which(func2str(x.blockFunction))); continue; end
-    if any([~varIdx(1) instructBlk])
+    %If not converted through other processing steps, convert block file.
+    if any([~varIdx(1) (any(contains({'all'; 'blk'}, dataType)) & instructTag)])
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x);
     end
@@ -151,30 +141,40 @@ end
 function x = convBlockFile(x)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 if x.galvoLog~=0; x.galvoLog = load(x.galvoLog); end
-x = prc.removeFirstTrialFromBlock(x);
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
+[x.oldBlock,  x.galvoLog] = prc.removeFirstTrialFromBlock(x.oldBlock, x.galvoLog);
+timeOffset = x.oldBlock.experimentStartedTime-x.oldBlock.events.expStartTimes;
 
-if ~contains(x.rigType, 'training')
-%     x.oldBlock.blockTimeOffset = prc.alignBlockTimes(x.oldBlock, x.timeline); %%%%NEED TO FIX%%%
+%%
+if timeOffset > 100
+    fieldList = fieldnames(x.oldBlock.inputs);
+    fieldList = fieldList(cellfun(@(x) ~isempty(strfind(x, 'Times')>0), fieldList));
+    for i = 1:length(fieldList); x.oldBlock.inputs.(fieldList{i}) = x.oldBlock.inputs.(fieldList{i}) + timeOffset; end
+    
+    fieldList = fieldnames(x.oldBlock.outputs);
+    fieldList = fieldList(cellfun(@(x) ~isempty(strfind(x, 'Times')>0), fieldList));
+    for i = 1:length(fieldList); x.oldBlock.outputs.(fieldList{i}) = x.oldBlock.outputs.(fieldList{i}) + timeOffset; end
+    
+    fieldList = fieldnames(x.oldBlock.events);
+    for i = 2:2:length(fieldList); x.oldBlock.events.(fieldList{i}) = x.oldBlock.events.(fieldList{i}) + timeOffset; end
+    %%
 end
 x.oldBlock.galvoLog = x.galvoLog;
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
 x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;
 
-x.newBlock.subject = x.subject;
-x.newBlock.expDate = x.expDate;
-x.newBlock.sessionNum = x.sessionNum;
-x.newBlock.rigName = x.rigName;
-x.newBlock.rigType = x.rigType;
+if strcmp(x.rigType, 'ephys')
+    x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
+    x.standardizedBlock = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
+end
+%%
 
-x.standardizedParams.subject = x.subject;
-x.standardizedParams.expDate = x.expDate;
-x.standardizedParams.sessionNum = x.sessionNum;
-x.standardizedParams.rigName = x.rigName;
-x.standardizedParams.rigType = x.rigType;
+fields2copy = {'subject'; 'expDate'; 'sessionNum'; 'rigName'; 'rigType'};
+for i = 1:length(fields2copy); x.newBlock.(fields2copy{i}) = x.(fields2copy{i}); end
+for i = 1:length(fields2copy); x.standardizedParams.(fields2copy{i}) = x.(fields2copy{i}); end
 
-repeatPoints = [strfind(diff([0,x.standardizedBlock.inputs.wheelValues])~=0, [0 0]) ...
-    strfind(abs(diff([0,x.standardizedBlock.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
+repeatPoints = [strfind(diff([-1000,x.standardizedBlock.inputs.wheelValues])~=0, [0 0]) ...
+    strfind(abs(diff([-1000,x.standardizedBlock.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
 x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
@@ -201,6 +201,13 @@ if ~exist(x.kilosortOutput, 'dir') || ~exist([x.kilosortOutput '/spike_templates
     kil.liklihoodNoise(x.kilosortOutput);
 elseif ~exist([x.kilosortOutput '\cluster_pNoise.tsv'], 'file')
     kil.liklihoodNoise(x.kilosortOutput);
+end
+
+clusterGroups = tdfread([x.kilosortOutput '\cluster_group.tsv']);
+if size(unique(clusterGroups.group, 'rows'),1) == 3 && all(contains({'good '; 'noise'; 'mua  '}, cellstr(clusterGroups.group)))
+    fprintf('%s %s has been spike sorted. Loading and aligning data now...', x.expDate,x.subject);
+    kil.loadEphysData(x);
+else, fprintf('%s %s must be spike sorted before processing further', x.expDate,x.subject);
 end
 end
 

@@ -25,26 +25,28 @@ respBlock = prc.combineBlocks(respBlock, abs(respBlock.galvoPosition(:,1))~=5);
 normBlock = prc.combineBlocks(respBlock, respBlock.laserType==0);
 uniBlock = prc.combineBlocks(respBlock, respBlock.laserType==1);
 bilBlock = prc.combineBlocks(respBlock, respBlock.laserType==2);
+% bilBlock.galvoPosition(:,1) = abs(bilBlock.galvoPosition(:,1));
 
 for i  = 1:length(obj.subjects)
     switch lower(plotType)
         case {'uni'; 'bil'}
             if strcmpi(plotType, 'uni'); tempBlock = prc.getDefinedSubset(uniBlock, obj.subjects{i});
-            elseif strcmpi(plotType, 'bil'); tempBlock = prc.getDefinedSubset(bilBlock, obj.subjects{i});
+            elseif strcmpi(plotType, 'bil')
+                tempBlock = prc.getDefinedSubset(bilBlock, obj.subjects{i});
                 normBlock.galvoPosition(:,1) = abs(normBlock.galvoPosition(:,1));
             end
             tempBlock = prc.combineBlocks(tempBlock, tempBlock.timeOutsBeforeResponse==0);
             
             [scanPlot.data, scanPlot.gridXY] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
             [scanPlot.nTrials] = prc.makeGrid(tempBlock, tempBlock.responseMade==2, @length, 'galvouni');
-            
+            a
             tempBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});
             scanPlot.data = scanPlot.data - prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
             axesOpt.numOfRows = 4;
             scanPlot.addTrialNumber = 1;
         case {'unisig'}
             tempBlock = prc.getDefinedSubset(respBlock, obj.subjects{i});
-            tempBlock = prc.combineBlocks(tempBlock, tempBlock.timeOutsBeforeResponse==0);
+            tempBlock = prc.combineBlocks(tempBlock, tempBlock.timeOutsBeforeResponse==0);  
             nShuffles = 10000;
             inactiveGrid = cell(nShuffles+1, 1);
             for j = 1:length(inactiveGrid)
