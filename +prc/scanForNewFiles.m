@@ -62,7 +62,7 @@ files2Check = 15;
 for i = 1:size(includedMice,1)
     recentDates = datestr(datenum(includedMice{i,3})-files2Check:datenum(includedMice{i,3}), 'yyyy-mm-dd');
     sessionPaths = arrayfun(@(x) dir([expInfo includedMice{i} '/' recentDates(x,:)]), 1:size(recentDates,1), 'uni', 0);
-    sessionPaths = catStructs(cellfun(@(x) x(~isnan(str2double({x.name}))), sessionPaths, 'uni', 0));
+    sessionPaths = prc.catStructs(cellfun(@(x) x(~isnan(str2double({x.name}))), sessionPaths, 'uni', 0));
     detectedFiles = arrayfun(@(x) dir([x.folder '/' x.name '/20*parameters.mat']), sessionPaths', 'uni', 0);
     lastBlockFiles = cat(1, lastBlockFiles, detectedFiles{:});
 end
