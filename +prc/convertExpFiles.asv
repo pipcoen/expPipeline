@@ -1,4 +1,4 @@
-function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
+function convertExpFiles(instructTag, dataType, selectedSubjects, selectedDates)
 %% A funciton process experimental recodings into more concise, matching, local copies for future analysis.
 
 %Inputs(default values)
@@ -34,7 +34,7 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %"whoD" is simply a list of which variables are in the file. It is much faster to load this when processing rather than check the file contents.
 
 %% Set default values, load experimental list, check which processed files already exist, etc.
-if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
+if ~exist('instructTag', 'var') || isempty(instructTag); instructTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
 if ~exist('subject', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
 if ~exist('subject', 'var'); selectedDates = {'1'}; end
@@ -57,7 +57,7 @@ listNotExcluded = ~[expList.excluded]';                                %Index of
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
 %probably processed and then excluded at a later date)
-if ~redoTag
+if ~instructTag
     processListIdx = find(listNotExcluded & ~all(existProcessed, 2));
 else, processListIdx = find(listNotExcluded | any(existProcessed, 2));
 end
@@ -110,14 +110,14 @@ for i = files2Run(files2Run>srtIdx)
     
 %     Loop to run conv on any ephys files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
 %     function for the particular experiment definition file exists. If it does, process the block.
-    if (~varIdx(2) || redoTag) && strcmpi(x.rigType, 'ephys') && contains(dataType, {'all'; 'kil'}) 
+    if any([~varIdx(2) instructTag]) && strcmpi(x.rigType, 'ephys') && any(contains(dataType, {'all'; 'kil'})) & 
         convBlockFile(x);
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convEphysFile(x);
     end
     
     %Loop to run conv2PData on any 2P files that are missing the flu variable, or if instruct2P is set to 1
-    if (~varIdx(3) || redoTag) && contains(lower(x.rigType), {'twophoton';'widefield'}) && contains(dataType, {'all'; 'flu'})
+    if any([~varIdx(3) (any(contains({'all'; 'flu'}, dataType)) & instructTag)]) && contains(lower(x.rigType), {'twophoton';'widefield'})
         switch lower(x.rigType)
             case 'twophoton'
                 fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i);
@@ -127,7 +127,7 @@ for i = files2Run(files2Run>srtIdx)
     end 
     
     %If not converted through other processing steps, convert block file.
-    if  (~varIdx(1) || redoTag) && contains(dataType, {'all'; 'blk'})
+    if any([~varIdx(1) (any(contains({'all'; 'blk'}, dataType)) & instructTag)])
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x);
     end
