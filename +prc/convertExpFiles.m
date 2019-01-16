@@ -106,7 +106,7 @@ for i = files2Run(files2Run>srtIdx)
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
     varIdx = contains({'blk', 'kil', 'flu'}, ['ignore'; whoD]);
     
-    %Loop to run conv on any 2P files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
+    %Loop to run conv on any ephys files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
     %function for the particular experiment definition file exists. If it does, process the block.
 %     if any([~varIdx(2) (any(contains({'all'; 'kil'}, dataType)) & instructTag)]) && strcmpi(x.rigType, 'ephys')
 %         convBlockFile(x);

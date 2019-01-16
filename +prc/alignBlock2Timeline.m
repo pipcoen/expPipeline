@@ -12,13 +12,14 @@ sampleRate = 1/diff(timeline.rawDAQTimestamps(1:2));
 
 switch alignType
     case 'wheel'
-        smoothWindow = sampleRate/50+1;
+        smoothWindow = sampleRate/10+1;
         timelinehWeelPosition = timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'));
         timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
         timelinehWeelPosition = smooth(timelinehWeelPosition,smoothWindow);
         block.inputs.wheelValues = block.inputs.wheelValues-block.inputs.wheelValues(1);
         blockWheelPosition = interp1(block.inputs.wheelTimes, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
-        baseDelay = finddelay(zscore(blockWheelPosition), zscore(timelinehWeelPosition))/sampleRate;
+        blockWheelPosition = smooth(blockWheelPosition,smoothWindow);
+        baseDelay = finddelay(diff(blockWheelPosition), diff(timelinehWeelPosition))/sampleRate;
         blockWheelPosition = interp1(block.inputs.wheelTimes+baseDelay, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
         blockWheelPosition = smooth(blockWheelPosition(:),smoothWindow);
         

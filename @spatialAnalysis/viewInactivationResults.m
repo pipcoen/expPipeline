@@ -2,7 +2,7 @@ function viewInactivationResults(obj, plotType)
 if ~exist('plotType', 'var'); plotType = 'uni'; end
 if ~isempty(obj.expDate)
     switch lower(plotType)
-        case {'uni'; 'bil'; 'unisig'}
+        case {'uni'; 'bil'; 'unisig'; 'unisigrea'}
             runMouseReplicate(copy(obj), {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'}, ['viewInactivationResults(''' lower(plotType) ''')']);
         case {'dif'}
             runMouseReplicate(copy(obj), {'VisUni(L-R)', 'AudUni(L-R)', 'CohUni(VL-VR)', 'ConUni(AL-AR)'}, 'viewInactivationResults(''dif'')');
@@ -44,10 +44,10 @@ for i  = 1:length(obj.subjects)
             scanPlot.data = scanPlot.data - prc.makeGrid(tempBlock, tempBlock.responseMade==2, @mean, 'galvouni');
             axesOpt.numOfRows = 4;
             scanPlot.addTrialNumber = 1;
-        case {'unisig'}
+        case {'unisig'; 'unisigrea'}
             tempBlock = prc.getDefinedSubset(respBlock, obj.subjects{i});
             tempBlock = prc.combineBlocks(tempBlock, tempBlock.timeOutsBeforeResponse==0);  
-            nShuffles = 10000;
+            nShuffles =100;
             inactiveGrid = cell(nShuffles+1, 1);
             for j = 1:length(inactiveGrid)
                 if j > 1
@@ -56,7 +56,11 @@ for i  = 1:length(obj.subjects)
                 end
                 normBlock = prc.combineBlocks(tempBlock, tempBlock.laserType==0);
                 laserBlock = prc.combineBlocks(tempBlock, tempBlock.laserType==1);
-                [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock.responseMade==2, @mean, 'galvouni');
+                if strcmp(lower(plotType), 'unisigrea')
+                    [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock.timeToWheelMove, @median, 'galvouni');
+                else
+                    [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock.responseMade==2, @mean, 'galvouni');
+                end
                 inactiveGrid{j} = inactiveGrid{j} - mean(normBlock.responseMade==2);
             end
             

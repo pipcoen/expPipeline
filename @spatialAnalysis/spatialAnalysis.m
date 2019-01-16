@@ -51,12 +51,12 @@
                     normBlock.responseMade(normBlock.responseTime>1.5) = 0;
                         if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmultiNest(normBlock, modelString); end
                 else
-                    [~, normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
-%                     [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+%                     [~, normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+                    [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
 %                     galvoIdx = ismember(normBlock.galvoPosition, [1.8, -4;3,-4;3,-3], 'rows');
-                    galvoIdx = ismember(normBlock.galvoPosition, [4.2, -2;4.2,-3], 'rows');
+%                     galvoIdx = ismember(normBlock.galvoPosition, [4.2, -2;4.2,-3], 'rows');
 %                     galvoIdx = ismember(normBlock.galvoPosition, [0.6, 2; 0.6, 3; 1.8,2], 'rows');
-                    normBlock = prc.combineBlocks(normBlock, normBlock.laserType==1 & galvoIdx);
+%                     normBlock = prc.combineBlocks(normBlock, normBlock.laserType==1 & galvoIdx);
                     if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmulti(normBlock, modelString); end
                 end
                 obj.axesHandles = plt.getAxes(axesOpt, i);
