@@ -10,20 +10,14 @@ if length(blocks) == 1
     else, combinedBlocks.sessionIdx = blocks.sessionIdx;
     end
     
-    if ~isfield(blocks, 'subjectList')
-        blocks.subjectList = blocks.subject;
-        combinedBlocks.subjectIdx = ones(nTrials, 1);
-    else
-        combinedBlocks.sessionIdx = blocks.subjectIdx; 
-        combinedBlocks.subjectList = blocks.subjectList;
-    end
-else
-    combinedBlocks.sessionIdx = cell2mat(arrayfun(@(x) blnkMat{x}+x, 1:length(blocks), 'uni', 0)');
-    if ~isfield(blocks, 'subjectIdx'); [blocks.subjectIdx] = deal(blocks(1).subject); end
-    combinedBlocks.subjectList = unique({blocks.subjectIdx}');
-    combinedBlocks.subjectIdx = cell2mat(arrayfun(@(x) blnkMat{x}+find(ismember(combinedBlocks.subjectList, blocks(x).subjectIdx)), 1:length(blocks), 'uni', 0)');
+    if ~isfield(blocks, 'subjectList'); blocks.subjectList = blocks.subject; end
+    
+else, combinedBlocks.sessionIdx = cell2mat(arrayfun(@(x) blnkMat{x}+x, 1:length(blocks), 'uni', 0)');
 end
 
+if ~isfield(blocks, 'subjectIdx'); [blocks.subjectIdx] = deal(blocks(1).subject); end
+combinedBlocks.subjectList = unique({blocks.subjectIdx}');
+combinedBlocks.subjectIdx = cell2mat(arrayfun(@(x) blnkMat{x}+find(ismember(combinedBlocks.subjectList, blocks(x).subjectIdx)), 1:length(blocks), 'uni', 0)');
 
 if length(unique(arrayfun(@(x) num2str(x.uniqueConditions(:)'),blocks,'uni',0))) > 1
     unableToMerge = 1;
