@@ -237,7 +237,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.params = obj.params(retainIdx);
             
             obj.subjects = unique({obj.blocks.subject})';
-            if combineMice; obj.expDate = cell2mat([obj.expDate{ismember(subjects, obj.subjects)}]); obj.subjects = {cell2mat(obj.subjects')}; end          
+            if combineMice; obj.subjects = {cell2mat(obj.subjects')}; obj.expDate = cell2mat({obj.expDate}'); end          
             [~, subjectIdx] = ismember({obj.blocks.subject}', obj.subjects);
             if combineMice; subjectIdx = subjectIdx*0+1; end
 

@@ -1,4 +1,4 @@
-function [blk, prm, raw] = getFilesFromDates(subject, requestedDates, dataType)
+function [blk, prm] = getFilesFromDates(subject, requestedDates, dataType)
 %% Function to load proessed files from dates. Works with files from the convertExpFiles funciton.
 % Inputs(defaults)
 % subject(required)------String of subjects name
@@ -22,7 +22,7 @@ end
 selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'==0);
 excludedFiles = contains({selectedFiles.expDef}', {'Temporal'; 'stimSparseNoiseUncorrAsync'; 'stimKalatsky'; 'Passive'});
 selectedFiles(excludedFiles)  = [];
-if isempty(expList); warning(['No processed files matching ' subject]); blk = {}; prm = {}; raw = {}; return; end
+if isempty(expList); warning(['No processed files matching ' subject]); blk = {}; prm = {}; return; end
 expDates = datenum(cell2mat({selectedFiles.expDate}'));
 
 switch lower(requestedDates{1}(1:3))
@@ -59,5 +59,6 @@ end
 if contains(lower(dataType), {'raw'; 'all'})
     selectedParams = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
     raw = [selectedParams{:}]'; raw = [raw(:).raw]';
+    blk = prc.catStructs(blk,raw);
 end
 end

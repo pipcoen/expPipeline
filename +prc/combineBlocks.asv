@@ -4,8 +4,12 @@ if ~exist('criterion', 'var') || isempty(criterion); criterion = vertcat(blocks(
 nTrials = sum(arrayfun(@(x) size(x.trialStartEnd(:,1),1), blocks));
 blnkMat = cellfun(@(x) x*0, {blocks.feedback}', 'uni', 0);
 if length(blocks) == 1 
-    if ~isfield(blocks, 'sessionIdx'); combinedBlocks = struct('sessionIdx',  ones(nTrials, 1), 'subjectIdx', ones(nTrials, 1));
-    else; combinedBlocks = struct('sessionIdx',  blocks.sessionIdx, 'subjectIdx', blocks.subjectIdx);
+    if ~isfield(blocks, 'sessionIdx')
+        combinedBlocks = setfield(combinedBlocks, 'sessionIdx',  ones(nTrials, 1);
+        combinedBlocks.subjectIdx = ones(nTrials, 1);
+    else
+        combinedBlocks.sessionIdx = blocks.sessionIdx;
+        combinedBlocks.subjectIdx = blocks.subjectIdx;
     end
 else
     combinedBlocks.sessionIdx = cell2mat(arrayfun(@(x) blnkMat{x}+x, 1:length(blocks), 'uni', 0)');
