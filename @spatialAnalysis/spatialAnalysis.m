@@ -135,6 +135,7 @@
                     case 'res'
                         gridData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean, 1);
                         plt.gridSplitByRows(gridData, normBlock.visValues*100, normBlock.audValues, plotOpt);
+                        ylim([0 1]);
                         xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
                         yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
                 end
