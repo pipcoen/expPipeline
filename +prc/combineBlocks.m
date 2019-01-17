@@ -1,6 +1,5 @@
-function combinedBlocks = combineBlocks(blocks, criterion)
+function combinedBlocks = combineBlocks(blocks)
 %% Function to combine and filter block files.
-if ~exist('criterion', 'var') || isempty(criterion); criterion = vertcat(blocks(:).conditionLabel)*0+1; end
 nTrials = sum(arrayfun(@(x) size(x.trialStartEnd(:,1),1), blocks));
 blnkMat = cellfun(@(x) x*0, {blocks.feedback}', 'uni', 0);
 if length(blocks) == 1 
@@ -20,29 +19,25 @@ if length(unique(arrayfun(@(x) num2str(x.uniqueConditions(:)'),blocks,'uni',0)))
 else, unableToMerge = 0;
 end
 %test
-tkIdx = criterion>0;
-if ~any(tkIdx); combinedBlocks = []; return; end
-
 fieldNames = fields(blocks);
 combinedBlocks.nSessions = length(unique(combinedBlocks.sessionIdx));
-for i = fieldNames'
-    field = i{1};
-    if strcmp(field, 'sessionNum'); continue; end
-    if strcmp(field, 'nSessions'); continue; end
-    if strcmp(field, 'subjectIdx'); continue; end
-    if contains(field, 'rig'); continue; end
-    tDat = vertcat(blocks(:).(field));
-    if size(tDat,1) == nTrials; tDat = tDat(tkIdx,:); end
+for fieldName = fieldNames'
+    currField = fieldName{1};
+    if strcmp(currField, 'sessionNum'); continue; end
+    if strcmp(currField, 'nSessions'); continue; end
+    if strcmp(currField, 'subjectIdx'); continue; end
+    if contains(currField, 'rig'); continue; end
+    tDat = vertcat(blocks(:).(currField));
 
     if iscell(tDat) && all(cellfun(@ischar, tDat)) && length(unique(tDat))==1
-        combinedBlocks.(field) = unique(tDat);
-    elseif iscell(tDat) || size(tDat,1) == sum(tkIdx)
-       combinedBlocks.(field) = tDat;
+        combinedBlocks.(currField) = unique(tDat);
+    elseif iscell(tDat) || size(tDat,1) == nTrials
+       combinedBlocks.(currField) = tDat;
     elseif ~unableToMerge
-        if strcmp(field, 'expDate') 
-            combinedBlocks.(field) = tDat;
-        else, combinedBlocks.(field) = blocks(1).(field);
+        if strcmp(currField, 'expDate') 
+            combinedBlocks.(currField) = tDat;
+        else, combinedBlocks.(currField) = blocks(1).(currField);
         end
-    else, combinedBlocks.(field) = [];
+    else, combinedBlocks.(currField) = [];
     end
 end

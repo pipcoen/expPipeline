@@ -47,7 +47,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             for i  = 1:length(obj.subjects)
                 if contains(lower(modelString), 'nest')
                     [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 0, 5);
-                    normBlock = prc.combineBlocks(normBlock, normBlock.timeOutsBeforeResponse == 0);
+                    normBlock = prc.filtStruct(normBlock, normBlock.timeOutsBeforeResponse == 0);
                     normBlock.responseMade(normBlock.responseTime>1.5) = 0;
                     if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmultiNest(normBlock, modelString); end
                 else
@@ -56,7 +56,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                     %                     galvoIdx = ismember(normBlock.galvoPosition, [1.8, -4;3,-4;3,-3], 'rows');
                     %                     galvoIdx = ismember(normBlock.galvoPosition, [4.2, -2;4.2,-3], 'rows');
                     %                     galvoIdx = ismember(normBlock.galvoPosition, [0.6, 2; 0.6, 3; 1.8,2], 'rows');
-                    %                     normBlock = prc.combineBlocks(normBlock, normBlock.laserType==1 & galvoIdx);
+                    %                     normBlock = prc.filtStruct(normBlock, normBlock.laserType==1 & galvoIdx);
                     if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmulti(normBlock, modelString); end
                 end
                 obj.axesHandles = plt.getAxes(axesOpt, i);
@@ -83,8 +83,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             
             figure;
             [normBlock, laserBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 1);
-            normBlock = prc.combineBlocks(normBlock, normBlock.galvoPosition(:,2)~=4.5);
-            laserBlock = prc.combineBlocks(laserBlock, laserBlock.galvoPosition(:,2)~=4.5 & laserBlock.laserType == 1);
+            normBlock = prc.filtStruct(normBlock, normBlock.galvoPosition(:,2)~=4.5);
+            laserBlock = prc.filtStruct(laserBlock, laserBlock.galvoPosition(:,2)~=4.5 & laserBlock.laserType == 1);
             obj.glmFit = fit.GLMmulti(normBlock);
             obj.glmFit.GLMMultiModels(modelString);
             obj.glmFit.fit;
@@ -266,20 +266,20 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             if ~exist('inactivation', 'var'); inactivation = 0; end
             if ~exist('excludedResponses', 'var'); excludedResponses = 0; end
             if inactivation == 2
-                normBlock = prc.combineBlocks(block, block.laserSession~=0 & block.responseMade~=excludedResponses);
+                normBlock = prc.filtStruct(block, block.laserSession~=0 & block.responseMade~=excludedResponses);
             elseif mode(block.laserSession>0)==1 || inactivation
-                normBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType==0 & block.responseMade~=excludedResponses);
-                laserBlock = prc.combineBlocks(block, block.laserSession~=0 & block.laserType~=0 & block.responseMade~=excludedResponses);
-            else, normBlock = prc.combineBlocks(block, block.laserSession==0 & block.responseMade~=excludedResponses);
+                normBlock = prc.filtStruct(block, block.laserSession~=0 & block.laserType==0 & block.responseMade~=excludedResponses);
+                laserBlock = prc.filtStruct(block, block.laserSession~=0 & block.laserType~=0 & block.responseMade~=excludedResponses);
+            else, normBlock = prc.filtStruct(block, block.laserSession==0 & block.responseMade~=excludedResponses);
             end
         end
         
         function block = removePoorAuditoryDays(block)
-            audBlocks = prc.combineBlocks(block, block.trialType==1 & block.laserType == 0 & block.responseMade~=0);
+            audBlocks = prc.filtStruct(block, block.trialType==1 & block.laserType == 0 & block.responseMade~=0);
             sessList = unique(audBlocks.sessionIdx);
             audPerfomance = arrayfun(@(x) mean(audBlocks.feedback(audBlocks.sessionIdx == x)==1), sessList);
             audTrials = arrayfun(@(x) length(audBlocks.feedback(audBlocks.sessionIdx == x)==1), sessList);
-            block = prc.combineBlocks(block, ismember(block.sessionIdx, sessList(audPerfomance>0.7 & audTrials > 50)));
+            block = prc.filtStruct(block, ismember(block.sessionIdx, sessList(audPerfomance>0.7 & audTrials > 50)));
         end
         
         function alterFigure(currentFigureHandle, ~)

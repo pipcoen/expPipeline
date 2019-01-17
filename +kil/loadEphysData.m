@@ -29,7 +29,6 @@ block  = load(x.processedData, 'blk'); block  = block.blk;
 %% Load ephys data (single long recording)
 fprintf('Loading ephys... \n');
 % These are the digital channels going into the FPGA
-acqLiveSyncIdx = 2;
 flipperSyncIdx = 4;
 %%
 % Load clusters and sync/photodiode
@@ -57,91 +56,32 @@ templateAmplitudes = readNPY([x.kilosortOutput '\amplitudes.npy']);
 % Default channel map/positions are from end: make from surface
 channelPositions(:,2) = max(channelPositions(:,2)) - channelPositions(:,2);
 
-% Get experiment index by finding numbered folders
-sessionNum = str2double(x.sessionNum);
-
+%%
 if exist('flipperFlipTimesTimeline','var')    
     % Get flipper experiment differences by long delays
     flipThresh = 1; % time between flips to define experiment gap (s)
     flipTimes = sync(flipperSyncIdx).timestamps;
-    flipperExptIdx = [1;find(diff(flipTimes) > flipThresh)+1;length(flipTimes)+1];
-    
-    flipperFlipTimesEphys = flipTimes(flipperExptIdx(sessionNum):flipperExptIdx(sessionNum+1)-1);
-    
+    flipperStEnIdx = [[1;find(diff(flipTimes) > flipThresh)+1], [find(diff(flipTimes) > flipThresh); length(flipTimes)]];
+    experimentDurations = diff(flipTimes(flipperStEnIdx),[],2);
+    [~, ePhysIdx] = min(abs(experimentDurations-x.expDuration));
+    flipperFlipTimesEphys = flipTimes(flipperStEnIdx(ePhysIdx,1):flipperStEnIdx(ePhysIdx,2));
+    %%
     % Check that number of flipper flips in timeline matches ephys
     if length(flipperFlipTimesEphys) ~= length(flipperFlipTimesTimeline)
-        warning([animal ' ' day ':Flipper flip times different in timeline/ephys'])
-        bad_flipper = true;
+        error([x.subject ' ' x.expDate ':Flipper flip times different in timeline/ephys']);
     end
     
-    %         % Plot stim aligned by flipper times for sanity check
-    %         figure; hold on;
-    %         stim_ephys_timestamps = interp1(flipperFlipTimesEphys,flipperFlipTimesTimeline,sync(1).timestamps,'linear','extrap');
-    %         plot(stim_ephys_timestamps,sync(1).values*5,'.g')
-    %         plot(stimOn_times,5,'ob');
-    
-    sync_timeline = flipperFlipTimesTimeline;
-    sync_ephys = flipperFlipTimesEphys;
-end
-
-if ~exist('flipperFlipTimesTimeline','var') || bad_flipper
-    % (if no flipper or flipper problem, use acqLive)
-    
-    % Get acqLive times for current experiment
-    experiment_ephys_starts = sync(acqLiveSyncIdx).timestamps(sync(acqLiveSyncIdx).values == 1);
-    experiment_ephys_stops = sync(acqLiveSyncIdx).timestamps(sync(acqLiveSyncIdx).values == 0);
-    acqlive_ephys_currexpt = [experiment_ephys_starts(sessionNum), ...
-        experiment_ephys_stops(sessionNum)];
-    
-    sync_timeline = acqLiveSrtEnd;
-    sync_ephys = acqlive_ephys_currexpt;
-    
-    % Check that the experiment time is the same within threshold
-    % (it should be almost exactly the same)
-    if abs(diff(acqLiveSrtEnd) - diff(acqlive_ephys_currexpt)) > 1
-        error([animal ' ' day ': acqLive duration different in timeline and ephys']);
-    end
+    syncTimeline = flipperFlipTimesTimeline;
+    syncEphys = flipperFlipTimesEphys;
 end
 
 % Get the spike/lfp times in timeline time (accounts for clock drifts)
-spikeTimes_timeline = interp1(sync_ephys,sync_timeline,spikeTimes,'linear','extrap');
-if load_lfp && exist(lfp_filename,'file')
-    lfp_t_timeline = interp1(sync_ephys,sync_timeline,lfp_t,'linear','extrap');
-end
+spikeTimesTimeline = interp1(syncEphys,syncTimeline,spikeTimes,'linear','extrap');
 
 % Get the depths of each template
-% (by COM - this used to not work but now looks ok)
-[spikeAmps, spikeDepths, templateDepths, tempAmps, tempsUnW, templateDuration, waveforms] = ...
-    templatePositionsAmplitudes(templates,winv,channelPositions(:,2),spikeTemplates,templateAmplitudes);
-%     % (by max waveform channel)
-%     template_abs = permute(max(abs(templates),[],2),[3,1,2]);
-%     [~,max_channel_idx] =  max(template_abs,[],1);
-%     templateDepths = channelPositions(max_channel_idx,2);
-%     % Get each spike's depth
-%     spikeDepths = templateDepths(spikeTemplates+1);
-
-% Get the waveform duration of all templates (channel with largest amp)
-[~,max_site] = max(max(abs(templates),[],2),[],3);
-templates_max = nan(size(templates,1),size(templates,2));
-for curr_template = 1:size(templates,1)
-    templates_max(curr_template,:) = ...
-        templates(curr_template,:,max_site(curr_template));
-end
-waveforms = templates_max;
-
-% Get trough-to-peak time for each template
-templates_max_signfix = bsxfun(@times,templates_max, ...
-    sign(abs(min(templates_max,[],2)) - abs(max(templates_max,[],2))));
-
-[~,waveform_trough] = min(templates_max,[],2);
-[~,waveform_peak_rel] = arrayfun(@(x) ...
-    max(templates_max(x,waveform_trough(x):end),[],2), ...
-    transpose(1:size(templates_max,1)));
-waveform_peak = waveform_peak_rel + waveform_trough;
-
-templateDuration = waveform_peak - waveform_trough;
-templateDuration_us = (templateDuration/ephysSampleRate)*1e6;
-
+[spikeAmps, spikeDepths, templateDepths, ~, ~, templateDuration, waveforms] = ...
+    kil.templatePositionsAmplitudes(templates,winv,channelPositions(:,2),spikeTemplates,templateAmplitudes);
+%%
 % Eliminate spikes that were classified as not "good"
 if exist('clusterGroups','var')
     
@@ -164,7 +104,7 @@ if exist('clusterGroups','var')
     spikeTemplates = spikeTemplates(good_spike_idx);
     templateAmplitudes = templateAmplitudes(good_spike_idx);
     spikeDepths = spikeDepths(good_spike_idx);
-    spikeTimes_timeline = spikeTimes_timeline(good_spike_idx);
+    spikeTimesTimeline = spikeTimesTimeline(good_spike_idx);
     
     % Re-name the spike templates according to the remaining templates
     % (and make 1-indexed from 0-indexed)
@@ -189,19 +129,19 @@ if ephys_exists && load_parts.ephys && exist('clusterGroups','var')
     % out, so take the bin with the largest firing rate for each cell and work
     % with that one)
     % spiking_stat_window = 60*5; % seconds
-    % spiking_stat_bins = min(spikeTimes_timeline):spiking_stat_window: ...
-    %     max(spikeTimes_timeline);
+    % spiking_stat_bins = min(spikeTimesTimeline):spiking_stat_window: ...
+    %     max(spikeTimesTimeline);
     
     % % (for whole session)
-    spiking_stat_window = max(spikeTimes_timeline)-min(spikeTimes_timeline);
-    spiking_stat_bins = [min(spikeTimes_timeline),max(spikeTimes_timeline)];
+    spiking_stat_window = max(spikeTimesTimeline)-min(spikeTimesTimeline);
+    spiking_stat_bins = [min(spikeTimesTimeline),max(spikeTimesTimeline)];
     
     % Get firing rate across the session
     bin_spikes = nan(max(spikeTemplates), ...
         length(spiking_stat_bins)-1);
     for curr_template = unique(spikeTemplates)'
         bin_spikes(curr_template,:) = ...
-            histcounts(spikeTimes_timeline(spikeTemplates == curr_template), ...
+            histcounts(spikeTimesTimeline(spikeTemplates == curr_template), ...
             spiking_stat_bins);
     end
     min_spikes = 10;
@@ -217,9 +157,9 @@ if ephys_exists && load_parts.ephys && exist('clusterGroups','var')
         long_isi_total = 0;
         isi_ratios = [];
         for curr_bin = find(use_spiking_stat_bins(curr_template,:))
-            curr_spikeTimes = spikeTimes_timeline( ...
-                spikeTimes_timeline > spiking_stat_bins(curr_bin) & ...
-                spikeTimes_timeline < spiking_stat_bins(curr_bin+1) & ...
+            curr_spikeTimes = spikeTimesTimeline( ...
+                spikeTimesTimeline > spiking_stat_bins(curr_bin) & ...
+                spikeTimesTimeline < spiking_stat_bins(curr_bin+1) & ...
                 spikeTemplates == curr_template);
             curr_isi = diff(curr_spikeTimes);
             
