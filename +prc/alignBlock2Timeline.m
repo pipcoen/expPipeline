@@ -120,12 +120,23 @@ if contains('flashes', fineTune)
     photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
     %%
     largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>0.5); find(diff([photoDiodeFlipTimes; 10e10])>0.5)]));
+    
+    [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, largeVisGaps(1:length(block.events.stimPeriodOnOffValues))');
+    if any(compareIndex-(1:numel(compareIndex)))
+        fprintf('WARNING: problem matching visual stimulus start and end times \n');
+        fprintf('Will try removing points that do not match stimulus starts \n');
+        
+        [~, nearestPoint] = prc.nearestPoint(largeVisGaps, block.events.stimPeriodOnOffTimes);
+        largeVisGaps(nearestPoint>0.5) = [];
+        
+        [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, largeVisGaps(1:length(block.events.stimPeriodOnOffValues))');
+        if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
+        block.events.visStimPeriodOnOffTimes = largeVisGaps(1:length(block.events.stimPeriodOnOffValues))';
+    end
+    
     block.events.visStimPeriodOnOffValues = block.events.stimPeriodOnOffValues;
     block.events.visStimPeriodOnOffTimes = largeVisGaps(1:length(block.events.stimPeriodOnOffValues))';
-    
-    [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, block.events.visStimPeriodOnOffTimes);
-    if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
-    
+
     vStimOnOffTV = [block.events.visStimPeriodOnOffTimes' block.events.visStimPeriodOnOffValues'];
     vStimOnOffTV = vStimOnOffTV(1:find(vStimOnOffTV(:,2)==0,1,'last'),:);
     aligned.visStimPeriodOnOffTimes = [vStimOnOffTV(vStimOnOffTV(:,2)==1,1) vStimOnOffTV(vStimOnOffTV(:,2)==0,1)];

@@ -86,7 +86,7 @@ if contains('clicks', fineTune) && contains('audioOut', inputNames);
     detectedDuration = round(mean(timelineClickOff-timelineClickOn)*1000);
     
     if length(timelineClickOn)~=length(timelineClickOff); error('There should always be an equal number on/off signals for clicks'); end
-    if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000; error('Diff in detected and requested click durations'); end
+    if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000))>3; error('Diff in detected and requested click durations'); end
     
     aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);    
     block.events.audStimOnOffTimes = aStimOnOffTV(:,1)';
@@ -124,7 +124,16 @@ if contains('flashes', fineTune)
     block.events.visStimPeriodOnOffTimes = largeVisGaps(1:length(block.events.stimPeriodOnOffValues))';
     
     [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, block.events.visStimPeriodOnOffTimes);
-    if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
+    if any(compareIndex-(1:numel(compareIndex))); 
+        fprintf('WARNING: problem matching visual stimulus start and end times \n');
+        fprintf('Will try removing points that do not match stimulus starts \n');
+        
+        [~, nearestPoint] = largeVisGaps(largeVisGaps
+        
+        block.events.visStimPeriodOnOffTimes = largeVisGaps(1:length(block.events.stimPeriodOnOffValues))';
+    end
+        
+        keyboard; end
     
     vStimOnOffTV = [block.events.visStimPeriodOnOffTimes' block.events.visStimPeriodOnOffValues'];
     vStimOnOffTV = vStimOnOffTV(1:find(vStimOnOffTV(:,2)==0,1,'last'),:);
