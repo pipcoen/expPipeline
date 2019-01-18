@@ -1,14 +1,16 @@
-function correctedBlock = alignBlock2Timeline(block, timeline, expDef)
+function [correctedBlock, aligned] = alignBlock2Timeline(block, timeline, expDef)
 %%
+inputNames = {timeline.hw.inputs.name}';
+timelineTime = timeline.rawDAQTimestamps;
+sampleRate = 1/diff(timeline.rawDAQTimestamps(1:2));
+
+
 switch expDef
     case 'multiSpaceWorld'
         alignType = 'wheel';
         fineTune = {'clicks'; 'flashes'; 'reward'};
 end
 
-inputNames = {timeline.hw.inputs.name}';
-timelineTime = timeline.rawDAQTimestamps;
-sampleRate = 1/diff(timeline.rawDAQTimestamps(1:2));
 
 switch alignType
     case 'wheel'
@@ -65,17 +67,18 @@ cutOff = round(block.events.newTrialTimes(1)*sampleRate-(0.05*sampleRate));
 timeline.rawDAQData(1:cutOff,:) = repmat(timeline.rawDAQData(cutOff,:), cutOff, 1);
 
 %%
-if contains('reward', fineTune)
+ if contains('reward', fineTune)
     blockRewardTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
     thresh = max(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')))/2;
     rewardTrace = timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')) > thresh;
     timelineRewardTimes = timeline.rawDAQTimestamps(strfind(rewardTrace', [0 1])+1);
     if length(timelineRewardTimes)~=length(blockRewardTimes); error('There should always be an equal number of reward signals'); end
     block.outputs.rewardTimes(block.outputs.rewardValues > 0) = timelineRewardTimes(prc.nearestPoint(blockRewardTimes,timelineRewardTimes));
+    aligned.rewardTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
+    aligned.rewardTimes = aligned.rewardTimes(:);
 end
 
-if contains('clicks', fineTune)
-    if ~contains('audioOut', inputNames); warning('No audio output in timeline so cannot fine tune'); end
+if contains('clicks', fineTune) && contains('audioOut', inputNames);
     timelineClickTrace = [0;diff(detrend(timeline.rawDAQData(:,strcmp(inputNames, 'audioOut'))))];
     [~, thresh] = kmeans(timelineClickTrace,3);
     timelineClickOn = timelineTime(strfind((timelineClickTrace>max(thresh)*0.5)', [0 1]));
@@ -85,16 +88,23 @@ if contains('clicks', fineTune)
     if length(timelineClickOn)~=length(timelineClickOff); error('There should always be an equal number on/off signals for clicks'); end
     if detectedDuration~=unique([block.paramsValues.clickDuration])*1000; error('Diff in detected and requested click durations'); end
     
-    audStimOnOffTimesValues = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);    
-    block.events.audStimOnOffTimes = audStimOnOffTimesValues(:,1)';
-    block.events.audStimOnOffValues = audStimOnOffTimesValues(:,2)';
+    aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);    
+    block.events.audStimOnOffTimes = aStimOnOffTV(:,1)';
+    block.events.audStimOnOffValues = aStimOnOffTV(:,2)';
+    aligned.audStimOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
     
-    largeAudGaps = sort([find(diff([0; audStimOnOffTimesValues(:,1)])>0.5); find(diff([audStimOnOffTimesValues(:,1); 10e10])>0.5)]);
-    block.events.audStimPeriodOnOffTimes = audStimOnOffTimesValues(largeAudGaps,1)';
-    block.events.audStimPeriodOnOffValues = audStimOnOffTimesValues(largeAudGaps,2)';
+    largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>0.5); find(diff([aStimOnOffTV(:,1); 10e10])>0.5)]);
+    block.events.audStimPeriodOnOffTimes = aStimOnOffTV(largeAudGaps,1)';
+    block.events.audStimPeriodOnOffValues = aStimOnOffTV(largeAudGaps,2)';
     
     [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, block.events.audStimPeriodOnOffTimes);
     if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
+    
+    aStimOnOffTV = aStimOnOffTV(largeAudGaps,:);
+    aligned.audStimPeriodOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
+    
+elseif contains('clicks', fineTune)
+    warning('No audio output in timeline so cannot fine tune');
 end
 
 %%
@@ -115,7 +125,12 @@ if contains('flashes', fineTune)
     
     [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, block.events.visStimPeriodOnOffTimes);
     if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
+    
+    vStimOnOffTV = [block.events.visStimPeriodOnOffTimes' block.events.visStimPeriodOnOffValues'];
+    vStimOnOffTV = vStimOnOffTV(1:find(vStimOnOffTV(:,2)==0,1,'last'),:);
+    aligned.visStimPeriodOnOffTimes = [vStimOnOffTV(vStimOnOffTV(:,2)==1,1) vStimOnOffTV(vStimOnOffTV(:,2)==0,1)];
 end
+
 correctedBlock = block;
 correctedBlock.fineTuned = 1;
 end

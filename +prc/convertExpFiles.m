@@ -71,9 +71,9 @@ ePhys2Check = find((listNotExcluded & all(existProcessed, 2)) & strcmp({expList.
 additionalChecks = 0*ePhys2Check;
 for i = ePhys2Check
    whoD = load(processedFiles{i,1}, 'whoD'); whoD = whoD.whoD;
-   if ~contains('kil', whoD);additionalChecks(ePhys2Check==i) = i; end
+   if ~contains('eph', whoD); additionalChecks(ePhys2Check==i) = i; end
 end
-files2Run = unique(sort([files2Run additionalChecks]));
+files2Run = unique(sort([files2Run additionalChecks(additionalChecks~=0)]));
 
 expDefs2Run = unique({expList(files2Run).expDef}');
 expDefs2Remove = expDefs2Run(cellfun(@(x) isempty(which(['prc.expDef.' x])), expDefs2Run));
@@ -106,12 +106,12 @@ for i = files2Run(files2Run>srtIdx)
     end
     warning('on', 'MATLAB:load:variableNotFound');
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
-    varIdx = contains({'blk', 'kil', 'flu'}, ['ignore'; whoD]);
+    varIdx = contains({'blk', 'eph', 'flu'}, ['ignore'; whoD]);
     
 %     Loop to run conv on any ephys files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
 %     function for the particular experiment definition file exists. If it does, process the block.
-    if (~varIdx(2) || redoTag) && strcmpi(x.rigType, 'ephys') && contains(dataType, {'all'; 'kil'}) 
-        convBlockFile(x);
+    if (~varIdx(2) || redoTag) && strcmpi(x.rigType, 'ephys') && contains(dataType, {'all'; 'eph'}) 
+        x = convBlockFile(x);
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convEphysFile(x);
     end
@@ -167,7 +167,7 @@ x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardiz
 
 if strcmp(x.rigType, 'ephys')
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
-    x.standardizedBlock = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
+    [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
 end
 %%
 
@@ -180,6 +180,8 @@ repeatPoints = [strfind(diff([-1000,x.standardizedBlock.inputs.wheelValues])~=0,
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
 x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
+
+if isfield(x, 'aligned'); x.aligned.wheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]); end
 
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
@@ -207,10 +209,13 @@ end
 
 clusterGroups = tdfread([x.kilosortOutput '\cluster_group.tsv']);
 if size(unique(clusterGroups.group, 'rows'),1) == 3 && all(contains({'good '; 'noise'; 'mua  '}, cellstr(clusterGroups.group)))
-    fprintf('%s %s has been spike sorted. Loading and aligning data now...', x.expDate,x.subject);
-    kil.loadEphysData(x);
-else, fprintf('%s %s must be spike sorted before processing further', x.expDate,x.subject);
+    fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
+    [eph] = kil.loadEphysData(x); %#ok<NASGU>
+    whoD = unique([who('-file', x.processedData); 'eph']); %#ok<NASGU>
+    save(x.processedData, 'eph', 'whoD', '-append');
+else, fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
 end
+
 end
 
 %%
