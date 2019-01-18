@@ -86,7 +86,7 @@ if contains('clicks', fineTune) && contains('audioOut', inputNames);
     detectedDuration = round(mean(timelineClickOff-timelineClickOn)*1000);
     
     if length(timelineClickOn)~=length(timelineClickOff); error('There should always be an equal number on/off signals for clicks'); end
-    if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000))>3; error('Diff in detected and requested click durations'); end
+    if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000; error('Diff in detected and requested click durations'); end
     
     aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);    
     block.events.audStimOnOffTimes = aStimOnOffTV(:,1)';
