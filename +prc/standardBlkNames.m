@@ -139,7 +139,7 @@ elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'audInitialAzimuth')
     p.visInitialAzimuth = p.audVisAzimuth(2,:);
     tDat = num2cell([e.iAziValues(1:2:end)' e.iAziValues(2:2:end)']);
     [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
-elseif isfield(e, 'preStimQuiescentDurationValues') && isfield(p, 'reflectAzimuthAndCorrectResponse')
+elseif (isfield(e, 'preStimQuiescentDurationValues') || ~isempty(strfind(b.expDef, 'Passive'))) && isfield(p, 'reflectAzimuthAndCorrectResponse')
     if  isempty(strfind(b.expDef, 'multiTemporalWorld'))
         tDat = num2cell([e.audInitialAzimuthValues' e.visInitialAzimuthValues']);
         [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
@@ -157,30 +157,30 @@ if isfield(p, 'interactPunishDelays')
     p.openLoopDuration = p.interactPunishDelays(1);
     p.delayAfterIncorrect = p.interactPunishDelays(2);
     if length(p.interactPunishDelays) > 2; p.laserDuration = p.interactPunishDelays(3); end
-elseif ~isfield(p, 'laserDuration'); warning('DEBUG'); keyboard;
+elseif ~isfield(p, 'laserDuration') && ~strfind(block.expDef, 'Passive'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'interactSigOnDurAmp')
     p.closedLoopOnsetToneAmplitude = p.interactSigOnDurAmp(3);
-elseif ~isfield(p, 'closedLoopOnsetToneAmplitude'); warning('DEBUG'); keyboard;
+elseif ~isfield(p, 'closedLoopOnsetToneAmplitude') && ~strfind(block.expDef, 'Passive'); warning('DEBUG'); keyboard;
 end
 
-if isfield(p, 'rewardDurSize')
+if isfield(p, 'rewardDurSize') && ~strfind(block.expDef, 'Passive')
     p.delayAfterCorrect = p.rewardDurSize(1);
     p.rewardSize = p.rewardDurSize(2);
-elseif ~isfield(p, 'rewardSize'); warning('DEBUG'); keyboard;
+elseif ~isfield(p, 'rewardSize') && ~strfind(block.expDef, 'Passive'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'noiseBurstAmpDur')
     p.noiseBurstAmplitude = p.noiseBurstAmpDur(1);
     p.noiseBurstDuration = p.noiseBurstAmpDur(2);
-elseif ~isfield(p, 'noiseBurstDuration'); warning('DEBUG'); keyboard;
+elseif ~isfield(p, 'noiseBurstDuration')&& ~strfind(block.expDef, 'Passive'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'stimulusDurRep')
     p.stimDuration = p.stimulusDurRep(1);
     p.stimContinuous = p.stimulusDurRep(2);
-elseif ~isfield(p, 'stimContinuous'); warning('DEBUG'); keyboard;
+elseif ~isfield(p, 'stimContinuous')&& ~strfind(block.expDef, 'Passive'); warning('DEBUG'); keyboard;
 end
 
 if isfield(p, 'preStimQuiRangeThr')
@@ -258,7 +258,7 @@ if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectR
     p.numRepeats = [p.numRepeats, p.numRepeats(flippedIdx)];
 end
 
-if p.stimContinuous == 1; p.stimDuration = inf; end
+if isfield(p, 'stimContinuous') && p.stimContinuous == 1; p.stimDuration = inf; end
 
 for i = 1:numel(paramFields)
     if strcmp(paramFields{i}, 'type'); continue; end

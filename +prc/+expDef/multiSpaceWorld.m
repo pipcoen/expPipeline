@@ -260,14 +260,11 @@ trialType = (zeros(length(coflictTrial),1)+(audTrial+visTrial*2+coherentTrial*3+
 %values be -1. uniqueDiff are the unique trials in this difference space (so two columns: [audDiff, visDiff];
 if numel(unique(p.audAmplitude))==1
     uniqueDiff = [uniqueConditions(:,3) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
-    audValueLeftRight = [abs(audInitialAzimuth.*double(audInitialAzimuth<0)) abs(audInitialAzimuth.*double(audInitialAzimuth>0))];
     if any(uniqueConditions(:,1)); audType = 'Azimuth'; else; audType = 'None'; end
 else
     uniqueDiff = [uniqueConditions(:,1).*sign(uniqueConditions(:,3)) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
-    audValueLeftRight = [abs(audAmplitude.*(audInitialAzimuth<0)) abs(audAmplitude.*(audInitialAzimuth>0))];
     audType = 'Amplitude';
 end
-visValueLeftRight = [visContrast.*double(visInitialAzimuth<0), double(visContrast.*double(visInitialAzimuth>0))];
 audDiff = uniqueDiff(conditionRowIdx, 1);
 visDiff = uniqueDiff(conditionRowIdx, 2);
 %Create vectors that indicate the separated values for contrast and audio azimuth on left and right (used for modeling)
@@ -276,7 +273,6 @@ visDiff = uniqueDiff(conditionRowIdx, 2);
 n.trialStartEnd = [trialStartTimes trialEndTimes];
 n.stimPeriodStart = stimPeriodStart;
 n.closedLoopStart = closedLoopStart;
-n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
 n.correctResponse = (correctResponse>0)+1;
 n.feedback = feedbackValues;
 n.responseTime = responseTime;
@@ -288,13 +284,11 @@ n.timeOutsBeforeResponse = timeOutsBeforeResponse(vIdx);
 n.repeatsAfterResponse = repeatsAfterResponse(vIdx);
 n.audAmplitude = audAmplitude;
 n.audInitialAzimuth = audInitialAzimuth;
-n.audValueLeftRight = audValueLeftRight;
 n.audDiff = audDiff;
 n.audValues = (unique(uniqueDiff(:,1)));
 n.audType = audType;
 n.visContrast = visContrast;
 n.visInitialAzimuth = visInitialAzimuth;
-n.visValueLeftRight = visValueLeftRight;
 n.visDiff = visDiff;
 n.visValues = (unique(uniqueDiff(:,2)));
 n.visAltitude = [v(vIdx).visAltitude]';
@@ -318,6 +312,16 @@ n.uniqueDiff = uniqueDiff;
 n.uniqueConditionRowLabels = uniqueConditionRowLabels;
 n.conditionLabel = conditionLabel; 
 n.conditionRowIdx = conditionRowIdx;
+
+%% Old Pameters Not Used
+% visValueLeftRight = [visContrast.*double(visInitialAzimuth<0), double(visContrast.*double(visInitialAzimuth>0))];
+% n.visValueLeftRight = visValueLeftRight;
+% audValueLeftRight = [abs(audInitialAzimuth.*double(audInitialAzimuth<0)) abs(audInitialAzimuth.*double(audInitialAzimuth>0))];
+% audValueLeftRight = [abs(audAmplitude.*(audInitialAzimuth<0)) abs(audAmplitude.*(audInitialAzimuth>0))];
+% n.audValueLeftRight = audValueLeftRight;
+% n.rewardAvailable = e.rewardAvailableValues(vIdx)'>0;
+
+%%
 
 
 %Create some useful grids of aud and vis values. Add these to the block.

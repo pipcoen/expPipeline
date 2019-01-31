@@ -55,35 +55,43 @@ rigList = {'training', {'zym'; 'zred'; 'zgrey'; 'zool'; 'zrig'}; ...
     'multiple', {'lilrig'}};
 
 %% Check for all files generated in the past 3 weeks for included mice.
+lastParamFiles = [];
 lastBlockFiles = [];
 files2Check = 15;
+currentTime = now;
 % lastWeek = datestr(datenum(datetime('now'))-7:datenum(datetime('now')), 'yyyy-mm-dd');
 for i = 1:size(includedMice,1)
     recentDates = datestr(datenum(includedMice{i,3})-files2Check:datenum(includedMice{i,3}), 'yyyy-mm-dd');
     sessionPaths = arrayfun(@(x) dir([expInfo includedMice{i} '/' recentDates(x,:)]), 1:size(recentDates,1), 'uni', 0);
     sessionPaths = cellfun(@(x) x(~isnan(str2double({x.name})))', sessionPaths, 'uni', 0);
-    detectedFiles = arrayfun(@(x) dir([x.folder '/' x.name '/20*parameters.mat']), [sessionPaths{:}]', 'uni', 0);
-    lastBlockFiles = cat(1, lastBlockFiles, detectedFiles{:});
+    detectedParamFiles = arrayfun(@(x) dir([x.folder '/' x.name '/20*parameters.mat']), [sessionPaths{:}]', 'uni', 0);
+    detectedBlockFiles = arrayfun(@(x) dir([x.folder '/' x.name '/20*block.mat']), [sessionPaths{:}]', 'uni', 0);
+    lastParamFiles = cat(1, lastParamFiles, detectedParamFiles{:});
+    lastBlockFiles = cat(1, lastBlockFiles, detectedBlockFiles{:});
 end
 
 %% Build list of unregistered files from the last week (or find all files if rebuilding list)
 if rebuildList == 1
     expList = struct;
-    newParams = cat(1, cellfun(@(x) dir([expInfo '/' x '/**/20*parameters.mat']), includedMice(:,1), 'uni', 0));
-    newParams = cat(1, newParams{:});
+    processIdx = cat(1, cellfun(@(x) dir([expInfo '/' x '/**/20*parameters.mat']), includedMice(:,1), 'uni', 0));
+    processIdx = cat(1, processIdx{:});
 else,     expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
-    if isempty(lastBlockFiles), fprintf('No new files found\n'); return
+    if isempty(lastParamFiles), fprintf('No new files found\n'); return
     else
-        [~, nIdx] = setdiff({lastBlockFiles.folder}',{expList.rawFolder}');
-        newParams = lastBlockFiles(nIdx);
+        processIdx = ~contains({lastParamFiles.folder}',{expList.rawFolder}');
+        missingBlock = ~contains({lastParamFiles.folder}',{lastBlockFiles.folder}');
+        timeSinceParamFileCreation = [lastParamFiles.datenum]'-currentTime*24*60;
+        processIdx = lastParamFiles(processIdx & (~missingBlock | timeSinceParamFileCreation > 80));
     end
 end
 
+
+
 %% Loop to created struture for new files and add them to the expList
 addedFiles  = 0;
-for i = 1:length(newParams)
+for i = 1:length(processIdx)
     %Identify details about the experiment from the folder name.
-    splitStr = regexp(newParams(i).folder,'[\\/]','split');
+    splitStr = regexp(processIdx(i).folder,'[\\/]','split');
     sessionNum = splitStr{end};
     expDate = splitStr{end-1};
     subject = splitStr{end-2};
@@ -105,7 +113,7 @@ for i = 1:length(newParams)
     expList(end).expDef = 'ChoiceWorld';
     
     backUpFolder = prc.pathFinder('rawbackupfolder', subject, expDate, sessionNum);
-    prc.syncfolder(newParams(i).folder, backUpFolder, 2);
+    prc.syncfolder(processIdx(i).folder, backUpFolder, 2);
     
     if exist(prc.pathFinder('galvoLog', subject, expDate, sessionNum), 'file')
         expList(end).galvoLog = prc.pathFinder('galvoLog', subject, expDate, sessionNum);
@@ -117,7 +125,7 @@ for i = 1:length(newParams)
     %This exclude is placed here to avoid wasting time in loading unwanted block files, and
     tempLoc = prc.updatePaths(expList(end), 0);
     if exist(tempLoc.rawBlock, 'file'); load(tempLoc.rawBlock, 'block'); b = block;
-    else, clear b; load([tempLoc.rawFolder '\' newParams(i).name], 'parameters'); 
+    else, clear b; load([tempLoc.rawFolder '\' processIdx(i).name], 'parameters'); 
         if exist(tempLoc.rawTimeline, 'file'); load(tempLoc.rawTimeline); 
         else, expList(end).excluded = 1; continue; end
         if strcmp(parameters.experimentType, 'mpep')
@@ -147,15 +155,15 @@ for i = 1:length(newParams)
     if strcmp(expList(end).expDef, 'ChoiceWorld'); expList(end).excluded = 1; continue; end
     if expList(end).expDuration < 60; expList(end).excluded = 1; continue; end
     
-    txtF = [dir([fileparts(newParams(i).folder) '\*Exclude*.txt']); dir([newParams(i).folder '\*Exclude*.txt'])];
+    txtF = [dir([fileparts(processIdx(i).folder) '\*Exclude*.txt']); dir([processIdx(i).folder '\*Exclude*.txt'])];
     if ~isempty(txtF); expList(end).excluded = 1; else, expList(end).excluded = 0; end
     
     %If a text file with "NewFOV" in the name is detected in the experiment directory, alter suite2Poutput to account for multiple fields of view.
-    txtF = dir([newParams(i).folder '\*NewFOV*.txt']);
-    if ~isempty(txtF); newParams(i).folder = [fileparts(expList(end).suite2POutput) '\' txtF.name]; end
+    txtF = dir([processIdx(i).folder '\*NewFOV*.txt']);
+    if ~isempty(txtF); processIdx(i).folder = [fileparts(expList(end).suite2POutput) '\' txtF.name]; end
     
     %If a text file with "ValidRepeat" in the name is detected in the experiment directory, tag as a valid repeat.
-    txtF = dir([newParams(i).folder '\*ValidRepeat*.txt']);
+    txtF = dir([processIdx(i).folder '\*ValidRepeat*.txt']);
     if ~isempty(txtF); expList(end).validRepeat = 1; end
 end
 % If new files were identified, add them to expList

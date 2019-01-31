@@ -36,8 +36,8 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %% Set default values, load experimental list, check which processed files already exist, etc.
 if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
-if ~exist('subject', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
-if ~exist('subject', 'var'); selectedDates = {'1'}; end
+if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
+if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 
 %Checks whether both the DropBox and zserver directories exists. If they both do, sync the folders so data is everywere
 existDirectories = prc.pathFinder('directoryCheck');
@@ -215,7 +215,6 @@ if size(unique(clusterGroups.group, 'rows'),1) == 3 && all(contains({'good '; 'n
     save(x.processedData, 'eph', 'whoD', '-append');
 else, fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
 end
-
 end
 
 %%
