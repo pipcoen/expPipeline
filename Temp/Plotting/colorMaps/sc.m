@@ -197,15 +197,8 @@ if nargout == 0
     hIm = imdisp(I, 'Border', 0);
     % Set the colormap (if valid)
     if ~isempty(limits)
-        try
-            colormap(gca(), map);
-        catch
-            set(gcf(), 'Colormap', map);
-        end
-        if limits(1) == limits(2)
-            limits(2) = limits(2) + 1;
-        end
-        set(gca(), 'CLim', limits);
+        set(gcf, 'Colormap', map);
+        set(gca, 'CLim', limits);
         set(hIm, 'CDataMapping', 'scaled');
     end
     % Don't print out the matrix if we've forgotten the ";"
@@ -400,9 +393,7 @@ switch lower(cmap(1+reverseMap:end-grayMap))
         end
         cmap2 = cmap;
         cmap2(reverseMap+(1:5)) = [];
-        M = isnan(I);
         [I, limits] = real2rgb(I, cmap2, limits);
-        I(repmat(M, [1 1 3])) = 0;
         I = rescale(A + I, [0.2 1.8]);
 %% Gray_jet
     case 'gray_jet'

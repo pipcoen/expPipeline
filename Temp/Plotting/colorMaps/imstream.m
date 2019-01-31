@@ -45,21 +45,16 @@ classdef imstream < handle
     methods
         % Constructor
         function this = imstream(fname, varargin)
-            if iscell(fname)
-                % Assume this is a list of images
-                this.sh = imseq(fname);
-            else
-                [fext, fext, fext] = fileparts(fname);
-                switch lower(fext(2:end))
-                    case {'bmp', 'tif', 'tiff', 'jpeg', 'jpg', 'png', 'ppm', 'pgm', 'pbm', 'gif'}
-                        % Image sequence
-                        this.sh = imseq(fname);
-                    case {'mpg', 'avi', 'mp4', 'm4v', 'mpeg', 'mxf', 'mj2', 'wmv', 'asf', 'asx', 'mov', 'ogg'}
-                        % Video file
-                        this.sh = VideoReader(fname);
-                    otherwise
-                        error('File extension %s not recognised.', fext);
-                end
+            [fext, fext, fext] = fileparts(fname);
+            switch lower(fext(2:end))
+                case {'bmp', 'tif', 'tiff', 'jpeg', 'jpg', 'png', 'ppm', 'pgm', 'pbm', 'gif'}
+                    % Image sequence
+                    this.sh = imseq(fname);
+                case {'mpg', 'avi', 'mp4', 'm4v', 'mpeg', 'mxf', 'mj2', 'wmv', 'asf', 'asx', 'mov', 'ogg'}
+                    % Video file
+                    this.sh = VideoReader(fname);
+                otherwise
+                    error('File extension %s not recognised.', fext);
             end
             % Create the buffered stream
             this.buffer = cache(@(n) read_lowlevel(this, n), varargin{:});
@@ -70,10 +65,6 @@ classdef imstream < handle
         % Destructor
         function delete(this)
             delete(this.sh);
-        end
-        % Disp - pass on to the underlying stream
-        function disp(this, varargin)
-            disp(this.sh, varargin{:});
         end
         % Pass on set and get requests to the underlying stream
         function varargout = get(this, varargin)

@@ -141,7 +141,7 @@ elseif is_cell_or_stream(I)
                 A = I;
             end
         else
-            A = imread_rgb_(A);
+            A = imread_rgb(A);
             I{1} = A;
             [y, x, c] = size(A);
         end
@@ -179,56 +179,53 @@ if n < 2
     set(hFig, 'Colormap', map);
 end
 
-% Handle the empty case
+% Display the image(s)
 if n == 0
-    hIm = display_image([], gca(), [0 1]);
+    hIm = display_image([], gca, [0 1]);
     
     if nargout == 0
         clear hIm % Avoid printing this out
     end
-    return;
+    return
 elseif n == 1
-    layout = [1 1];
-else
-    % Compute a good layout
-    layout = choose_layout(n, y, x, layout, figSize);
-end
-num = prod(layout);
-
-% Display the image(s)
-resize = ~(strcmp(get(hFig, 'WindowStyle'), 'docked') || x == 0 || y == 0);
-if isequal(layout, [1 1])
     % IMSHOW mode
     % Display the single image
-    hAx = gca();
+    hAx = gca;
     if cell_or_stream
-        A = I{1};
-    else
-        A = I;
+        I = I{1};
     end
-    hIm = display_image(A, hAx, lims);
+    hIm = display_image(I, hAx, lims);
+    
+    if nargout == 0
+        clear hIm % Avoid printing this out
+    end
     
     % Only resize image if it is alone in the figure
     if numel(findobj(get(hFig, 'Children'), 'Type', 'axes')) > 1
-        resize = false;
-    else
-        % Could still be the first subplot - do another check
-        axesPos = get(hAx, 'Position');
-        newAxesPos = [gap(1) gap(end) 1-2*gap(1) 1-2*gap(end)];
-        if max(abs(axesPos - get(hFig, 'DefaultAxesPosition'))) < 1e-15
-            % Default position => not a subplot
-            % Fill the window
-            set(hAx, 'Units', 'normalized', 'Position', newAxesPos);
-            axesPos = newAxesPos;
-        end
-        if ~isequal(axesPos, newAxesPos)
-            % Figure not alone, so don't resize.
-            resize = false;
-        end
+        return
     end
+    % Could still be the first subplot - do another check
+    axesPos = get(hAx, 'Position');
+    newAxesPos = [gap(1) gap(end) 1-2*gap(1) 1-2*gap(end)];
+    if max(abs(axesPos - get(hFig, 'DefaultAxesPosition'))) < 1e-15
+        % Default position => not a subplot
+        % Fill the window
+        set(hAx, 'Units', 'normalized', 'Position', newAxesPos);
+        axesPos = newAxesPos;
+    end
+    if ~isequal(axesPos, newAxesPos)
+        % Figure not alone, so don't resize.
+        return
+    end
+    layout = [1 1];
 else
     % MONTAGE mode
+    % Compute a good layout
+    layout = choose_layout(n, y, x, layout, figSize);
+
     % Create a data structure to store the data in
+    num = prod(layout);
+    state.num = num * ceil(n / num);
     hIm = zeros(layout);
     hAx = zeros(layout);
     
@@ -243,7 +240,7 @@ else
     set(hFig, 'Colormap', map);
 
     % Set the first lot of images
-    index = mod(0:num-1, num * ceil(n / num)) + 1;
+    index = mod(0:num-1, state.num) + 1;
     hw = 1 ./ layout;
     gap = gap ./ layout;
     dims = hw - 2 * gap;
@@ -256,7 +253,7 @@ else
             elseif cell_or_stream
                 A = I{c};
                 if ischar(A)
-                    A = imread_rgb_(A);
+                    A = imread_rgb(A);
                     I{c} = A;
                 end
             else
@@ -267,33 +264,30 @@ else
         end
     end
     
-end
-
+    % Check if we need to be able to scroll through images
+    if n > num
+        % Intialize rest of data structure
+        state.hIm = hIm;
+        state.hAx = hAx;
+        state.index = 1;
+        state.layout = layout;
+        state.lims = lims;
+        state.n = n;
+        state.I = I;
+        state.is_cell_or_stream = cell_or_stream;
+        % Set the callback for image navigation, and save the image data in the figure
+        set(hFig, 'KeyPressFcn', @keypress_callback, 'Interruptible', 'off', 'BusyAction', 'cancel', 'UserData', state);
+    end
     
-% Check if we need to be able to scroll through images
-if n > num
-    % Intialize rest of data structure
-    state.num = num * ceil(n / num);
-    state.hIm = hIm;
-    state.hAx = hAx;
-    state.index = 1;
-    state.layout = layout;
-    state.lims = lims;
-    state.n = n;
-    state.I = I;
-    state.is_cell_or_stream = cell_or_stream;
-    % Set the callback for image navigation, and save the image data in the figure
-    set(hFig, 'KeyPressFcn', @keypress_callback, 'Interruptible', 'off', 'BusyAction', 'cancel', 'UserData', state, 'Name', 'Image index: 1.');
-end
-
-if nargout == 0
-    clear hIm % Avoid printing this out
-else
     % Flip hIm so it matches the layout
     hIm = hIm(end:-1:1,:);
+    
+    if nargout == 0
+        clear hIm % Avoid printing this out
+    end
 end
 
-if ~resize
+if strcmp(get(hFig, 'WindowStyle'), 'docked') || x == 0 || y == 0
     % Figure is docked or image is empty, so can't resize
     return
 end
@@ -306,7 +300,7 @@ ImSz = layout([2 1]) .* [x y] ./ (1 - 2 * gap([end 1]));
 figPosCur = get(hFig, 'Position');
 % Monitor sizes
 MonSz = get(0, 'MonitorPositions');
-if ~ishg2(hFig)
+if ~ishg2(hFig);
     % Correct the size
     MonSz(:,3:4) = MonSz(:,3:4) - MonSz(:,1:2) + 1;
 end
@@ -382,7 +376,7 @@ switch event_data.Character
         up = 0.1; % Forward a row
     case 'f'
         state = get(fig, 'UserData');
-        fprintf('Image index: %d\n', state.index); % Print out the index
+        fprintf('Current index: %d\n', state.index); % Print out the index
         return;
     case 'g'
         % Get the user to input a frame number
@@ -414,10 +408,10 @@ end
 index = state.index;
 % Get number of images
 n = prod(state.layout);
-% Generate valid indices
+% Generate 12 valid indices
 if abs(up) < 1
-    % Increment by row, or by 10 if only one image
-    index = index + state.layout(2) * (up * (10 ^ (2 - (prod(state.layout) > 1)))) - 1;
+    % Increment by row
+    index = index + state.layout(2) * (up * 10) - 1;
 else
     if state.layout(1) == 1
         % Increment by column
@@ -441,7 +435,7 @@ for a = 1:state.layout(1)
             A = state.I{c};
             if ischar(A)
                 % Filename - read the image from disk
-                A = imread_rgb_(A);
+                A = imread_rgb(A);
                 state.I{c} = A;
             end
             % Set the image data
@@ -459,7 +453,7 @@ end
 drawnow;
 % Save the current index
 state.index = index(1);
-set(fig, 'UserData', state, 'Name', sprintf('Image index: %d.', state.index));
+set(fig, 'UserData', state);
 end
 
 %% Display the image
@@ -517,14 +511,51 @@ layout = reshape(layout, 1, 2);
 end
 
 %% Read image to uint8 rgb array
-function A = imread_rgb_(name)
+function A = imread_rgb(name)
 try
-    A = imread_rgb(name);
+    [A, map, alpha] = imread(name);
 catch
     % Format not recognized by imread, so create a red cross (along diagonals)
     A = eye(101) | diag(ones(100, 1), 1) | diag(ones(100, 1), -1);
     A = (uint8(1) - uint8(A | flipud(A))) * uint8(255);
     A = cat(3, zeros(size(A), 'uint8')+uint8(255), A, A);
+    return
+end
+A = A(:,:,:,1); % Keep only first frame of multi-frame files
+if ~isempty(map)
+    map = uint8(map * 256 - 0.5); % Convert to uint8 for storage
+    A = reshape(map(uint32(A)+1,:), [size(A) size(map, 2)]); % Assume indexed from 0
+elseif size(A, 3) == 4
+    if lower(name(end)) == 'f'
+        % TIFF in CMYK colourspace - convert to RGB
+        if isfloat(A)
+            A = A * 255;
+        else
+            A = single(A);
+        end
+        A = 255 - A;
+        A(:,:,4) = A(:,:,4) / 255;
+        A = uint8(A(:,:,1:3) .* A(:,:,[4 4 4]));
+    else
+        % Assume 4th channel is an alpha matte
+        alpha = A(:,:,4);
+        A = A(:,:,1:3);
+    end
+end
+if ~isempty(alpha)
+    % Apply transprency over a grey checkerboard pattern
+    if isa(alpha, 'uint8')
+        alpha = double(alpha) / 255;
+    end
+    A = double(A) .* alpha(:,:,ones(1, size(A, 3)));
+    sqSz = max(size(alpha));
+    sqSz = floor(max(log(sqSz / 100), 0) * 10 + 1 + min(sqSz, 100) / 20);
+    grid = repmat(85, ceil(size(alpha) / sqSz));
+    grid(2:2:end,1:2:end) = 171;
+    grid(1:2:end,2:2:end) = 171;
+    grid = kron(grid, ones(sqSz));
+    alpha = grid(1:size(A, 1),1:size(A, 2)) .* (1 - alpha);
+    A = uint8(A + alpha(:,:,ones(1, size(A, 3))));
 end
 end
 
@@ -535,12 +566,12 @@ try
     info = imfinfo(name);
 catch
     % Revert to standard case
-    A = imread_rgb_(name);
+    A = imread_rgb(name);
     return
 end
 if numel(info) < 2
     % Single image
-    A = imread_rgb_(name);
+    A = imread_rgb(name);
 else
     % Multi-frame image
     switch lower(info(1).Format)
@@ -573,7 +604,7 @@ else
             end
         otherwise
             % Multi-frame not supported for this format
-            A = imread_rgb_(name);
+            A = imread_rgb(name);
     end
 end
 end
@@ -653,7 +684,7 @@ end
 %% Rescale RGB images to the correct limits
 function A = rescale_rgb(A, lims)
 if size(A, 3) == 3 && ~isequal(lims, default_limits(A))
-    A = max(min((double(A) - lims(1)) ./ (lims(2) - lims(1)), 1), 0);
+    A = rescale(A, lims);
 end
 end
 
@@ -663,7 +694,7 @@ if size(A, 3) == 1
     lims = min_max(A);
 else
     lims = [0 1];
-    if ~isfloat(A) && ~islogical(A)
+    if ~isfloat(A)
         lims = lims * double(intmax(class(A)));
     end
 end
