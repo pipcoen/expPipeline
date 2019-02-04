@@ -299,8 +299,13 @@ if p.laserSession
     end
     p.galvoCoords = e.galvoCoordsValues(:,1:2);
 else
-    [n.laserType, n.laserPower, n.galvoType, n.laserOnsetDelay] = deal(n.feedback*nan);
-    [n.galvoPosition,  n.laserOnOff] = deal(n.feedback*[nan nan]);
+    [n.laserType, n.laserPower, n.galvoType] = deal(n.feedback*nan)
+    n.laserType = n.feedback*nan;
+    n.laserPower = n.feedback*nan;
+    n.galvoType = n.feedback*nan;
+    n.galvoPosition = n.feedback*[nan nan];
+    n.laserOnOff = n.feedback*[nan nan];
+    n.laserOnsetDelay = n.feedback*nan;
     p.galvoCoords = [nan nan];
 end
 

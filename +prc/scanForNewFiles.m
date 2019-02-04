@@ -8,15 +8,14 @@ function expList = scanForNewFiles(rebuildList, checkDirectories)
 % expList-----------A structure containing fields for every file detected for the selected mice in the selected daterange
 %.subject-----------Name of the mouse
 %.expDate-----------Date that the experiment was recorded
-%.sessionNum--------Session number for experiment
+%.expNum--------Session number for experiment
 %.expDef------------The experimental definition file used
 %.sharedData--------Location to uploaded copy of processed file on zserver
 %.excluded----------Tag for excluded files (these may be excluded for a variety of reasons)
 %.rigName-----------Name of the rig where the experiment took place
-%.rigType-----------Type of the rig where the experiment took place
+%.expType-----------Type of the rig where the experiment took place
 %.expDuration-------Duration of the experiment (s)
 %.blockFunction-----Name of helper function for processing the experiment
-%.validRepeat-------Tag for a valid repeat (in cases where there were two experiments of same type, on the same day, on the same rig.
 %.rawBlock----------Path to the local copy of the block file (generated in all experiments)
 %.rawTimeline-------Path to the local copy of the timeline file
 %.galvoLog----------Path to the local copy of the galvo log file (generated for inactivation expeirments)
@@ -48,84 +47,75 @@ if any(startedIdx); includedMice(startedIdx > 0,2) = num2cell(datenum(startedDat
 [~, retiredIdx] = ismember(includedMice(:,1), retiredDates(:,1));
 if any(retiredIdx); includedMice(retiredIdx > 0,3) = num2cell(datenum(retiredDates(retiredIdx(retiredIdx>0), 2), 'yyyy-mm-dd')); end
 
-%% List of rig names and the type of rig (possible values are training, twophoton, widefield
-rigList = {'training', {'zym'; 'zred'; 'zgrey'; 'zool'; 'zrig'}; ...
-    'twophoton', {'zurprise'}; ...
-    'widefield', {'zooropa'; 'zgood'}; ...
-    'multiple', {'lilrig'}};
-
 %% Check for all files generated in the past 3 weeks for included mice.
 lastParamFiles = [];
 lastBlockFiles = [];
-files2Check = 15;
 currentTime = now;
-% lastWeek = datestr(datenum(datetime('now'))-7:datenum(datetime('now')), 'yyyy-mm-dd');
-for i = 1:size(includedMice,1)
-    recentDates = datestr(datenum(includedMice{i,3})-files2Check:datenum(includedMice{i,3}), 'yyyy-mm-dd');
-    sessionPaths = arrayfun(@(x) dir([expInfo includedMice{i} '/' recentDates(x,:)]), 1:size(recentDates,1), 'uni', 0);
-    sessionPaths = cellfun(@(x) x(~isnan(str2double({x.name})))', sessionPaths, 'uni', 0);
-    detectedParamFiles = arrayfun(@(x) dir([x.folder '/' x.name '/20*parameters.mat']), [sessionPaths{:}]', 'uni', 0);
-    detectedBlockFiles = arrayfun(@(x) dir([x.folder '/' x.name '/20*block.mat']), [sessionPaths{:}]', 'uni', 0);
-    lastParamFiles = cat(1, lastParamFiles, detectedParamFiles{:});
-    lastBlockFiles = cat(1, lastBlockFiles, detectedBlockFiles{:});
+recentDates = cellfun(@(x,y) num2cell([repmat([expInfo y '\'],[15,1]) datestr(datenum(x)-14:datenum(x), 'yyyy-mm-dd')],2),includedMice(:,3), includedMice(:,1), 'uni', 0);
+
+if rebuildList ~= 1 
+    cycles = 2; 
+    processList = vertcat(recentDates{:}); 
+    expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
+else
+    cycles = 3;
+    processList = cellfun(@(x) [expInfo x], includedMice(:,1), 'uni', 0);  
+    expList = struct; 
 end
 
-%% Build list of unregistered files from the last week (or find all files if rebuilding list)
-if rebuildList == 1
-    expList = struct;
-    processIdx = cat(1, cellfun(@(x) dir([expInfo '/' x '/**/20*parameters.mat']), includedMice(:,1), 'uni', 0));
-    processIdx = cat(1, processIdx{:});
-else,     expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
-    if isempty(lastParamFiles), fprintf('No new files found\n'); return
-    else
-        processIdx = ~contains({lastParamFiles.folder}',{expList.rawFolder}');
-        missingBlock = ~contains({lastParamFiles.folder}',{lastBlockFiles.folder}');
-        timeSinceParamFileCreation = [lastParamFiles.datenum]'-currentTime*24*60;
-        processIdx = lastParamFiles(processIdx & (~missingBlock | timeSinceParamFileCreation > 80));
-    end
+for i = 1:cycles
+    fprintf('Detecting folder level %d ... \n', i);
+    processList = cellfun(@(x) java.io.File(x), processList, 'uni', 0);
+    processList = cellfun(@(x) arrayfun(@char,x.listFiles,'un',0), processList, 'uni', 0);
+    processList = vertcat(processList{:});
+    processList = processList(~contains(processList, {'Lightsheet'; 'ephys'}));
 end
-
-
+processList = processList(~cellfun(@isempty, regexp(processList, '20.*arameters.mat')));
+if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return; 
+else, processList = processList(~contains(processList,{expList.rawFolder}'));
+end
 
 %% Loop to created struture for new files and add them to the expList
 addedFiles  = 0;
-for i = 1:length(processIdx)
+for i = 1:length(processList)
     %Identify details about the experiment from the folder name.
-    splitStr = regexp(processIdx(i).folder,'[\\/]','split');
-    sessionNum = splitStr{end};
-    expDate = splitStr{end-1};
-    subject = splitStr{end-2};
+    splitStr = regexp(processList{i},'[\\/]','split');
+    expNum = splitStr{end-1};
+    expDate = splitStr{end-2};
+    subject = splitStr{end-3};
     mouseIdx = strcmp(subject, includedMice(:,1));
     
     %Ignore files outside of the specified date range for that mouse. Otherwise, sync the raw folder with the local folder.
     if datenum(expDate, 'yyyy-mm-dd') < includedMice{mouseIdx,2} || datenum(expDate, 'yyyy-mm-dd') > includedMice{mouseIdx,3}
         if exist([prc.pathFinder('rawbackup') subject '\' expDate], 'dir'); rmdir([prc.pathFinder('rawbackup') subject '\' expDate], 's'); end
         continue;
-    else, prc.syncfolder([prc.pathFinder('expinfo') subject '\' expDate '\' sessionNum], [prc.pathFinder('rawbackup') subject '\' expDate '\' sessionNum], 2);
+    else, prc.syncfolder([prc.pathFinder('expinfo') subject '\' expDate '\' expNum], [prc.pathFinder('rawbackup') subject '\' expDate '\' expNum], 2);
     end
     
-    fprintf('Adding recording %s %s %s\n', expDate, subject, sessionNum);
+    timeSinceParamFileCreation = dir(prc.pathFinder('origparams', subject, expDate, expNum));
+    timeSinceParamFileCreation = [timeSinceParamFileCreation.datenum]'-currentTime*24*60; 
+    if ~exist(prc.pathFinder('origblock', subject, expDate, expNum), 'file') && timeSinceParamFileCreation > 80; continue; end
+        
+    fprintf('Adding recording %s %s %s\n', expDate, subject, expNum);
     addedFiles = 1;
     %Poplate fields for addition to expList
     expList(end+(length(fields(expList))>0*1),1).subject = subject;
     expList(end).expDate = expDate;
-    expList(end).sessionNum = sessionNum;
+    expList(end).expNum = expNum;
     expList(end).expDef = 'ChoiceWorld';
     
-    backUpFolder = prc.pathFinder('rawbackupfolder', subject, expDate, sessionNum);
-    prc.syncfolder(processIdx(i).folder, backUpFolder, 2);
+    backUpFolder = prc.pathFinder('rawbackupfolder', subject, expDate, expNum);
+    prc.syncfolder(fileparts(processList{i}), backUpFolder, 2); %#ok<*NODEF>
     
-    if exist(prc.pathFinder('galvoLog', subject, expDate, sessionNum), 'file')
-        expList(end).galvoLog = prc.pathFinder('galvoLog', subject, expDate, sessionNum);
+    if exist(prc.pathFinder('galvoLog', subject, expDate, expNum), 'file')
+        expList(end).galvoLog = prc.pathFinder('galvoLog', subject, expDate, expNum);
     else
         expList(end).galvoLog = 0;
     end
     
-    %If a text file with "Exclude" in the name is detected in the experiment directory, exclude this experiment.
-    %This exclude is placed here to avoid wasting time in loading unwanted block files, and
     tempLoc = prc.updatePaths(expList(end), 0);
     if exist(tempLoc.rawBlock, 'file'); load(tempLoc.rawBlock, 'block'); b = block;
-    else, clear b; load([tempLoc.rawFolder '\' processIdx(i).name], 'parameters'); 
+    else, clear b; load(processList{i}); 
         if exist(tempLoc.rawTimeline, 'file'); load(tempLoc.rawTimeline); 
         else, expList(end).excluded = 1; continue; end
         if strcmp(parameters.experimentType, 'mpep')
@@ -135,43 +125,28 @@ for i = 1:length(processIdx)
         end
     end
        
-    if ~contains(b.rigName, cat(1,rigList{:,2})); error([b.rigName ' not recognized']); end
     if isfield(b, 'expDef'); [~, expList(end).expDef] = fileparts(b.expDef); end
     expList(end).rigName = b.rigName;
-    expList(end).rigType = rigList{cellfun(@(x) contains(b.rigName, x), rigList(:,2)),1};
+    expList(end).expType = 'training';
     
-    if strcmp(expList(end).rigType, 'multiple')
-        tDat = prc.updatePaths(expList(end), 0);
-        expList(end).rigType = 'ephys';
-        if isempty(dir([fileparts(tDat.rawFolder) '\*hys*'])); expList(end).rigType = 'trainingephys';  end
-    end
+    if contains(expList(end).rigName, {'zym1'; 'zym2'}) && exist(tempLoc.galvoLog, 'file'); expList(end).expType = 'inactivation'; end
+    if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'ephys'; end
     if isfield(b, 'duration'); expList(end).expDuration = b.duration; else, expList(end).expDuration = 0; end
     expList(end).blockFunction = str2func(['prc.expDef.' expList(end).expDef]);
-    expList(end).validRepeat = 0;
     expList(end).excluded = 0;
-    
     
     %If a ChoiceWorld experiment, or experiment lasts less than 60s, then ignore (Pip doesn't use Choiceworld)
     if strcmp(expList(end).expDef, 'ChoiceWorld'); expList(end).excluded = 1; continue; end
-    if expList(end).expDuration < 60; expList(end).excluded = 1; continue; end
+    if expList(end).expDuration < 120; expList(end).excluded = 1; continue; end
     
-    txtF = [dir([fileparts(processIdx(i).folder) '\*Exclude*.txt']); dir([processIdx(i).folder '\*Exclude*.txt'])];
-    if ~isempty(txtF); expList(end).excluded = 1; else, expList(end).excluded = 0; end
-    
-    %If a text file with "NewFOV" in the name is detected in the experiment directory, alter suite2Poutput to account for multiple fields of view.
-    txtF = dir([processIdx(i).folder '\*NewFOV*.txt']);
-    if ~isempty(txtF); processIdx(i).folder = [fileparts(expList(end).suite2POutput) '\' txtF.name]; end
-    
-    %If a text file with "ValidRepeat" in the name is detected in the experiment directory, tag as a valid repeat.
-    txtF = dir([processIdx(i).folder '\*ValidRepeat*.txt']);
-    if ~isempty(txtF); expList(end).validRepeat = 1; end
+    txtF = [dir([fileparts(fileparts(processList{1})) '\*Exclude*.txt']); dir([fileparts(processList{1}) '\*Exclude*.txt'])];
+    if ~isempty(txtF); expList(end).excluded = 1; end
 end
 % If new files were identified, add them to expList
 if ~addedFiles; fprintf('No new files found\n'); end
 
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
-expList = prc.updatePaths(expList);
-
+expList = prc.updatePaths(expList,0);
 if checkDirectories
     for i = 1:length(expList)
         if expList(i).excluded == 1; continue; end
@@ -180,48 +155,37 @@ if checkDirectories
     end
 end
 %% This section section deals with cases of files on non-training rigs when multiple files are detected for a mouse on same day, rig, and expDef
-folderList = cellfun(@fileparts, {expList.rawFolder}', 'uni', 0);
-folderList = cellfun(@(x,y,z) [x, y, z], folderList, {expList.rigName}', {expList.expDef}', 'uni', 0);
-[~, uniqueFileIdx] = unique(folderList);
-duplicates = unique(folderList(setdiff(1:length(folderList),uniqueFileIdx)));
+processList = cellfun(@fileparts, {expList.rawFolder}', 'uni', 0);
+processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expList.expDef}', 'uni', 0);
+[~, uniqueFileIdx] = unique(processList);
+duplicates = unique(processList(setdiff(1:length(processList),uniqueFileIdx)));
 for i = 1:length(duplicates)
-    tDat = expList(strcmp(folderList,duplicates{i}));
-    if (length(tDat(1).rigType)>7 && strcmp(tDat(1).rigType(1:8), 'training')) || sum([tDat.excluded]>0)>=length(tDat)-1 || ...
-            sum([tDat.excluded]>0)+sum([tDat.validRepeat])== length(tDat)
-        continue;
-    end
-    [selectedDuplicates] = listdlg('ListString', cellfun(@(x,y) [num2str(x),': ' num2str(y)], {tDat.sessionNum}', {tDat.expDuration}', 'uni', 0), ...
+    duplicatesIdx = strcmp(processList,duplicates{i}) & ~[expList.excluded]'>0;
+    tDat = expList(duplicatesIdx);
+    if length(tDat) < 2 || (~isempty(tDat(1).expType) && contains(tDat(1).expType, {'training';'inactivation'})); continue; end
+    [selectedDuplicates] = listdlg('ListString', cellfun(@(x,y) [num2str(x),': ' num2str(y)], {tDat.expNum}', {tDat.expDuration}', 'uni', 0), ...
         'PromptString', [{'Select durations to REMOVE for:'} ...
-        {[tDat(1).subject ' ' tDat(1).expDate ' ' tDat(1).expDef]} {''}]);
-    [tDat(:).validRepeat] = deal(1);
+        {[tDat(1).subject ' ' tDat(1).expDate ' ' tDat(1).expDef  ' ' tDat(1).expType]} {''}]);
     [tDat(selectedDuplicates).excluded] = deal(1);
-    [tDat(selectedDuplicates).validRepeat] = deal(0);
-    expList(strcmp(folderList,duplicates{i})) = tDat;
+    expList(duplicatesIdx) = tDat;
 end
 
 
-%% This section section deals with short files when multiple files are detected for a mouse on same day and rig type
-folderList = cellfun(@fileparts, {expList.rawFolder}', 'uni', 0);
-folderList = cellfun(@(x,y) [x, y], folderList, {expList.rigType}', 'uni', 0);
-[~, uniqueFileIdx] = unique(folderList);
-duplicates = unique(folderList(setdiff(1:length(folderList),uniqueFileIdx)));
+%% This section section deals with short files when multiple files are detected for a mouse on same day and experiment type type
+processList = cellfun(@fileparts, {expList.rawFolder}', 'uni', 0);
+processList = cellfun(@(x,y) [x, y], processList, {expList.expType}', 'uni', 0);
+[~, uniqueFileIdx] = unique(processList);
+duplicates = unique(processList(setdiff(1:length(processList),uniqueFileIdx)));
 for i = 1:length(duplicates)
-    tDat = expList((strcmp(folderList,duplicates{i}).*([expList.excluded]'==0))>0);
+    duplicatesIdx = strcmp(processList,duplicates{i}) & ~[expList.excluded]'>0;
+    tDat = expList(duplicatesIdx);
     if length(tDat) < 2; continue; end
-    if (length(tDat(1).rigType)>7 && strcmp(tDat(1).rigType(1:8), 'training'))
-        fprintf('Multiple training files for %s %s. Keeping largest\n', tDat(1).subject, tDat(1).expDate);
+    if contains(tDat(1).expType, {'training';'inactivation'})
+        fprintf('Multiple training files for %s %s %s. Keeping largest\n', tDat(1).subject, tDat(1).expDate, tDat(1).rigName);
         maxDurationIdx = num2cell([tDat.expDuration] ~= max([tDat.expDuration]));
         if all([tDat.expDuration] == max([tDat.expDuration])); maxDurationIdx{1} = 1; end
         [tDat.excluded] = maxDurationIdx{:};
-        expList((strcmp(folderList,duplicates{i}).*([expList.excluded]'==0))>0) = tDat;
-    elseif strcmp(tDat(1).rigType, 'twophoton') && length(unique({tDat.out2})) > 1
-        newFOV = cellfun(@isempty, (strfind({tDat.suite2POutput}', 'NewFOV')));
-        [containingFolder, fileExtension] = cellfun(@fileparts, {tDat.suite2POutput}', 'uni', 0);
-        sExt = fileExtension(newFOV);
-        sExt(1:end-1) = cellfun(@(x) [x '_'], fileExtension(1:end-1), 'uni', 0);
-        [tDat(newFOV).out2] = deal([containingFolder{1} sep cell2mat(sExt')]);
-        [tDat(newFOV).sessionNum] = deal({tDat(newFOV).sessionNum}');
-        expList((strcmp(folderList,duplicates{i}).*([expList.excluded]'==0))>0) = tDat;
+        expList(duplicatesIdx) = tDat;
     end
 end
 

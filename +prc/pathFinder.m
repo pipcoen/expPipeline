@@ -1,14 +1,14 @@
-function [pathOut] = pathFinder(pathType, subject, expDate, sessionNum) 
+function [pathOut] = pathFinder(pathType, subject, expDate, expNum) 
 %% A funciton to return various paths used in processing and anlysis. Changes in file struture should be reflected here.
 if nargin < 1; error('pathType required'); end
 if nargin < 2; subject = '.'; end
 if nargin < 3; expDate = datestr(today, 'yyyy-mm-dd'); end
-if nargin < 4; sessionNum = '1'; end
-if isnumeric(sessionNum); sessionNum = num2str(sessionNum); end
+if nargin < 4; expNum = '1'; end
+if isnumeric(expNum); expNum = num2str(expNum); end
 
-subjectPath = [subject '\' expDate '\' sessionNum '\'];
-expRef = [expDate '_' sessionNum '_' subject];
-processedFileName = [subject '\' subject '_' expDate([3:4 6:7 9:10]) '_' sessionNum  'Proc.mat'];
+subjectPath = [subject '\' expDate '\' expNum '\'];
+expRef = [expDate '_' expNum '_' subject];
+processedFileName = [subject '\' subject '_' expDate([3:4 6:7 9:10]) '_' expNum  'Proc.mat'];
 
 if contains(hostname, 'ziggurat')
     stubName = 'C:\Users\carandini';
@@ -34,6 +34,7 @@ end
 %%
 switch lower(pathType)
     case 'origblock'; pathOut = [expInfo subjectPath expRef '_Block.mat'];
+    case 'origparams'; pathOut = [expInfo subjectPath expRef '_Parameters.mat'];
     case 'origblockfolder'; pathOut = [expInfo subjectPath(1:end-1)];
     case 'rawblock'; pathOut = [rawBackup subjectPath expRef '_Block.mat'];
     case 'rawtimeline'; pathOut = [expInfo subjectPath expRef '_Timeline.mat'];
