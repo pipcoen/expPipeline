@@ -288,6 +288,7 @@ if p.laserSession
     n.laserPower = (e.laserPowerValues(vIdx)');
     n.galvoType = e.galvoTypeValues(vIdx)';
     
+    p.galvoCoords = e.galvoCoordsValues(:,1:2);
     galvoPosValues = e.galvoPosValues(vIdx)';
     galvoPosition = p.galvoCoords(abs(galvoPosValues),:);
     galvoPosition(e.laserTypeValues(vIdx)'~=2,1) = galvoPosition(e.laserTypeValues(vIdx)'~=2,1).*sign(galvoPosValues(e.laserTypeValues(vIdx)'~=2));
@@ -297,15 +298,9 @@ if p.laserSession
         n.laserOnsetDelay = timelineInfo.laserOnsetDelay(vIdx);
         n.laserOnOff = [timelineInfo.laserOnTime(vIdx), timelineInfo.laserOnTime(vIdx)+[v(vIdx).laserDuration]']-trialStartTimes;
     end
-    p.galvoCoords = e.galvoCoordsValues(:,1:2);
 else
-    [n.laserType, n.laserPower, n.galvoType] = deal(n.feedback*nan)
-    n.laserType = n.feedback*nan;
-    n.laserPower = n.feedback*nan;
-    n.galvoType = n.feedback*nan;
-    n.galvoPosition = n.feedback*[nan nan];
-    n.laserOnOff = n.feedback*[nan nan];
-    n.laserOnsetDelay = n.feedback*nan;
+    [n.laserType, n.laserPower, n.galvoType, n.laserOnsetDelay] = deal(n.feedback*nan);
+    [n.galvoPosition,  n.laserOnOff] = deal(n.feedback*[nan nan]);
     p.galvoCoords = [nan nan];
 end
 
@@ -330,6 +325,7 @@ p.validTrials = sum(vIdx);
 x.validTrials = vIdx;
 newParams = p;
 newBlock = n;
+p.orignal = x.oldParams;
 
 %Remove fields of the raw data where the trial lasts longer than 5s. The data from there trials aren't likely to be useful (since the mouse stayed
 %still for a long time) and can take up a lot of space in the mat file.
@@ -348,8 +344,12 @@ expectedParamFields ={'audAmplitude';'audInitialAzimuth';'audPerformance';'backg
     'preStimQuiescentRange';'preStimQuiescentThreshold';'responseWindow';'rewardSize';'rewardTotal';'rigName';'stimDuration';'subject';...
     'totalTrials';'validResponses';'validTrials';'visAltitude';'visContrast';'visInitialAzimuth';'visPerformance';'visSigma';'waveformType';'wheelGain'};
 
-if any(~contains(fields(newBlock), expectedBlockFields)) || any(~contains(expectedBlockFields, fields(newBlock)))
-    error('Field mistmatch in block file');
+if any(~contains(fields(newBlock), expectedBlockFields))
+    keybaord;
+elseif any(~contains(expectedBlockFields, fields(newBlock)))
+    keyboard;
+    excessfields = expectedBlockFields(~contains(expectedBlockFields, fields(newBlock)));
+    fprintf('Field mistmatch in block file %s - \n', excessfields{:});
 end
 
 if any(~contains(fields(newParams), expectedParamFields)) || any(~contains(expectedParamFields, fields(newParams)))

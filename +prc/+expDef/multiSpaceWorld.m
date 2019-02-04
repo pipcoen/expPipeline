@@ -118,11 +118,11 @@ if sum(vIdx) > 150
     timeToTTL = (e.galvoTTLTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx)))*0.9;
     vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
     
-    if  p.laserPower>0 && p.laserOnsetDelays(1) ~= p.laserOnsetDelays(2)
-        x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
-        timelineInfo = prc.extractTimelineInfo(x);
-        vIdx(timelineInfo.badTrials) = -1;
-    end
+%     if  p.laserPower>0 && p.laserOnsetDelays(1) ~= p.laserOnsetDelays(2)
+%         x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
+%         timelineInfo = prc.extractTimelineInfo(x);
+%         vIdx(timelineInfo.badTrials) = -1;
+%     end
     end
     vIdx = vIdx>0;
 end
@@ -202,7 +202,7 @@ closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
 %wheelToThresh uses the difference between the wheel position at the closed loop start and threshold to calculate the change in wheel value that
 %represents a response (this can be very different for different rotary encoders). timeToWheelMove is then the time at which wheelMove exceeds 25% of
 %wheelToThresh
-wheelMove = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(:,1), x(:,2), -1:0.001:x(end,1), 'nearest'))'], r.wheelTimeValue(~timeOuts), 'uni', 0);
+wheelMove = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(diff(x(:,1))~=0,1), x(diff(x(:,1))~=0,2), -1:0.001:x(end,1), 'nearest'))'], r.wheelTimeValue(~timeOuts), 'uni', 0);
 wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelMove, closedLoopStart(~timeOuts), feedbackTimes(~timeOuts)-stimPeriodStart(~timeOuts), 'uni', 0);
 wheelToThresh = nanmedian(abs(cellfun(@(x) x(end)-x(1), wheelToThresh)));
 timeToWheelMove = feedbackValues;
@@ -279,6 +279,9 @@ n.uniqueDiff = uniqueDiff;
 n.uniqueConditionRowLabels = uniqueConditionRowLabels;
 n.conditionLabelRow = [conditionLabel conditionRowIdx]; 
 
+[n.laserType, n.laserPower, n.galvoType, n.laserOnsetDelay] = deal(n.feedback*nan);
+[n.galvoPosition,  n.laserOnOff] = deal(n.feedback*[nan nan]);
+p.galvoCoords = [nan nan];
 if p.laserSession
     %Galvo position is the position of the galvos on each trial. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
     %trials are when the laserTypeValue for that trial was 2). Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
@@ -288,6 +291,7 @@ if p.laserSession
     n.laserPower = (e.laserPowerValues(vIdx)');
     n.galvoType = e.galvoTypeValues(vIdx)';
     
+    p.galvoCoords = e.galvoCoordsValues(:,1:2);
     galvoPosValues = e.galvoPosValues(vIdx)';
     galvoPosition = p.galvoCoords(abs(galvoPosValues),:);
     galvoPosition(e.laserTypeValues(vIdx)'~=2,1) = galvoPosition(e.laserTypeValues(vIdx)'~=2,1).*sign(galvoPosValues(e.laserTypeValues(vIdx)'~=2));
@@ -297,11 +301,6 @@ if p.laserSession
         n.laserOnsetDelay = timelineInfo.laserOnsetDelay(vIdx);
         n.laserOnOff = [timelineInfo.laserOnTime(vIdx), timelineInfo.laserOnTime(vIdx)+[v(vIdx).laserDuration]']-trialStartTimes;
     end
-    p.galvoCoords = e.galvoCoordsValues(:,1:2);
-else
-    [n.laserType, n.laserPower, n.galvoType, n.laserOnsetDelay] = deal(n.feedback*nan);
-    [n.galvoPosition,  n.laserOnOff] = deal(n.feedback*[nan nan]);
-    p.galvoCoords = [nan nan];
 end
 
 %%
@@ -325,6 +324,7 @@ p.validTrials = sum(vIdx);
 x.validTrials = vIdx;
 newParams = p;
 newBlock = n;
+p.orignal = x.oldParams;
 
 %Remove fields of the raw data where the trial lasts longer than 5s. The data from there trials aren't likely to be useful (since the mouse stayed
 %still for a long time) and can take up a lot of space in the mat file.
@@ -343,8 +343,12 @@ expectedParamFields ={'audAmplitude';'audInitialAzimuth';'audPerformance';'backg
     'preStimQuiescentRange';'preStimQuiescentThreshold';'responseWindow';'rewardSize';'rewardTotal';'rigName';'stimDuration';'subject';...
     'totalTrials';'validResponses';'validTrials';'visAltitude';'visContrast';'visInitialAzimuth';'visPerformance';'visSigma';'waveformType';'wheelGain'};
 
-if any(~contains(fields(newBlock), expectedBlockFields)) || any(~contains(expectedBlockFields, fields(newBlock)))
-    error('Field mistmatch in block file');
+if any(~contains(fields(newBlock), expectedBlockFields))
+    keybaord;
+elseif any(~contains(expectedBlockFields, fields(newBlock)))
+    keyboard;
+    excessfields = expectedBlockFields(~contains(expectedBlockFields, fields(newBlock)));
+    fprintf('Field mistmatch in block file %s - \n', excessfields{:});
 end
 
 if any(~contains(fields(newParams), expectedParamFields)) || any(~contains(expectedParamFields, fields(newParams)))

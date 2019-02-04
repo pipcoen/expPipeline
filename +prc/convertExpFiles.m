@@ -85,7 +85,7 @@ end
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
-srtIdx = 0;
+srtIdx = 779;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedSubjects); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name  
     if ~contains(expList(i).expDate, selectedDates); continue; end  %If a date has been selected, skip days that don't match that date  
@@ -127,7 +127,7 @@ for i = files2Run(files2Run>srtIdx)
     end 
     
     %If not converted through other processing steps, convert block file.
-    if  (~varIdx(1) || redoTag) && contains(dataType, {'all'; 'blk'})
+    if  ((~varIdx(1) || redoTag) && ~strcmpi(x.expType, 'ephys')) && contains(dataType, {'all'; 'blk'})
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x);
     end
