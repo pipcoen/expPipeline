@@ -129,6 +129,7 @@ if any(contains(fineTune, 'flashes'))
     
     largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>0.5); find(diff([photoDiodeFlipTimes; 10e10])>0.5)]));
     zeroContrastTrials = arrayfun(@(x) max(abs(x.visContrast)),block.paramsValues)'==0;
+    zeroContrastTrials = zeroContrastTrials(1:size(trialStEnTimes,1));
     largeGapsByTrial = arrayfun(@(x,y) find(largeVisGaps>x & largeVisGaps<y), trialStEnTimes(:,1), trialStEnTimes(:,2), 'uni', 0);
     largeVisGaps(cell2mat(largeGapsByTrial(zeroContrastTrials))) = [];
     

@@ -4,7 +4,7 @@ function [newBlock, newParams, newRaw] = multiSpaceWorldPassive(x)
 %% Convert to shorter names for ease of use later
 v = x.standardizedBlock.paramsValues;  %Parameter values at start of trial
 e = x.standardizedBlock.events;        %Event structure
-n = x.newBlock;                        %newBlock, already populated with subject, expDate, sessionNum, rigName, and rigType
+n = x.newBlock;                        %newBlock, already populated with subject, expDate, expNum, rigName, and expType
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
 
 p.visContrast = p.visContrast(1,:);
@@ -75,17 +75,31 @@ newBlock = n;
 newRaw = r;
 
 %% Check that all expected fields exist
-blockFields = {'subject';'expDate' ;'sessionNum';'rigName';'rigType';'trialStartEnd' ;'audAmplitude';'audInitialAzimuth' ;'visContrast';'visInitialAzimuth';...
+expectedBlockFields = {'subject';'expDate' ;'expNum';'rigName';'expType';'trialStartEnd' ;'audAmplitude';'audInitialAzimuth' ;'visContrast';'visInitialAzimuth';...
     'visAltitude' ;'visSigma';'rewardTriggered' ;'uniqueConditions';'uniqueConditionRowLabels';'conditionLabel';'conditionRowIdx' };
-prmFields =  {'audAmplitude';'audInitialAzimuth';'backgroundNoiseAmplitude';'clickDuration';'clickRate';'closedLoopOnsetToneAmplitude';'feedback';'responseWindow';...
-    'rewardSize';'visAltitude';'visContrast';'visInitialAzimuth';'visSigma';'numRepeats';'subject';'expDate';'sessionNum';'rigName';...
-    'rigType';'totalTrials';'minutesOnRig'};
+expectedParamFields =  {'audAmplitude';'audInitialAzimuth';'backgroundNoiseAmplitude';'clickDuration';'clickRate';'closedLoopOnsetToneAmplitude';'feedback';'responseWindow';...
+    'rewardSize';'visAltitude';'visContrast';'visInitialAzimuth';'visSigma';'numRepeats';'subject';'expDate';'expNum';'rigName';...
+    'expType';'totalTrials';'minutesOnRig';'laserSession'};
 
-if any(~contains(fields(newBlock), blockFields)) || any(~contains(blockFields, fields(newBlock)))
-    error('Field mistmatch in block file');
+if any(~contains(fields(newBlock), expectedBlockFields))
+    excessfields = fields(newBlock);
+    excessfields = excessfields(~contains(excessfields, expectedBlockFields));
+    fprintf('Field mistmatch in block file %s - \n', excessfields{:});
+    keyboard;
+elseif any(~contains(expectedBlockFields, fields(newBlock)))
+    excessfields = expectedBlockFields(~contains(expectedBlockFields, fields(newBlock)));
+    fprintf('Field mistmatch in block file %s - \n', excessfields{:});
+    keyboard;
 end
 
-if any(~contains(fields(newParams), prmFields)) || any(~contains(prmFields, fields(newParams)))
-    error('Field mistmatch in param file');
+if any(~contains(fields(newParams), expectedParamFields))
+    excessfields = fields(newParams);
+    excessfields = excessfields(~contains(excessfields, expectedParamFields));
+    fprintf('Field mistmatch in Param file %s - \n', excessfields{:});
+    keyboard;
+elseif any(~contains(expectedParamFields, fields(newParams)))
+    excessfields = expectedParamFields(~contains(expectedParamFields, fields(newParams)));
+    fprintf('Field mistmatch in Param file %s - \n', excessfields{:});
+    keyboard;
 end
 end

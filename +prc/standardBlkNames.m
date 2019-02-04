@@ -10,8 +10,6 @@ f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFun
     'interactPunishDelays'; 'stimulusDurRep'; 'noiseBurstAmpDur'; 'rewardDurSize'; 'interactSigOnDurAmp'; 'audVisThreshold'; ...
     'stimulusContrast'; 'maxRetryIfIncorrect'; 'backNoiseAmp'; 'preStimQuiRangeThr'; 'interTrialDelay'; ...
     'audioAmplitude'; 'clickDurRate'; 'visualAltitudeSigma'; 'visualContrast'; 'reflectAzimuthAndCorr'; 'expPanelFun'; ...
-    ...
-    ...
     'sPosTimes'; 'sPosValues'; 'stimStartTimes'; 'stimStartValues'; 'sSrtTimes'; 'sSrtValues'; 'stmVValues'; 'stmVTimes'; ...
     'stmAValues'; 'stmATimes'; 'intOValues'; 'intOTimes'; 'fBckValues'; 'fBckTimes'; 'rTotValues'; 'rTotTimes'; 'positiveFeedbackDuration'; ...
     'visInitialAzimuthValues'; 'visInitialAzimuthTimes'; 'audInitialAzimuthValues'; 'audInitialAzimuthTimes'; 'rewardProbabilityOnCorrect'; ...
@@ -165,7 +163,7 @@ if isfield(p, 'interactSigOnDurAmp')
 elseif ~isfield(p, 'closedLoopOnsetToneAmplitude') && ~strfind(block.expDef, 'Passive'); warning('DEBUG'); keyboard;
 end
 
-if isfield(p, 'rewardDurSize') && ~strfind(block.expDef, 'Passive')
+if isfield(p, 'rewardDurSize') && ~contains(block.expDef, 'Passive')
     p.delayAfterCorrect = p.rewardDurSize(1);
     p.rewardSize = p.rewardDurSize(2);
 elseif ~isfield(p, 'rewardSize') && ~strfind(block.expDef, 'Passive'); warning('DEBUG'); keyboard;
@@ -198,42 +196,26 @@ if ~isfield(e, 'postStimQuiescentDurationValues')
     e.postStimQuiescentDurationValues = e.newTrialValues*0;
 end
 
-if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog) || length(fields(b.galvoLog))==1
-    b.galvoLog = struct;
-    e.galvoTypeValues = 0*e.newTrialValues+1;
-    e.laserTypeValues = 0*e.newTrialValues;
-    e.laserPowerValues = 0*e.newTrialValues;
-    e.galvoAndLaserEndTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1)+1.5;
-    e.galvoCoordsValues = [0 0];
-    e.galvoPosValues = 0*e.newTrialValues+1;
-    p.galvoType = 1;
-    p.laserPower = 0;
-    p.laserTypeProportions = [1 0 0]';
-    b.galvoLog.trialNum = 1:length(e.newTrialTimes);
-    e.laserInitialisationTimes = b.galvoLog.trialNum*0.001+e.newTrialTimes(b.galvoLog.trialNum);
-    p.laserDuration = 0;
-    e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
-    [v.laserDuration] = deal(0);
+
+if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog) || length(fields(b.galvoLog))==1; p.laserSession = 0; else, p.laserSession = 1; end
+if ~isfield(e, 'galvoTTLTimes') && p.laserSession; e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1); end
+if ~isfield(e, 'galvoAndLaserEndTimes') && p.laserSession; e.galvoAndLaserEndTimes = e.galvoTTLTimes+e.laserDurationValues(1:length(e.galvoTTLTimes)); end
+if ~isfield(p, 'laserDuration') && p.laserSession; p.laserDuration = 1.5; end
+if ~isfield(p, 'laserTypeProportions') && p.laserSession; p.laserDuration = 1.5; end
+
+if ~p.laserSession
+    [p.galvoType, p.laserPower, p.laserDuration] = deal(nan);
+    p.laserTypeProportions = [nan nan nan]';
 end
-if ~isfield(e, 'galvoTTLTimes')
-    e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
-end
-if ~isfield(e, 'galvoAndLaserEndTimes')
-    e.galvoAndLaserEndTimes = e.galvoTTLTimes+e.laserDurationValues(1:length(e.galvoTTLTimes));
-end
-if ~isfield(p, 'laserDuration')
-    p.laserDuration = 1.5;
-end
-if ~isfield(b.galvoLog, 'tictoc')
-    e.laserInitialisationTimes = 0.001+e.newTrialTimes;
-else
+
+if ~isfield(b.galvoLog, 'tictoc') && p.laserSession; e.laserInitialisationTimes = 0.001+e.newTrialTimes; 
+elseif p.laserSession
     if any(isnan(b.galvoLog.delay_issueLaser(b.galvoLog.laserType>0))); keyboard; end
     e.laserInitialisationTimes = 0.001+e.newTrialTimes;
     e.laserInitialisationTimes(b.galvoLog.trialNum) = b.galvoLog.tictoc + e.newTrialTimes(b.galvoLog.trialNum)';
 end
-if ~isfield(p, 'laserDuration'); p.laserDuration = 1.5; end
-e.laserTypeValues(~ismember(1:length(e.newTrialTimes), b.galvoLog.trialNum'))=0;
-p.rewardTotal = sum(p.rewardSize*e.feedbackValues>0);
+
+if p.laserSession; e.laserTypeValues(~ismember(1:length(e.newTrialTimes), b.galvoLog.trialNum'))=0; end
 
 paramFields = fields(p);
 validConditions = p.numRepeats~=0;
@@ -280,27 +262,13 @@ for i = 1:numel(paramFields)
             end
         end
 end
-if ~isfield(e, 'rewardAvailableValues')
-    e.rewardAvailableValues = 0*e.newTrialValues+1;    
-end
 
-if sum(sum(p.laserTypeProportions(2:3,:))) == 0
-    e.galvoTypeValues = 0*e.newTrialValues+1;
-    e.laserTypeValues = 0*e.newTrialValues;
-    e.laserPowerValues = 0*e.newTrialValues;
-    e.galvoCoordsValues = [0 0];
-    e.galvoPosValues = 0*e.newTrialValues+1;
-    p.laserPower = 0;
-    p.laserDuration = 0;
-    e.laserInitialisationTimes = 0.001+e.newTrialTimes;
-    e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
-    [v.laserDuration] = deal(0);
-end
+if ~isfield(e, 'rewardAvailableValues'); e.rewardAvailableValues = 0*e.newTrialValues+1; end
+p.rewardTotal = sum(p.rewardSize*e.feedbackValues>0);
 
 standardizedParams = prc.chkThenRemoveFields(p, f2Re);
 standardizedBlock = b;
 standardizedBlock.paramsValues = prc.chkThenRemoveFields(v, f2Re(~contains(f2Re, 'correctResponse')));
 standardizedBlock.events = prc.chkThenRemoveFields(e, f2Re);
-% standardizedBlock.paramsTimes = b.paramsTimes+totalTimeOffset; %%% Never use anyway
 end
 
