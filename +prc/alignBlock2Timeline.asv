@@ -144,12 +144,13 @@ if any(contains(fineTune, 'flashes'))
         largeVisGaps(nearestPoint>0.5,:) = [];
         
         [compareIndex] = prc.nearestPoint(stimStartBlock(~zeroContrastTrials), largeVisGaps(:,1)')';
-        if any(compareIndex-(1:numel(compareIndex))'); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
+        if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
+        block.events.visStimPeriodOnOffTimes = largeVisGaps(1:length(block.events.stimPeriodOnOffValues))';
     end
     %%
-    block.events.visStimPeriodOnOffValues = 0*sort(largeVisGaps(:))'+1;
+    block.events.visStimPeriodOnOffValues = 0*largeVisGaps'+1;
     block.events.visStimPeriodOnOffValues(2:2:end) = 0;
-    block.events.visStimPeriodOnOffTimes = sort(largeVisGaps(:))';
+    block.events.visStimPeriodOnOffTimes = largeVisGaps';
 
     vStimOnOffTV = [block.events.visStimPeriodOnOffTimes' block.events.visStimPeriodOnOffValues'];
     vStimOnOffTV = vStimOnOffTV(1:find(vStimOnOffTV(:,2)==0,1,'last'),:);

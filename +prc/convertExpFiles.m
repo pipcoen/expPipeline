@@ -85,7 +85,7 @@ end
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
-srtIdx = 779;
+srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedSubjects); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name  
     if ~contains(expList(i).expDate, selectedDates); continue; end  %If a date has been selected, skip days that don't match that date  
