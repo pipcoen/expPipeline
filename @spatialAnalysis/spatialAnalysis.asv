@@ -46,16 +46,16 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             axesOpt.figureHWRatio = 1.1;
             for i  = 1:length(obj.subjects)
                 if contains(lower(modelString), 'nest')
-                    normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
+                    normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm');
                     normBlock = prc.filtStruct(normBlock, normBlock.timeOutsBeforeResponse == 0);
                     normBlock.responseMade(normBlock.responseTime>1.5) = 0;
                     if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmultiNest(normBlock, modelString); end
                 else
                     normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm');
-                    % galvoIdx = ismember(normBlock.galvoPosition, [1.8, -4;3,-4;3,-3], 'rows');
-                    % galvoIdx = ismember(normBlock.galvoPosition, [4.2, -2;4.2,-3], 'rows');
-                    % galvoIdx = ismember(normBlock.galvoPosition, [0.6, 2; 0.6, 3; 1.8,2], 'rows');
-                    % normBlock = prc.filtStruct(normBlock, normBlock.laserType==1 & galvoIdx);
+                    %                     galvoIdx = ismember(normBlock.galvoPosition, [1.8, -4;3,-4;3,-3], 'rows');
+                    %                     galvoIdx = ismember(normBlock.galvoPosition, [4.2, -2;4.2,-3], 'rows');
+                    %                     galvoIdx = ismember(normBlock.galvoPosition, [0.6, 2; 0.6, 3; 1.8,2], 'rows');
+                    %                     normBlock = prc.filtStruct(normBlock, normBlock.laserType==1 & galvoIdx);
                     if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmulti(normBlock, modelString); end
                 end
                 obj.axesHandles = plt.getAxes(axesOpt, i);
@@ -81,8 +81,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 'numOfRows', 2, 'figureHWRatio', 0.8, 'figureSize', 400);
             
             figure;
-            normBlock = spatialAnalysis.getBlockType(obj.blocks{1},'norm',0);
-            laserBlock = spatialAnalysis.getBlockType(obj.blocks{1},'las',0);
+            [normBlock, laserBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{1}, 1);
+            normBlock = prc.filtStruct(normBlock, normBlock.galvoPosition(:,2)~=4.5);
             laserBlock = prc.filtStruct(laserBlock, laserBlock.galvoPosition(:,2)~=4.5 & laserBlock.laserType == 1);
             obj.glmFit = fit.GLMmulti(normBlock);
             obj.glmFit.GLMMultiModels(modelString);
@@ -123,7 +123,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             axesOpt.numOfRows = 2;
             axesOpt.figureHWRatio = 1.1;
             for i  = 1:length(obj.subjects)
-                normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
+                %                 goodBlock = spatialAnalysis.removePoorAuditoryDays(obj.blocks{i});
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                 plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
                 obj.axesHandles = plt.getAxes(axesOpt, i);
                 switch plotType(1:3)
@@ -151,7 +152,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             figure;
             allTimes = [];
             for i  = 1:length(obj.subjects)
-                normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
+                normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                 timeGrid = prc.makeGrid(normBlock, round(normBlock.timeToWheelMove*1e3), @median, 'abscondition');
                 trialGrid = prc.makeGrid(normBlock, round(normBlock.trialType), @mean, 'abscondition');
                 tkIdx = trialGrid.*fliplr(trialGrid)==12;
@@ -190,7 +191,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                             plotOpt.yLimits = [0 1.2];
                         end
                     case 'whe'
-                        normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
+                        normBlock = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
                         plotOpt = prc.getCoherentConflictPairs(normBlock);
                         plotOpt.mainXLabel = '\fontsize{20} Condition';
                         plotOpt.mainTitle = '\fontsize{20} Difference in reation times for coherent/conflict conditions (ms)';
@@ -262,12 +263,13 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         function filteredBlock = getBlockType(block, tag, removeTimeouts)
             if ~exist('tag', 'var'); error('Must specificy tag'); end
             if ~exist('removeTimeouts', 'var'); removeTimeouts = 1; end
-            if removeTimeouts; timeOutFilter =  block.responseMade~=0; else, timeOutFilter =  block.responseMade*0+1; end
+            if removeTimeouts; timeOutFilter =  block.responseMade~=0; end
             laserOff = prc.filtStruct(block, block.laserPower==0 | isnan(block.laserPower) & timeOutFilter);
             laserOn = prc.filtStruct(block, block.laserPower~=0 & ~isnan(block.laserPower) & timeOutFilter);            
             switch lower(tag(1:3))
-                case 'nor'; filteredBlock = laserOff;
-                case 'las'; filteredBlock = laserOn;
+                case 'nor'; filteredBlock = prc.filtStruct(laserOff, block.responseMade~=0);
+                case 'las'; filteredBlock = prc.filtStruct(laserOn, block.responseMade~=0);
+                case 'fir'; filteredBlock = prc.filtStruct(block, block.time~=0);
             end
         end
         

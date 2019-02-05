@@ -79,8 +79,16 @@ for i  = 1:length(obj.subjects)
             trueData = mean(reshape(cell2mat(inactiveGrid(1:normEstRepeats)'), [size(scanPlot.gridXY{1}), normEstRepeats]),3);
             shuffleData = reshape(cell2mat(inactiveGrid(normEstRepeats+1:end)'), [size(scanPlot.gridXY{1}), nShuffles]);
             shuffleData = cellfun(@squeeze, num2cell(sort(cat(3,shuffleData, trueData),3,'descend'),3), 'uni', 0);
-            scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, trueData, shuffleData,'uni', 0));
-
+            scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, trueData, shuffleData,'uni', 0))
+            %%
+            scanPlot.pVals = nan*scanPlot.data(:,:,1);
+            for j = 1:size(scanPlot.data,1)
+                for k = 1:size(scanPlot.data,2)
+                    if isnan(scanPlot.data(j,k)); continue; end
+                    scanPlot.pVals(j,k) = (find(sort(abs(scanPlot.data(j,k,:)), 'descend')==abs(scanPlot.data(j,k,1)),1)-1)./nShuffles;
+                end
+            end
+            
             scanPlot.data = trueData;
             scanPlot.addTrialNumber = 0;
             axesOpt.numOfRows = 4;
