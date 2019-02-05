@@ -9,6 +9,9 @@ axesOpt.btlrMargins = [100 80 60 100];
 axesOpt.gapBetweenAxes = [100 40];
 
 boxPlot.colorMap = plt.redblue(64);
+if strcmpi(plotType(1:3), 'fra')
+    boxPlot.colorMap = flipud(boxPlot.colorMap);
+end
 boxPlot.axisLimits = [0 1];
 colorBar.colorLabel = 'Fraction of right turns';
 colorBar.colorDirection = 'normal';
@@ -45,6 +48,11 @@ for i  = subjects2Run
             boxPlot.axisLimits = [0 max(boxPlot.plotData(:))];
         case 'rea'
             boxPlot.plotData = prc.makeGrid(normBlock, round(normBlock.responseTime*1e3), @median, 1);
+            boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
+        case 'fra'
+            tempgrid = prc.makeGrid(normBlock,normBlock.responseTime, @median, 1);
+            minimum  = min(tempgrid(:));
+            boxPlot.plotData = round((prc.makeGrid(normBlock, normBlock.responseTime, @median, 1) / minimum)*100)/100 ;
             boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
         case 'tim'
             [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 0, 5);
