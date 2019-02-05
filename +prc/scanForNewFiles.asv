@@ -65,13 +65,13 @@ for i = 1:cycles
     processList = cellfun(@(x) java.io.File(x), processList, 'uni', 0);
     processList = cellfun(@(x) arrayfun(@char,x.listFiles,'un',0), processList, 'uni', 0);
     processList = vertcat(processList{:});
-    processList = processList(~contains(processList, {'Lightsheet'; 'ephys';'Backup'},'IgnoreCase',true));
+    processList = processList(~contains(processList, {'Lightsheet'; 'ephys'}));
 end
 processList = processList(~cellfun(@isempty, regexp(processList, '20.*arameters.mat')));
 if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return; 
 elseif ~rebuildList, processList = processList(~contains(processList,{expList.rawFolder}'));
 end
-if length(unique(cellfun(@fileparts, processList, 'uni', 0))) ~= length(processList); error('Every detected folder should be unique'); end
+
 %% Loop to created struture for new files and add them to the expList
 addedFiles  = 0;
 for i = 1:length(processList)
@@ -136,7 +136,7 @@ for i = 1:length(processList)
     if strcmp(expList(end).expDef, 'ChoiceWorld'); expList(end).excluded = 1; continue; end
     if expList(end).expDuration < 120; expList(end).excluded = 1; continue; end
     
-    txtF = [dir([fileparts(fileparts(processList{i})) '\*Exclude*.txt']); dir([fileparts(processList{i}) '\*Exclude*.txt'])];
+    txtF = [dir([fileparts(fileparts(processList{1})) '\*Exclude*.txt']); dir([fileparts(processList{1}) '\*Exclude*.txt'])];
     if ~isempty(txtF); expList(end).excluded = 1; end
 end
 % If new files were identified, add them to expList

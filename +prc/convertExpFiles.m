@@ -7,13 +7,13 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %filterOptions('0')-Run for a specific mouse, or group of mice containing this string
 
 %Outputs
-%An output files is generated for each experiment in the form subject_yymmdd_sessionNumProc.mat These files will contain the following
+%An output files is generated for each experiment in the form subject_yymmdd_expNumProc.mat These files will contain the following
 %"blk" is a structure comprising a reduced, processed block file which contains all essential information. Fields common to all experiments are:
 %.subject-----------Name of the mouse
 %.expDate-----------Date that the experiment was recorded
-%.sessionNum--------Session number for experiment
+%.expNum--------Session number for experiment
 %.rigName-----------Name of the rig where the experiment took place
-%.rigType-----------Type of the rig where the experiment took place
+%.expType-----------Type of the rig where the experiment took place
 %.trialStart--------nx1 vector of trial start times relative to the start of the experiment (s)
 %.trialEnd----------nx1 vector of trial end times relative to the start of the experiment (s)
 %.????????----------Additional fields are specified in the helper function for each experimental definition
@@ -21,9 +21,9 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %"prm" is a structure comprising a reduced, processed parameters file which contains all essential information. Fields common to all experiments are:
 %.subject-----------Name of the mouse
 %.expDate-----------Date that the experiment was recorded
-%.sessionNum--------Session number for experiment
+%.expNum--------Session number for experiment
 %.rigName-----------Name of the rig where the experiment took place
-%.rigType-----------Type of the rig where the experiment took place
+%.expType-----------Type of the rig where the experiment took place
 %.minutesOnRig------Number of minutes spent on the rig
 %.numRepeats--------1xn vector of (max) number of repeats for each parameter conditions.
 %.????????----------Additional fields are specified in the helper function for each experimental definition
@@ -36,15 +36,15 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %% Set default values, load experimental list, check which processed files already exist, etc.
 if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
-if ~exist('subject', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
-if ~exist('subject', 'var'); selectedDates = {'1'}; end
+if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
+if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 
 %Checks whether both the DropBox and zserver directories exists. If they both do, sync the folders so data is everywere
 existDirectories = prc.pathFinder('directoryCheck');
 if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
-expList = prc.scanForNewFiles(2);
+expList = prc.scanForNewFiles;
 if all(existDirectories==[0,1])
     newPathList = {expList.sharedData}';
     [expList.processedData] = newPathList{:};
@@ -67,7 +67,7 @@ for i = deleteList'
 end
 files2Run = processListIdx(processListIdx>0)';
 
-ePhys2Check = find((listNotExcluded & all(existProcessed, 2)) & strcmp({expList.rigType}', 'ephys'))';
+ePhys2Check = find((listNotExcluded & all(existProcessed, 2)) & strcmp({expList.expType}', 'ephys'))';
 additionalChecks = 0*ePhys2Check;
 for i = ePhys2Check
    whoD = load(processedFiles{i,1}, 'whoD'); whoD = whoD.whoD;
@@ -80,12 +80,12 @@ expDefs2Remove = expDefs2Run(cellfun(@(x) isempty(which(['prc.expDef.' x])), exp
 if ~isempty(expDefs2Remove)
     fprintf('Warning: the following expDefs will be skipped: \n');
     fprintf('-%s \n', expDefs2Remove{:});
-    files2Run(contains({expList(files2Run).expDef}', expDefs2Remove)) = [];
+    files2Run(contains({expList(files2Run).expDef}', [expDefs2Remove; 'Temporal'])) = [];
 end
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
-srtIdx = 0;
+srtIdx = 779;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedSubjects); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name  
     if ~contains(expList(i).expDate, selectedDates); continue; end  %If a date has been selected, skip days that don't match that date  
@@ -110,15 +110,15 @@ for i = files2Run(files2Run>srtIdx)
     
 %     Loop to run conv on any ephys files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
 %     function for the particular experiment definition file exists. If it does, process the block.
-    if (~varIdx(2) || redoTag) && strcmpi(x.rigType, 'ephys') && contains(dataType, {'all'; 'eph'}) 
+    if (~varIdx(2) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'}) 
         x = convBlockFile(x);
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convEphysFile(x);
     end
     
     %Loop to run conv2PData on any 2P files that are missing the flu variable, or if instruct2P is set to 1
-    if (~varIdx(3) || redoTag) && contains(lower(x.rigType), {'twophoton';'widefield'}) && contains(dataType, {'all'; 'flu'})
-        switch lower(x.rigType)
+    if (~varIdx(3) || redoTag) && contains(lower(x.expType), {'twophoton';'widefield'}) && contains(dataType, {'all'; 'flu'})
+        switch lower(x.expType)
             case 'twophoton'
                 fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i);
                 conv2PData(x);
@@ -127,7 +127,7 @@ for i = files2Run(files2Run>srtIdx)
     end 
     
     %If not converted through other processing steps, convert block file.
-    if  (~varIdx(1) || redoTag) && contains(dataType, {'all'; 'blk'})
+    if  ((~varIdx(1) || redoTag) && ~strcmpi(x.expType, 'ephys')) && contains(dataType, {'all'; 'blk'})
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x);
     end
@@ -142,7 +142,7 @@ end
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
 function x = convBlockFile(x)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
-if x.galvoLog~=0; x.galvoLog = load(x.galvoLog); end
+if exist(x.galvoLog, 'file'); x.galvoLog = load(x.galvoLog); else, x.galvoLog = 0; end
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 [x.oldBlock,  x.galvoLog] = prc.removeFirstTrialFromBlock(x.oldBlock, x.galvoLog);
 timeOffset = x.oldBlock.experimentStartedTime-x.oldBlock.events.expStartTimes;
@@ -165,13 +165,13 @@ x.oldBlock.galvoLog = x.galvoLog;
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
 x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;
 
-if strcmp(x.rigType, 'ephys')
+if strcmp(x.expType, 'ephys')
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
 end
 %%
 
-fields2copy = {'subject'; 'expDate'; 'sessionNum'; 'rigName'; 'rigType'};
+fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'};
 for i = 1:length(fields2copy); x.newBlock.(fields2copy{i}) = x.(fields2copy{i}); end
 for i = 1:length(fields2copy); x.standardizedParams.(fields2copy{i}) = x.(fields2copy{i}); end
 
@@ -215,7 +215,6 @@ if size(unique(clusterGroups.group, 'rows'),1) == 3 && all(contains({'good '; 'n
     save(x.processedData, 'eph', 'whoD', '-append');
 else, fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
 end
-
 end
 
 %%
@@ -223,7 +222,7 @@ function conv2PData(x)
 fprintf('Converting 2P data file for %s %s\n', x.expDate,x.subject);
 if  ~exist(x.out2, 'dir') || isempty(dirP([x.out2 '*\\F*Plane*']))
     fprintf('Running Suite2P for %s %s\n', x.expDate,x.subject);
-    sFOV = str2double({x.expList(strcmp(x.out2, {x.expList.out2}')).sessionNum});
+    sFOV = str2double({x.expList(strcmp(x.out2, {x.expList.out2}')).expNum});
     runSuite2P(x, sFOV);
 end
 fLst = dirP([x.out2 '*\\F*proc.mat']);
@@ -231,8 +230,8 @@ if exist(x.out2, 'dir') && isempty(fLst)
     fprintf('NOTE: Correct 2P data for %s %s Skipping...\n', x.expDate,x.subject);
     return;
 end
-t = load(prc.pathFinder('rawtime', x.subject, x.expDate, x.sessionNum)); t = t.Timeline;
-idx = find(strcmp(x.sessionNum, x.idxC));
+t = load(prc.pathFinder('rawtime', x.subject, x.expDate, x.expNum)); t = t.Timeline;
+idx = find(strcmp(x.expNum, x.idxC));
 for i = 1:length(fLst)
     fprintf('Processing plane %d of %d...\n', i,length(fLst));
     load([fLst(i).folder x.fSep fLst(i).name]);
@@ -287,7 +286,7 @@ flu.spkA = fun.map(@(x,y) x(y<=minF), cellflat(tmp2.spkA), cellflat(tmp2.spkT));
 flu.spkT = fun.map(@(x) x(x<=minF), cellflat(tmp2.spkT));
 flu.subject = x.subject;
 flu.expDate = x.expDate;
-flu.sNam = x.sessionNum;
+flu.sNam = x.expNum;
 
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~exist(x.processedData, 'file'); whoD = {'flu'}; save(x.processedData, 'flu', 'whoD');

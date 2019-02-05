@@ -19,19 +19,19 @@ classdef spatialAnalysis < matlab.mixin.Copyable
     
     %%
     methods
-        function obj = spatialAnalysis(subjects, expDate, combineMice, getRawData)
+        function obj = spatialAnalysis(subjects, expDate, combineMice, extraTag)
             % Initialize fields with default values if no vaules are provided. Then called changeMouse function to get requested data.
             prc.updatePaths;
             if ~exist('expDate', 'var'); expDate = 'last'; end
             if ~iscell(expDate); expDate = {expDate}; end
             if ~exist('combineMice', 'var'); combineMice = 0; end
-            if ~exist('getRawData', 'var'); getRawData = 0; end
+            if ~exist('extraTag', 'var'); extraTag = 'none'; end
             if ~exist('subjects', 'var') || any(strcmp(subjects, 'all')); subjects = prc.keyDates({'all'}, expDate); end
             if ~iscell(subjects); subjects = {subjects}; end
             if length(expDate) < length(subjects); expDate = repmat(expDate, length(subjects),1); end
             expDate = expDate(:); subjects = subjects(:);
             expDate = arrayfun(@(x,y) prc.keyDates(x,y), subjects(:), expDate(:), 'uni', 0);
-            obj = changeMouse(obj, subjects, expDate, combineMice, getRawData);
+            obj = changeMouse(obj, subjects, expDate, combineMice, extraTag);
         end
         
         
@@ -211,10 +211,9 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         end
         
         
-        function obj = changeMouse(obj, subjects, expDate, combineMice, getRawData)
-            if ~exist('getRawData', 'var'); getRawData = 0; end
+        function obj = changeMouse(obj, subjects, expDate, combineMice, extraTag)
             if ~exist('combineMice', 'var'); combineMice = 0; end
-            if ~getRawData; dataType = 'bloprm'; else; dataType = 'bloprmraw'; end
+            dataType = [extraTag 'bloprm'];
             [obj.blocks, obj.params]  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, dataType), subjects(:), expDate(:), 'uni', 0);
             obj.blocks = vertcat(obj.blocks{:});
             obj.params = vertcat(obj.params{:});

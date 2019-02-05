@@ -1,4 +1,4 @@
-function [blk, prm] = getFilesFromDates(subject, requestedDates, dataType)
+function [varargout] = getFilesFromDates(subject, requestedDates, dataType, expDef)
 %% Function to load proessed files from dates. Works with files from the convertExpFiles funciton.
 % Inputs(defaults)
 % subject(required)------String of subjects name
@@ -8,6 +8,7 @@ function [blk, prm] = getFilesFromDates(subject, requestedDates, dataType)
 if ~exist('subject', 'var'); error('Must specify subject'); end
 if ~exist('requestedDates', 'var') || isempty(requestedDates); requestedDates = {'last'}; end
 if ~exist('dataType', 'var'); dataType = 'all'; end
+if ~exist('expDef', 'var'); expDef = 'multiSpaceWorld'; end
 if ~iscell(requestedDates); requestedDates = {requestedDates}; end
 if iscell(requestedDates{1}); requestedDates = requestedDates{1}; end
 
@@ -20,9 +21,9 @@ end
 
 % get list of references and dates for subject
 selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'==0);
-excludedFiles = contains({selectedFiles.expDef}', {'Temporal'; 'stimSparseNoiseUncorrAsync'; 'stimKalatsky'; 'Passive'});
+excludedFiles = ~strcmp({selectedFiles.expDef}', expDef);
 selectedFiles(excludedFiles)  = [];
-if isempty(expList); warning(['No processed files matching ' subject]); blk = {}; prm = {}; return; end
+if isempty(expList); warning(['No processed files matching ' subject]); varargout = {}; return; end
 expDates = datenum(cell2mat({selectedFiles.expDate}'));
 
 switch lower(requestedDates{1}(1:3))
@@ -44,21 +45,30 @@ switch lower(requestedDates{1}(1:3))
     otherwise; selectedDates = sort(datenum(requestedDates));
 end
 
-% find paths to existing block files
-blk = {}; prm = {}; raw = {};
+outputCount = 1;% find paths to existing block files
 selectedFiles = {selectedFiles(ismember(expDates, selectedDates)).processedData}';
 if isempty(selectedFiles); warning(['No processed files matching ' subject ' for requested dates']); return; end
 if contains(lower(dataType), {'blk'; 'blo'; 'all'})
     selectedBlocks = cellfun(@(x) load(x, 'blk'), selectedFiles, 'uni', 0);
     blk = [selectedBlocks{:}]'; blk = [blk(:).blk]';
+    
+    if contains(lower(dataType), {'raw'; 'all'})
+        selectedParams = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
+        raw = [selectedParams{:}]'; raw = [raw(:).raw]';
+        blk = prc.catStructs(blk,raw);
+    end
+    
+    if contains(lower(dataType), {'eph'; 'all'})
+    selectedParams = cellfun(@(x) load(x, 'eph'), selectedFiles, 'uni', 0);
+    eph = [selectedParams{:}]'; eph = [eph(:).eph]';
+    blk = prc.catStructs(blk,eph);
+    end
+    varargout{outputCount} = blk;
+    outputCount = outputCount+1;
 end
+    
 if contains(lower(dataType), {'prm'; 'par'; 'all'})
     selectedParams = cellfun(@(x) load(x, 'prm'), selectedFiles, 'uni', 0);
-    prm = [selectedParams{:}]'; prm = [prm(:).prm]';
-end
-if contains(lower(dataType), {'raw'; 'all'})
-    selectedParams = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
-    raw = [selectedParams{:}]'; raw = [raw(:).raw]';
-    blk = prc.catStructs(blk,raw);
+    prm = [selectedParams{:}]'; varargout{outputCount} = [prm(:).prm]';
 end
 end

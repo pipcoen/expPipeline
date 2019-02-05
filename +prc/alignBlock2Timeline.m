@@ -8,7 +8,10 @@ sampleRate = 1/diff(timeline.rawDAQTimestamps(1:2));
 switch expDef
     case 'multiSpaceWorld'
         alignType = 'wheel';
-        fineTune = {'clicks'; 'flashes'; 'reward'};
+        fineTune = {'clicksfine'; 'flashes'; 'reward'};
+    case 'multiSpaceWorldPassive'
+        alignType = 'wheel';
+        fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
 end
 
 
@@ -66,6 +69,8 @@ for i = 1:length(fieldList); block.events.(fieldList{i}) = interp1(blockRefTimes
 cutOff = round(block.events.newTrialTimes(1)*sampleRate-(0.05*sampleRate));
 timeline.rawDAQData(1:cutOff,:) = repmat(timeline.rawDAQData(cutOff,:), cutOff, 1);
 
+trialStEnTimes = [block.events.newTrialTimes(1:length(block.events.endTrialTimes))', block.events.endTrialTimes'];
+stimStartBlock = block.events.stimPeriodOnOffTimes(block.events.stimPeriodOnOffValues==1);
 %%
  if contains('reward', fineTune)
     blockRewardTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
@@ -78,7 +83,7 @@ timeline.rawDAQData(1:cutOff,:) = repmat(timeline.rawDAQData(cutOff,:), cutOff, 
     aligned.rewardTimes = aligned.rewardTimes(:);
 end
 
-if contains('clicks', fineTune) && contains('audioOut', inputNames);
+if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     timelineClickTrace = [0;diff(detrend(timeline.rawDAQData(:,strcmp(inputNames, 'audioOut'))))];
     [~, thresh] = kmeans(timelineClickTrace,3);
     timelineClickOn = timelineTime(strfind((timelineClickTrace>max(thresh)*0.5)', [0 1]));
@@ -97,18 +102,20 @@ if contains('clicks', fineTune) && contains('audioOut', inputNames);
     block.events.audStimPeriodOnOffTimes = aStimOnOffTV(largeAudGaps,1)';
     block.events.audStimPeriodOnOffValues = aStimOnOffTV(largeAudGaps,2)';
     
-    [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, block.events.audStimPeriodOnOffTimes);
+    %% Sanity check (should be match between stim starts from block and from timeline)
+    audstimStartTimeline = block.events.audStimPeriodOnOffTimes(block.events.audStimPeriodOnOffValues==1);
+    nonAudTrials = [block.paramsValues.audAmplitude]==0;
+    [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline);
     if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
     
     aStimOnOffTV = aStimOnOffTV(largeAudGaps,:);
     aligned.audStimPeriodOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
-    
 elseif contains('clicks', fineTune)
     warning('No audio output in timeline so cannot fine tune');
 end
 
 %%
-if contains('flashes', fineTune)
+if any(contains(fineTune, 'flashes'))
     % Change visual stimulus times to timeline version
     photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));
     [~, thresh] = kmeans(photoDiodeTrace,2);
@@ -118,17 +125,47 @@ if contains('flashes', fineTune)
     photoDiodeFlips = sort([photoDiodeFlipOn photoDiodeFlipOff]);
     photoDiodeFlips([strfind(ismember(photoDiodeFlips, photoDiodeFlipOn), [1 1])+1 strfind(ismember(photoDiodeFlips, photoDiodeFlipOff), [1 1])+1]) = [];
     photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
-    %%
+    photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
+    
     largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>0.5); find(diff([photoDiodeFlipTimes; 10e10])>0.5)]));
-    block.events.visStimPeriodOnOffValues = block.events.stimPeriodOnOffValues;
-    block.events.visStimPeriodOnOffTimes = largeVisGaps(1:length(block.events.stimPeriodOnOffValues))';
+    zeroContrastTrials = arrayfun(@(x) max(abs(x.visContrast)),block.paramsValues)'==0;
+    zeroContrastTrials = zeroContrastTrials(1:size(trialStEnTimes,1));
+    largeGapsByTrial = arrayfun(@(x,y) find(largeVisGaps>x & largeVisGaps<y), trialStEnTimes(:,1), trialStEnTimes(:,2), 'uni', 0);
+    largeVisGaps(cell2mat(largeGapsByTrial(zeroContrastTrials))) = [];
     
-    [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, block.events.visStimPeriodOnOffTimes);
-    if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
-    
+    %% Sanity check (should be match between stim starts from block and from timeline)
+    [compareIndex] = prc.nearestPoint(stimStartBlock(~zeroContrastTrials), largeVisGaps(1:2:end)');
+    if any(compareIndex-(1:numel(compareIndex)))
+        fprintf('WARNING: problem matching visual stimulus start and end times \n');
+        fprintf('Will try removing points that do not match stimulus starts \n');
+        
+        [~, nearestPoint] = prc.nearestPoint(largeVisGaps, block.events.stimPeriodOnOffTimes);
+        largeVisGaps(nearestPoint>0.5) = [];
+        
+        [compareIndex] = prc.nearestPoint(block.events.stimPeriodOnOffTimes, largeVisGaps(1:length(block.events.stimPeriodOnOffValues))');
+        if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
+        block.events.visStimPeriodOnOffTimes = largeVisGaps(1:length(block.events.stimPeriodOnOffValues))';
+    end
+    %%
+    block.events.visStimPeriodOnOffValues = 0*largeVisGaps'+1;
+    block.events.visStimPeriodOnOffValues(2:2:end) = 0;
+    block.events.visStimPeriodOnOffTimes = largeVisGaps';
+
     vStimOnOffTV = [block.events.visStimPeriodOnOffTimes' block.events.visStimPeriodOnOffValues'];
     vStimOnOffTV = vStimOnOffTV(1:find(vStimOnOffTV(:,2)==0,1,'last'),:);
-    aligned.visStimPeriodOnOffTimes = [vStimOnOffTV(vStimOnOffTV(:,2)==1,1) vStimOnOffTV(vStimOnOffTV(:,2)==0,1)];
+    aligned.visStimPeriodOnOff = [vStimOnOffTV(vStimOnOffTV(:,2)==1,1) vStimOnOffTV(vStimOnOffTV(:,2)==0,1)];
+end
+
+if any(contains(fineTune, 'flashesfine'))
+    photoFlipsByTrial = arrayfun(@(x,y) find(photoDiodeFlipTimes>=x & photoDiodeFlipTimes<=y), aligned.visStimPeriodOnOff(:,1), aligned.visStimPeriodOnOff(:,2), 'uni', 0);
+    expectedFlashTrainLength = [block.paramsValues.clickRate]'.*[block.paramsValues.responseWindow]'*2;
+    if any(expectedFlashTrainLength(~zeroContrastTrials)-cellfun(@length,photoFlipsByTrial)); fprintf('Error in flashesfine tuning \n'); keyboard; end
+    
+    block.events.visStimOnOffTimes = sort(photoDiodeFlipTimes(cell2mat(photoFlipsByTrial)))';
+    block.events.visStimOnOffValues = photoDiodeFlipTimes(cell2mat(photoFlipsByTrial))'*0+1;
+    block.events.visStimOnOffValues(2:2:end) = 0;
+    vStimOnOffTV = [block.events.visStimOnOffTimes' block.events.visStimOnOffValues'];
+    aligned.visStimOnOff = [vStimOnOffTV(vStimOnOffTV(:,2)==1,1) vStimOnOffTV(vStimOnOffTV(:,2)==0,1)];
 end
 
 correctedBlock = block;
