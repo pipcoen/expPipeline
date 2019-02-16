@@ -52,7 +52,7 @@ end
 
 processedFiles = [{expList.processedData}', {expList.sharedData}'];    %List of all [Dropbox, zserver] processed file paths
 existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0;      %Logical of whether processed files exist for those directories
-listNotExcluded = ~[expList.excluded]';                                %Index of files which haven't been excluded (in prc.scanForNewFiles)
+listNotExcluded = [expList.excluded]'~=1;                                %Index of files which haven't been excluded (in prc.scanForNewFiles)
 
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
@@ -85,7 +85,7 @@ end
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
-srtIdx = 779;
+srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
     if ~contains(expList(i).subject, selectedSubjects); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name  
     if ~contains(expList(i).expDate, selectedDates); continue; end  %If a date has been selected, skip days that don't match that date  
@@ -140,7 +140,7 @@ if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
-function x = convBlockFile(x)
+function [x, blk, prm, raw] = convBlockFile(x)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 if exist(x.galvoLog, 'file'); x.galvoLog = load(x.galvoLog); else, x.galvoLog = 0; end
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
@@ -165,13 +165,13 @@ x.oldBlock.galvoLog = x.galvoLog;
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
 x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;
 
-if strcmp(x.expType, 'ephys')
+if contains(x.expType, {'ephys'; 'fusi'})
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
 end
 %%
 
-fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'};
+fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'; 'expDef'};
 for i = 1:length(fields2copy); x.newBlock.(fields2copy{i}) = x.(fields2copy{i}); end
 for i = 1:length(fields2copy); x.standardizedParams.(fields2copy{i}) = x.(fields2copy{i}); end
 
@@ -186,7 +186,11 @@ if isfield(x, 'aligned'); x.aligned.wheelTimeValue = single([wheelTime wheelValu
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
-[blk, prm, raw] = x.blockFunction(x); %#ok
+x = x.blockFunction(x);
+blk = x.newBlock;
+prm = x.newParams;
+raw = x.newRaw;
+
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~exist(fileparts(strrep(x.processedData,'dData','dDataLite')), 'dir'); mkdir(fileparts(strrep(x.processedData,'dData','dDataLite'))); end
 if ~x.existProcessed(1)
