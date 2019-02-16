@@ -30,15 +30,17 @@ if ~exist('rebuildList', 'var'); rebuildList = 0; end
 if ~exist('checkDirectories', 'var'); checkDirectories = 0; end
 expInfo = prc.pathFinder('expInfo');
 includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...
-                'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'};
+                'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR010'};
 
-startedDates = {'', ''};
+startedDates = {...
+    'CR010' '2018-01-29'};
 retiredDates = {...
     'PC005' '2017-07-28'; ...
     'PC006' '2017-07-28'; ...
     'PC009' '2017-03-22'; ...
     'PC014' '2017-07-01'; ...
-    'DJ011' '2018-06-08'};
+    'DJ011' '2018-06-08'; ...
+    'CR010' '2019-01-29'};
 includedMice(:,2) = {datenum('2015-09-01', 'yyyy-mm-dd')};
 includedMice(:,3) = {datenum(floor(now))};
 
@@ -63,14 +65,14 @@ end
 for i = 1:cycles
     fprintf('Detecting folder level %d ... \n', i);
     processList = cellfun(@(x) java.io.File(x), processList, 'uni', 0);
-    processList = cellfun(@(x) arrayfun(@char,x.listFiles,'un',0), processList, 'uni', 0);
+    processList = cellfun(@(x) arrayfun(@char,x.listFiles,'uni',0), processList, 'uni', 0);
     processList = vertcat(processList{:});
     processList = processList(~contains(processList, {'Lightsheet'; 'ephys';'Backup'},'IgnoreCase',true));
 end
 processList = processList(~cellfun(@isempty, regexp(processList, '20.*arameters.mat')));
 if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return; 
 elseif ~rebuildList, processList = processList(~contains(processList,{expList.rawFolder}'));
-end
+end 
 if length(unique(cellfun(@fileparts, processList, 'uni', 0))) ~= length(processList); error('Every detected folder should be unique'); end
 %% Loop to created struture for new files and add them to the expList
 addedFiles  = 0;
@@ -128,6 +130,7 @@ for i = 1:length(processList)
     
     if contains(expList(end).rigName, {'zym1'; 'zym2'}) && exist(tempLoc.galvoLog, 'file'); expList(end).expType = 'inactivation'; end
     if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'ephys'; end
+    if strcmp(expList(end).rigName, 'zatteo') && ~isempty(dir([tempLoc.rawFolder '\*fus.mat*'])); expList(end).expType = 'fusi'; end
     if isfield(b, 'duration'); expList(end).expDuration = b.duration; else, expList(end).expDuration = 0; end
     expList(end).blockFunction = str2func(['prc.expDef.' expList(end).expDef]);
     expList(end).excluded = 0;
@@ -138,6 +141,8 @@ for i = 1:length(processList)
     
     txtF = [dir([fileparts(fileparts(processList{i})) '\*Exclude*.txt']); dir([fileparts(processList{i}) '\*Exclude*.txt'])];
     if ~isempty(txtF); expList(end).excluded = 1; end
+    
+    if contains(expList(end).expType, {'fusi'; 'ephys'}) && expList(end).excluded == 0; expList(end).excluded = -1; end
 end
 % If new files were identified, add them to expList
 if ~addedFiles; fprintf('No new files found\n'); end
@@ -157,7 +162,7 @@ processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expL
 [~, uniqueFileIdx] = unique(processList);
 duplicates = unique(processList(setdiff(1:length(processList),uniqueFileIdx)));
 for i = 1:length(duplicates)
-    duplicatesIdx = strcmp(processList,duplicates{i}) & ~[expList.excluded]'>0;
+    duplicatesIdx = strcmp(processList,duplicates{i}) & [expList.excluded]'==0;
     tDat = expList(duplicatesIdx);
     if length(tDat) < 2 || (~isempty(tDat(1).expType) && contains(tDat(1).expType, {'training';'inactivation'})); continue; end
     [selectedDuplicates] = listdlg('ListString', cellfun(@(x,y) [num2str(x),': ' num2str(y)], {tDat.expNum}', {tDat.expDuration}', 'uni', 0), ...

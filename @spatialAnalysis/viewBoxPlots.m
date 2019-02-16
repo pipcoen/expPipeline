@@ -21,16 +21,16 @@ elseif isaxes(alter); disp('NotFunctionalYet');
 end
 
 for i  = subjects2Run
-    [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i});
+    normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm');
     boxPlot.subject = obj.subjects{i};
     boxPlot.trialNumber = length(normBlock.responseMade);
     boxPlot.nSessions = obj.blocks{i}.nSessions;
     boxPlot.xyValues = {normBlock.visValues*100; normBlock.audValues};
-    boxPlot.xyLabel = {normBlock.audType; 'VisualContrast'};
+    boxPlot.xyLabel = {'AuditoryAzimuth'; 'VisualContrast'};
     switch lower(plotType(1:3))
         case 'res'
             boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean);
-            if isempty(obj.figureHandles) || ~any(ismember(obj.figureHandles, gcf)); obj.figureHandles(end+1) = gcf; end
+            if isempty(obj.hand.figure) || ~any(ismember(obj.hand.figure, gcf)); obj.hand.figure(end+1) = gcf; end
             set(gcf, 'Tag', 'boxRes', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
         case 'gng'
             [~,normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 1, -1);

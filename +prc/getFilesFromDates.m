@@ -13,10 +13,10 @@ if ~iscell(requestedDates); requestedDates = {requestedDates}; end
 if iscell(requestedDates{1}); requestedDates = requestedDates{1}; end
 
 expList = load(prc.pathFinder('expList')); expList = expList.expList;
-existDirectories = prc.pathFinder('directoryCheck'); 
+existDirectories = prc.pathFinder('directoryCheck');
 if all(existDirectories==[0,1])
-    newPathList = {expList.sharedData}'; 
-    [expList.processedData] = newPathList{:}; 
+    newPathList = {expList.sharedData}';
+    [expList.processedData] = newPathList{:};
 end
 
 % get list of references and dates for subject
@@ -59,16 +59,18 @@ if contains(lower(dataType), {'blk'; 'blo'; 'all'})
     end
     
     if contains(lower(dataType), {'eph'; 'all'})
-    selectedParams = cellfun(@(x) load(x, 'eph'), selectedFiles, 'uni', 0);
-    eph = [selectedParams{:}]'; eph = [eph(:).eph]';
-    blk = prc.catStructs(blk,eph);
+        selectedParams = cellfun(@(x) load(x, 'eph'), selectedFiles, 'uni', 0);
+        eph = [selectedParams{:}]'; eph = [eph(:).eph]';
+        eph = prc.chkThenRemoveFields(eph, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
+        fields2copy = fields(eph);
+        for i = 1:length(fields2copy); blk.(['eph' upper(fields2copy{i}(1)) fields2copy{i}(2:end)]) = eph.(fields2copy{i}); end
+    end
+    
+    if contains(lower(dataType), {'prm'; 'par'; 'all'})
+        selectedParams = cellfun(@(x) load(x, 'prm'), selectedFiles, 'uni', 0);
+        prm = [selectedParams{:}]'; prm = {prm(:).prm}';
+        [blk.params] = deal(prm{:});
     end
     varargout{outputCount} = blk;
-    outputCount = outputCount+1;
-end
-    
-if contains(lower(dataType), {'prm'; 'par'; 'all'})
-    selectedParams = cellfun(@(x) load(x, 'prm'), selectedFiles, 'uni', 0);
-    prm = [selectedParams{:}]'; varargout{outputCount} = [prm(:).prm]';
 end
 end

@@ -1,11 +1,11 @@
-function [newBlock, newParams, newRaw] = multiSpaceWorld(x)
+function x = multiSpaceWorld(x)
 %% A helper function for multisensoySpaceWorld experimental definition that produces standardised files with useful structures for further analysis.
 
 % Inputs
 % x---------------------Structure form the "convertExpFiles" function that contains all the file information
 
 % Outputs
-% "newBlock" is the new, compact, and restructured block file with the following fields:
+% "x.newBlock" is the new, compact, and restructured block file with the following fields:
 %.subject--------------Name of the mouse
 %.expDate--------------Date that the experiment was recorded
 %.expNum-----------Session number for experiment
@@ -43,7 +43,7 @@ function [newBlock, newParams, newRaw] = multiSpaceWorld(x)
 %.laserSession---------nx1 vector indicating whether had no inactivation (0), unilateral (1), bilateral (2), or both (3)
 %.laserOnOff-----------nx2 vector of [on off] times for the laser, relative to trial start.
 
-% "newParams" is the new, compact, and restructured parameters file. Each field will be either one number (same value for for every trial),
+% "x.newParams" is the new, compact, and restructured parameters file. Each field will be either one number (same value for for every trial),
 % or will have columns equal to the columns in the "numRepeats" field (which is for variables that change with trial type). Fields are:
 %.subject----------------------Name of the mouse
 %.expDate----------------------Date that the experiment was recorded
@@ -97,7 +97,7 @@ function [newBlock, newParams, newRaw] = multiSpaceWorld(x)
 %% Convert to shorter names for ease of use later
 v = x.standardizedBlock.paramsValues;  %Parameter values at start of trial
 e = x.standardizedBlock.events;        %Event structure
-n = x.newBlock;                        %newBlock, already populated with subject, expDate, expNum, rigName, and expType
+n = x.newBlock;                        %x.newBlock, already populated with subject, expDate, expNum, rigName, and expType
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
 vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 
@@ -237,8 +237,8 @@ uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialCondition
 [~, leftConditionsIdx] = ismember(allConditions, leftInitialConditions, 'rows');
 if any(all([rightConditionsIdx~=0, leftConditionsIdx~=0],2)); error('Detect same condition as being Left and Right'); end
 conditionLabel = rightConditionsIdx + -1*leftConditionsIdx;
-uniqueConditionRowLabels = [0*find(zeroConditions,1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
-[~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionRowLabels);
+uniqueConditionLabels = [0*find(zeroConditions,1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
+[~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionLabels);
 uniqueDiff = [uniqueConditions(:,3) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
 
 
@@ -276,7 +276,7 @@ n.visDiff = visDiff;
 n.visValues = unique(uniqueDiff(:,2));
 n.uniqueConditions = uniqueConditions;
 n.uniqueDiff = uniqueDiff;
-n.uniqueConditionRowLabels = uniqueConditionRowLabels;
+n.uniqueConditionLabels = uniqueConditionLabels;
 n.conditionLabelRow = [conditionLabel conditionRowIdx]; 
 
 [n.laserType, n.laserPower, n.galvoType, n.laserOnsetDelay] = deal(n.feedback*nan);
@@ -310,7 +310,7 @@ end
 [n.grids.visValues, n.grids.audValues] = meshgrid(n.visValues, n.audValues);
 [~, gridIdx] = ismember(uniqueDiff, [n.grids.audValues(:) n.grids.visValues(:)], 'rows');
 n.grids.conditions = nan*ones(length(n.audValues), length(n.visValues));
-n.grids.conditions(gridIdx) = uniqueConditionRowLabels;
+n.grids.conditions(gridIdx) = uniqueConditionLabels;
 
 if p.laserSession; laserOff = n.laserType == 0; else, laserOff = n.feedback*0+1; end
 p.maxRepeatIncorrect = max(p.maxRepeatIncorrect);
@@ -322,36 +322,38 @@ p.validResponses = sum(n.responseMade~=0);
 p.validTrials = sum(vIdx);
 
 x.validTrials = vIdx;
-newParams = p;
-newBlock = n;
+x.newParams = p;
+x.newBlock = n;
+x.validTrials = vIdx;
 p.orignal = x.oldParams;
 
 %Remove fields of the raw data where the trial lasts longer than 5s. The data from there trials aren't likely to be useful (since the mouse stayed
 %still for a long time) and can take up a lot of space in the mat file.
-for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(newBlock.responseTime>5) = {[]}; end
+for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(x.newBlock.responseTime>5) = {[]}; end
+x.newRaw = r;
 
 %% Check that all expected fields exist
 expectedBlockFields ={'audAmplitude';'audDiff';'audInitialAzimuth';'audValues';'closedLoopStart';'conditionLabelRow';'correctResponse';'expDate';...
-    'expNum';'expType';'feedback';'grids';'repeatsAfterResponse';'responseMade';'responseTime';'rigName';'sequentialTimeOuts';'stimPeriodStart';...
-    'subject';'timeOutsBeforeResponse';'timeToWheelMove';'trialStartEnd';'trialType';'uniqueConditionRowLabels';'uniqueConditions';'uniqueDiff';...
+    'expNum';'expType';'expDef';'feedback';'grids';'repeatsAfterResponse';'responseMade';'responseTime';'rigName';'sequentialTimeOuts';'stimPeriodStart';...
+    'subject';'timeOutsBeforeResponse';'timeToWheelMove';'trialStartEnd';'trialType';'uniqueConditionLabels';'uniqueConditions';'uniqueDiff';...
     'visContrast';'visDiff';'visInitialAzimuth';'visValues';'laserType';'laserPower';'galvoType';'galvoPosition';'laserOnOff';'laserOnsetDelay'};
 
 expectedParamFields ={'audAmplitude';'audInitialAzimuth';'audPerformance';'backgroundNoiseAmplitude';'clickDuration';'clickRate';...
-    'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'delayAfterIncorrect';'expDate';'expNum';'expType';'galvoCoords';...
+    'closedLoopOnsetToneAmplitude';'delayAfterCorrect';'delayAfterIncorrect';'expDate';'expDef';'expNum';'expType';'galvoCoords';...
     'galvoType';'laserDuration';'laserOnsetDelays';'laserPower';'laserSession';'laserTypeProportions';'maxRepeatIncorrect';'minutesOnRig';...
     'mulPerformance';'noiseBurstAmplitude';'noiseBurstDuration';'numRepeats';'numberConditions';'openLoopDuration';'postQuiescentDelay';...
     'preStimQuiescentRange';'preStimQuiescentThreshold';'responseWindow';'rewardSize';'rewardTotal';'rigName';'stimDuration';'subject';...
     'totalTrials';'validResponses';'validTrials';'visAltitude';'visContrast';'visInitialAzimuth';'visPerformance';'visSigma';'waveformType';'wheelGain'};
 
-if any(~contains(fields(newBlock), expectedBlockFields))
+if any(~contains(fields(x.newBlock), expectedBlockFields))
     keybaord;
-elseif any(~contains(expectedBlockFields, fields(newBlock)))
+elseif any(~contains(expectedBlockFields, fields(x.newBlock)))
     keyboard;
-    excessfields = expectedBlockFields(~contains(expectedBlockFields, fields(newBlock)));
+    excessfields = expectedBlockFields(~contains(expectedBlockFields, fields(x.newBlock)));
     fprintf('Field mistmatch in block file %s - \n', excessfields{:});
 end
 
-if any(~contains(fields(newParams), expectedParamFields)) || any(~contains(expectedParamFields, fields(newParams)))
+if any(~contains(fields(x.newParams), expectedParamFields)) || any(~contains(expectedParamFields, fields(x.newParams)))
     error('Field mistmatch in param file');
 end
 end

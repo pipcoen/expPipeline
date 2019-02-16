@@ -14,9 +14,9 @@ function sortedByTrial = indexByTrial(trialTimes, prmTimes, prmValues, timesToSu
 %Set default values
 if ~exist('prmValues', 'var'); prmValues = prmTimes; end
 if ~exist('timesToSubtract', 'var'); timesToSubtract =0*prmValues(1,:); end
-if ~exist('paramsForSubtraction', 'var'); timesToSubtract = 0*prmTimes; end
+if ~exist('paramsForSubtraction', 'var'); paramsForSubtraction = 0*prmValues(1,:); end
 
-%Use histcounts to find all the times that fally between trial start and end times--this is a computationally fast way to do this. We remove indices
+%Use histcounts to find all the times that fall between trial start and end times--this is a computationally fast way to do this. We remove indices
 %with 0 values because these are out of bounds. 
 [eventCount, ~, trialIdx] = histcounts(prmTimes, sort([trialTimes(:,1);trialTimes(:,2)+realmin]));
 prmValues(trialIdx==0,:) = []; trialIdx(trialIdx==0) = [];

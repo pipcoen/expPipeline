@@ -126,7 +126,7 @@ newSpikeIdx(goodTemplatesList+1) = 1:length(goodTemplatesList);
 spikeTemplates = newSpikeIdx(spikeTemplates+1);
 
 %%
-fields2copy = {'subject'; 'expDate'; 'expNum'; 'kilosortOutput'};
+fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'};
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
 eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);
@@ -134,7 +134,7 @@ eph.spikeTemplates = uint16(spikeTemplates);
 eph.templateDepths = templateDepths;
 eph.templateDuration = templateDuration;
 eph.waveforms = waveforms;
-eph = prc.catStructs(eph, x.aligned);
+eph = prc.catStructs(eph, prc.filtStruct(x.aligned, x.validTrials));
 %%
 fprintf('Finished loading experiment... \n');
 
