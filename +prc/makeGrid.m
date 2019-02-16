@@ -22,9 +22,11 @@ switch lower(type)
         gridIdx = arrayfun(@(x,y) [x y], gridXY{1}, gridXY{2}, 'uni', 0);
 end
 
-fullGrid = repmat(gridIdx,[1,1,length(sessions)]);
-repSessions = arrayfun(@(x) zeros(size(gridIdx))+x, sessions, 'uni', 0);
-repSessions = num2cell(cat(3,repSessions{:}));
+if split == 1
+    fullGrid = repmat(gridIdx,[1,1,length(sessions)]);
+    repSessions = arrayfun(@(x) zeros(size(gridIdx))+x, sessions, 'uni', 0);
+    repSessions = num2cell(cat(3,repSessions{:}));
+end
 
 switch split
     case 0; gridData = cell2mat(cellfun(@(x) operation(data(all(conditions==x,2))), gridIdx, 'uni', 0));

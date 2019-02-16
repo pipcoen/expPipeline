@@ -1,10 +1,10 @@
-function [newBlock, newParams, newRaw] = multiSpaceWorldPassive(x)
+function x = multiSpaceWorldPassive(x)
 %% A helper function for multisensoySpaceWorld experimental definition that produces standardised files with useful structures for further analysis.
 
 %% Convert to shorter names for ease of use later
 v = x.standardizedBlock.paramsValues;  %Parameter values at start of trial
 e = x.standardizedBlock.events;        %Event structure
-n = x.newBlock;                        %newBlock, already populated with subject, expDate, expNum, rigName, and expType
+n = x.newBlock;                        %x.newBlock, already populated with subject, expDate, expNum, rigName, and expType
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
 
 p.visContrast = p.visContrast(1,:);
@@ -60,45 +60,44 @@ if size(zeroConditions,1)>1
     zeroConditionsIdx(zeroConditionsIdx~=0) = zeroConditionsIdx(zeroConditionsIdx~=0)+max(rightConditionsIdx);
     conditionLabel = conditionLabel+zeroConditionsIdx;
 end
-uniqueConditionRowLabels = [unique(zeroConditionsIdx(zeroConditionsIdx~=0)); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
-[~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionRowLabels);
+uniqueConditionLabels = [unique(zeroConditionsIdx(zeroConditionsIdx~=0)); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
+[~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionLabels);
 
 n.uniqueConditions = uniqueConditions;
-n.uniqueConditionRowLabels = uniqueConditionRowLabels;
-n.conditionLabel = conditionLabel; 
-n.conditionRowIdx = conditionRowIdx; 
+n.uniqueConditionLabels = uniqueConditionLabels;
+n.conditionLabelRow = [conditionLabel conditionRowIdx]; 
 
 
-newParams = prc.chkThenRemoveFields(p, {'postQuiescentDelay';'laserOnsetDelays';'waveformType';'maxRepeatIncorrect';'galvoType';'laserPower';...#
+x.newParams = prc.chkThenRemoveFields(p, {'postQuiescentDelay';'laserOnsetDelays';'waveformType';'maxRepeatIncorrect';'galvoType';'laserPower';...#
     'laserTypeProportions';'laserDuration';'rewardTotal';});
-newBlock = n;
-newRaw = r;
+x.newBlock = n;
+x.newRaw = r;
 
 %% Check that all expected fields exist
-expectedBlockFields = {'subject';'expDate' ;'expNum';'rigName';'expType';'trialStartEnd' ;'audAmplitude';'audInitialAzimuth' ;'visContrast';'visInitialAzimuth';...
-    'visAltitude' ;'visSigma';'rewardTriggered' ;'uniqueConditions';'uniqueConditionRowLabels';'conditionLabel';'conditionRowIdx' };
+expectedBlockFields = {'subject';'expDate' ;'expNum';'expDef';'rigName';'expType';'trialStartEnd' ;'audAmplitude';'audInitialAzimuth' ;'visContrast';'visInitialAzimuth';...
+    'visAltitude' ;'visSigma';'rewardTriggered' ;'uniqueConditions';'uniqueConditionLabels';'conditionLabelRow'};
 expectedParamFields =  {'audAmplitude';'audInitialAzimuth';'backgroundNoiseAmplitude';'clickDuration';'clickRate';'closedLoopOnsetToneAmplitude';'feedback';'responseWindow';...
-    'rewardSize';'visAltitude';'visContrast';'visInitialAzimuth';'visSigma';'numRepeats';'subject';'expDate';'expNum';'rigName';...
+    'rewardSize';'visAltitude';'visContrast';'visInitialAzimuth';'visSigma';'numRepeats';'subject';'expDate';'expNum';'expDef';'rigName';...
     'expType';'totalTrials';'minutesOnRig';'laserSession'};
 
-if any(~contains(fields(newBlock), expectedBlockFields))
-    excessfields = fields(newBlock);
+if any(~contains(fields(x.newBlock), expectedBlockFields))
+    excessfields = fields(x.newBlock);
     excessfields = excessfields(~contains(excessfields, expectedBlockFields));
     fprintf('Field mistmatch in block file %s - \n', excessfields{:});
     keyboard;
-elseif any(~contains(expectedBlockFields, fields(newBlock)))
-    excessfields = expectedBlockFields(~contains(expectedBlockFields, fields(newBlock)));
+elseif any(~contains(expectedBlockFields, fields(x.newBlock)))
+    excessfields = expectedBlockFields(~contains(expectedBlockFields, fields(x.newBlock)));
     fprintf('Field mistmatch in block file %s - \n', excessfields{:});
     keyboard;
 end
 
-if any(~contains(fields(newParams), expectedParamFields))
-    excessfields = fields(newParams);
+if any(~contains(fields(x.newParams), expectedParamFields))
+    excessfields = fields(x.newParams);
     excessfields = excessfields(~contains(excessfields, expectedParamFields));
     fprintf('Field mistmatch in Param file %s - \n', excessfields{:});
     keyboard;
-elseif any(~contains(expectedParamFields, fields(newParams)))
-    excessfields = expectedParamFields(~contains(expectedParamFields, fields(newParams)));
+elseif any(~contains(expectedParamFields, fields(x.newParams)))
+    excessfields = expectedParamFields(~contains(expectedParamFields, fields(x.newParams)));
     fprintf('Field mistmatch in Param file %s - \n', excessfields{:});
     keyboard;
 end

@@ -1,9 +1,12 @@
-function viewInactivationResults(obj, plotType)
-if ~exist('plotType', 'var'); plotType = 'uni'; end
+function viewInactivationResults(obj, plotType, nShuffles)
+if ~exist('plotType', 'var'); plotType = 'unires'; end
+if ~exist('nShuffles', 'var'); nShuffles = 0; end
+plotType = lower(plotType);
 if ~isempty(obj.expDate)
-    switch lower(plotType)
-        case {'uni'; 'bil'; 'unisig'; 'unisigrea'}
-            runMouseReplicate(copy(obj), {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'}, ['viewInactivationResults(''' lower(plotType) ''')']);
+    switch plotType(1:3)
+        case {'uni'; 'bil'}
+            subsets = {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'};
+            runMouseReplicate(copy(obj), subsets, ['viewInactivationResults(''' plotType ''',' num2str(nShuffles) ')']);
         case {'dif'}
             runMouseReplicate(copy(obj), {'VisUni(L-R)', 'AudUni(L-R)', 'CohUni(VL-VR)', 'ConUni(AL-AR)'}, 'viewInactivationResults(''dif'')');
     end
@@ -15,80 +18,108 @@ axesOpt.btlrMargins =  [50 100 10 10];
 axesOpt.gapBetweenAxes = [40 0];
 axesOpt.figureHWRatio = 0.8;
 axesOpt.figureSize = 400;
-respBlock = prc.filtStruct(obj.blocks{1}, obj.blocks{1}.responseMade~=0);
-respBlock = prc.filtStruct(respBlock, respBlock.galvoPosition(:,2)~=4.5);
-respBlock = prc.filtStruct(respBlock, ~ismember(abs(respBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]));
-normBlock = prc.filtStruct(respBlock, respBlock.laserType==0);
-uniBlock = prc.filtStruct(respBlock, respBlock.laserType==1);
-bilBlock = prc.filtStruct(respBlock, respBlock.laserType==2);
-if ~isempty(bilBlock); bilBlock.galvoPosition(:,1) = abs(bilBlock.galvoPosition(:,1)); end
+
+initBlock = prc.filtStruct(obj.blocks{1}, obj.blocks{1}.galvoPosition(:,2)~=4.5);
+initBlock = prc.filtStruct(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]));
+initBlock = prc.filtStruct(initBlock, initBlock.timeOutsBeforeResponse==0);
+op2Use = @mean;
+
+subjectIndexes = unique(initBlock.subjectIdx);
+condLabels = unique(initBlock.conditionLabelRow(:,1));
+
+if contains(plotType, 'res')
+    initBlock = prc.filtStruct(initBlock, initBlock.responseMade~=0);
+    initBlock.data2Use = initBlock.responseMade==2;
+    scanPlot.colorBarLimits = [-0.8 0.8];
+elseif contains(plotType, 'tim')
+    initBlock.data2Use = (initBlock.responseMade==0);
+    scanPlot.colorBarLimits = [-0.25 0.25];
+elseif contains(plotType, 'rea')
+    initBlock = prc.filtStruct(initBlock, initBlock.responseMade~=0);
+    reactionTimes = initBlock.timeToWheelMove;
+    reactionTimes(initBlock.laserType~=0) = nan;
+    [tDat1,tDat2] = meshgrid(subjectIndexes,condLabels);
+    allCombos = num2cell([tDat2(:) tDat1(:)],2);
+    refData = [initBlock.conditionLabelRow(:,1) initBlock.subjectIdx];
+    normReactionTimes = cellfun(@(x) nanmedian(reactionTimes(all(refData==x,2))),allCombos);
+    [~,normReactionIdx] = ismember(refData, cell2mat(allCombos), 'rows');
+    initBlock.data2Use = initBlock.timeToWheelMove./normReactionTimes(normReactionIdx);
+    op2Use = @median;
+    scanPlot.colorBarLimits = [-0.3 0.3];
+end
+normBlock = prc.filtStruct(initBlock, initBlock.laserType==0);
+uniBlock = prc.filtStruct(initBlock, initBlock.laserType==1);
+bilBlock = prc.filtStruct(initBlock, initBlock.laserType==2);
 
 for i  = 1:length(obj.subjects)
-    switch lower(plotType)
-        case {'uni'; 'bil'}
-            if strcmpi(plotType, 'uni')
-                tempBlock = prc.getDefinedSubset(uniBlock, obj.subjects{i});
-            elseif strcmpi(plotType, 'bil')
-                tempBlock = prc.getDefinedSubset(bilBlock, obj.subjects{i});
-                normBlock.galvoPosition(:,1) = abs(normBlock.galvoPosition(:,1));
-            end
-            tempBlock = prc.filtStruct(tempBlock, tempBlock.timeOutsBeforeResponse==0);
-            [nonUniformData, scanPlot.gridXY] = prc.makeGrid(tempBlock, [tempBlock.responseMade==2 tempBlock.subjectIdx], [], 'galvouni',2);
-            scanPlot.data = cellfun(@(x) mean(x(prc.makeFreqUniform(x(:,2)),1)), nonUniformData);
-            scanPlot.nTrials = cellfun(@(x) length(x(prc.makeFreqUniform(x(:,2)),1)), nonUniformData);
- 
-            tempBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});
-            controlData = prc.makeGrid(tempBlock, [tempBlock.responseMade==2 tempBlock.subjectIdx], [], 'galvouni',2);
-            controlData = cellfun(@(x) mean(x(prc.makeFreqUniform(x(:,2)),1)), controlData);
+    if ~contains(plotType, {'sig'; 'dif'})
+        if ~nShuffles; nShuffles = 50; end
+        contBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});   
+        contData = repmat(contBlock.data2Use,1,nShuffles);
+        subSamples = prc.makeFreqUniform(contBlock.subjectIdx,nShuffles);
+        contData(~subSamples) = nan;
+        contData = mean(nanmedian(contData));
+        
+        if strcmp(plotType(1:3), 'uni'); testBlock = prc.getDefinedSubset(uniBlock, obj.subjects{i});
+        elseif strcmp(plotType(1:3), 'bil'); testBlock = prc.getDefinedSubset(bilBlock, obj.subjects{i});
+        end
+        
+        trialIdx = (1:length(testBlock.subjectIdx))';
+        nonUniformLaser = prc.makeGrid(testBlock, [testBlock.subjectIdx trialIdx], [], 'galvouni',2);
+        laserShuffles = cellfun(@(x) prc.makeFreqUniform(x(:,1),nShuffles,x(:,2)), nonUniformLaser, 'uni', 0);
+        laserShuffles = num2cell(cell2mat(laserShuffles(:)),1);
+        uniformLaserFilters = cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0);
+        
+        inactiveGrid = cell(nShuffles,1);
+        for j =1:nShuffles
+            subTestBlock = prc.filtStruct(testBlock, uniformLaserFilters{j});
+            [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(subTestBlock, subTestBlock.data2Use, op2Use, 'galvouni');
+        end
+        scanPlot.data = mean(cat(3,inactiveGrid{:}),3)-contData;
+        scanPlot.nTrials = prc.makeGrid(subTestBlock, subTestBlock.data2Use, @length, 'galvouni');
+        
+        axesOpt.numOfRows = 4;
+        scanPlot.addTrialNumber = 1;
+    elseif contains(plotType, {'sig'})
+        if ~nShuffles; nShuffles = 15000; end
+        normEstRepeats = round(nShuffles/10);
+        inactiveGrid = cell(nShuffles+normEstRepeats, 1);
+        totalLoops = nShuffles + normEstRepeats;
+        testBlock = prc.getDefinedSubset(uniBlock, obj.subjects{i});
+        contBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});
+        %%
+        trialIdx = (1:length(testBlock.subjectIdx))';
+        nonUniformLaser = prc.makeGrid(testBlock, [testBlock.subjectIdx trialIdx], [], 'galvouni',2);
+        laserShuffles = cellfun(@(x) prc.makeFreqUniform(x(:,1),totalLoops,x(:,2)), nonUniformLaser, 'uni', 0);
+        laserShuffles = num2cell(cell2mat(laserShuffles(:)),1);
+        uniformLaserFilters = cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0);
+        
+        for j = 1:(totalLoops)
+            subTestBlock = prc.filtStruct(testBlock, uniformLaserFilters{j});
+            subContBlock = prc.filtStruct(contBlock, prc.makeFreqUniform(contBlock.subjectIdx));
             
-            scanPlot.data = scanPlot.data - controlData;
-            axesOpt.numOfRows = 4;
-            scanPlot.addTrialNumber = 1;
-        case {'unisig'; 'unisigrea'}
-            tempBlock = prc.getDefinedSubset(respBlock, obj.subjects{i});
-            tempBlock = prc.filtStruct(tempBlock, tempBlock.timeOutsBeforeResponse==0);  
-            nShuffles = 100;
-            normEstRepeats = round(nShuffles/10);
-            inactiveGrid = cell(nShuffles+1, 1);
-            for j = 1:(nShuffles + normEstRepeats)
-                laserBlock = prc.filtStruct(tempBlock, tempBlock.laserType==1);
-                [nonUniformLaser] = prc.makeGrid(laserBlock, [(1:length(laserBlock.subjectIdx))' laserBlock.subjectIdx], [], 'galvouni',2);
-                uniformLaser = cellfun(@(x) x(prc.makeFreqUniform(x(:,2)),1), nonUniformLaser, 'uni', 0);
-                uniformLaserLogical = ismember((1:length(laserBlock.subjectIdx))',cell2mat(uniformLaser(:))); 
-                laserBlock = prc.filtStruct(laserBlock, uniformLaserLogical>0);
-                
-                normBlock = prc.filtStruct(tempBlock, tempBlock.laserType==0);
-                normBlock = prc.filtStruct(normBlock, prc.makeFreqUniform(normBlock.subjectIdx));
-                
-                subsampledBlock = prc.combineBlocks([laserBlock;normBlock]);
-                if j > normEstRepeats
-                    subsampledBlock.laserType = tempBlock.laserType(randperm(length(subsampledBlock.laserType)));
-                    subsampledBlock.galvoPosition = tempBlock.galvoPosition(randperm(length(subsampledBlock.laserType)),:);
-                end
-                
-                normBlock = prc.filtStruct(subsampledBlock, subsampledBlock.laserType==0);
-                laserBlock = prc.filtStruct(subsampledBlock, subsampledBlock.laserType==1);
-                if strcmp(lower(plotType), 'unisigrea')
-                    [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock.timeToWheelMove, @median, 'galvouni');
-                else
-                    [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock.responseMade==2, @mean, 'galvouni');
-                end
-                inactiveGrid{j} = inactiveGrid{j} - mean(normBlock.responseMade==2);
+            randomBlock = prc.combineBlocks([subTestBlock;subContBlock]);
+            if j > normEstRepeats
+                randomBlock.laserType = randomBlock.laserType(randperm(length(randomBlock.laserType)));
+                randomBlock.galvoPosition = randomBlock.galvoPosition(randperm(length(randomBlock.laserType)),:);
             end
-            %%
-            trueData = mean(reshape(cell2mat(inactiveGrid(1:normEstRepeats)'), [size(scanPlot.gridXY{1}), normEstRepeats]),3);
-            shuffleData = reshape(cell2mat(inactiveGrid(normEstRepeats+1:end)'), [size(scanPlot.gridXY{1}), nShuffles]);
-            shuffleData = cellfun(@squeeze, num2cell(sort(cat(3,shuffleData, trueData),3,'descend'),3), 'uni', 0);
-            scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, trueData, shuffleData,'uni', 0));
-
-            scanPlot.data = trueData;
-            scanPlot.addTrialNumber = 0;
-            axesOpt.numOfRows = 4;
-        case {'dif'}
-            runMouseReplicate(copy(obj), {'VisUni(L-R)', 'AudUni(L-R)', 'CohUni(VL-VR)', 'ConUni(AL-AR)'}, 'viewInactivationResults(''dif'')');
-            [scanPlot.plotData, scanPlot.pVals, scanPlot.gridXY, scanPlot.nTrials] = fit.testLaserEffectAtEachSite(respBlock, obj.subjects{i});
+            
+            subContBlock = prc.filtStruct(randomBlock, randomBlock.laserType==0);
+            subTestBlock = prc.filtStruct(randomBlock, randomBlock.laserType==1);
+            [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(subTestBlock, subTestBlock.data2Use, op2Use, 'galvouni');
+            inactiveGrid{j} = inactiveGrid{j} - op2Use(subContBlock.data2Use);
+        end
+        %%
+        contData = mean(cat(3,inactiveGrid{1:normEstRepeats}),3);
+        shuffleData = cat(3,inactiveGrid{normEstRepeats+1:end});
+        sortedData = cellfun(@squeeze, num2cell(sort(abs(cat(3,shuffleData, contData)),3,'descend'),3), 'uni', 0);
+        scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, abs(contData), sortedData,'uni', 0));
+        
+        scanPlot.data = contData;
+        scanPlot.addTrialNumber = 0;
+        axesOpt.numOfRows = 4;
     end
-    obj.axesHandles = plt.getAxes(axesOpt, i);
+    obj.hand.axes = plt.getAxes(axesOpt, i);
     scanPlot.title = obj.subjects{i};
     plt.scanningBrainEffects(scanPlot);
 end

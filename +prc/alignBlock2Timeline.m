@@ -8,11 +8,15 @@ sampleRate = 1/diff(timeline.rawDAQTimestamps(1:2));
 switch expDef
     case 'multiSpaceWorld'
         alignType = 'wheel';
-        fineTune = {'clicksfine'; 'flashes'; 'reward'};
+        fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'};
     case 'multiSpaceWorldPassive'
-        alignType = 'wheel';
+        if contains('rotaryEncoder', inputNames); alignType = 'wheel';
+        elseif contains('photoDiode', inputNames); alignType = 'photoDiode';
+        else, error('What am I supposed to use to align block with timeline?!')
+        end
         fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
 end
+
 
 
 switch alignType
@@ -20,11 +24,11 @@ switch alignType
         smoothWindow = sampleRate/10+1;
         timelinehWeelPosition = timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'));
         timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
-        timelinehWeelPosition = smooth(timelinehWeelPosition,smoothWindow);
+        timelinehWeelPositionSmooth = smooth(timelinehWeelPosition,smoothWindow);
         block.inputs.wheelValues = block.inputs.wheelValues-block.inputs.wheelValues(1);
         blockWheelPosition = interp1(block.inputs.wheelTimes, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
         blockWheelPosition = smooth(blockWheelPosition,smoothWindow);
-        baseDelay = finddelay(diff(blockWheelPosition), diff(timelinehWeelPosition))/sampleRate;
+        baseDelay = finddelay(diff(blockWheelPosition), diff(timelinehWeelPositionSmooth))/sampleRate;
         blockWheelPosition = interp1(block.inputs.wheelTimes+baseDelay, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
         blockWheelPosition = smooth(blockWheelPosition(:),smoothWindow);
         
@@ -51,6 +55,21 @@ switch alignType
         thresh = max(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')))/2;
         rewardTrace = timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')) > thresh;
         timelineRefTimes = timeline.rawDAQTimestamps(strfind(rewardTrace', [0 1])+1);
+    case 'photoDiode'
+        photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));
+        [~, thresh] = kmeans(photoDiodeTrace,2);
+        thresh = [min(thresh) + range(thresh)*0.25;  max(thresh) - range(thresh)*0.25];
+        photoDiodeFlipOn = sort([strfind(photoDiodeTrace'>thresh(1), [0 1]), strfind(photoDiodeTrace'>thresh(2), [0 1])]);
+        photoDiodeFlipOff = sort([strfind(photoDiodeTrace'<thresh(1), [0 1]), strfind(photoDiodeTrace'<thresh(2), [0 1])]);
+        photoDiodeFlips = sort([photoDiodeFlipOn photoDiodeFlipOff]);
+        photoDiodeFlips([strfind(ismember(photoDiodeFlips, photoDiodeFlipOn), [1 1])+1 strfind(ismember(photoDiodeFlips, photoDiodeFlipOff), [1 1])+1]) = [];
+        photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
+        photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
+        
+        blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>2);
+        timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>2);
+        
+        if length(blockRefTimes) ~= length(timelineRefTimes); error('Photodiode alignment error'); keyboard; end
 end
 
 
@@ -98,7 +117,8 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     block.events.audStimOnOffValues = aStimOnOffTV(:,2)';
     aligned.audStimOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
     
-    largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>0.5); find(diff([aStimOnOffTV(:,1); 10e10])>0.5)]);
+    largeGapThresh = 1./max([block.paramsValues.clickRate])*3;
+    largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>largeGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>largeGapThresh)]);
     block.events.audStimPeriodOnOffTimes = aStimOnOffTV(largeAudGaps,1)';
     block.events.audStimPeriodOnOffValues = aStimOnOffTV(largeAudGaps,2)';
     
@@ -106,7 +126,7 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     audstimStartTimeline = block.events.audStimPeriodOnOffTimes(block.events.audStimPeriodOnOffValues==1);
     nonAudTrials = [block.paramsValues.audAmplitude]==0;
     [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline);
-    if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
+    if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching auditory stimulus start and end times \n'); keyboard; end
     
     aStimOnOffTV = aStimOnOffTV(largeAudGaps,:);
     aligned.audStimPeriodOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
@@ -126,8 +146,9 @@ if any(contains(fineTune, 'flashes'))
     photoDiodeFlips([strfind(ismember(photoDiodeFlips, photoDiodeFlipOn), [1 1])+1 strfind(ismember(photoDiodeFlips, photoDiodeFlipOff), [1 1])+1]) = [];
     photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
     photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
-    
-    largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>0.5); find(diff([photoDiodeFlipTimes; 10e10])>0.5)]));
+        
+    largeGapThresh = 1./max([block.paramsValues.clickRate])*3;
+    largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>largeGapThresh); find(diff([photoDiodeFlipTimes; 10e10])>largeGapThresh)]));
     zeroContrastTrials = arrayfun(@(x) max(abs(x.visContrast)),block.paramsValues)'==0;
     zeroContrastTrials = zeroContrastTrials(1:size(trialStEnTimes,1));
     largeGapsByTrial = arrayfun(@(x,y) largeVisGaps(largeVisGaps>x & largeVisGaps<y), trialStEnTimes(:,1), trialStEnTimes(:,2), 'uni', 0);
@@ -159,13 +180,48 @@ end
 if any(contains(fineTune, 'flashesfine'))
     photoFlipsByTrial = arrayfun(@(x,y) find(photoDiodeFlipTimes>=x & photoDiodeFlipTimes<=y), aligned.visStimPeriodOnOff(:,1), aligned.visStimPeriodOnOff(:,2), 'uni', 0);
     expectedFlashTrainLength = [block.paramsValues.clickRate]'.*[block.paramsValues.responseWindow]'*2;
-    if any(expectedFlashTrainLength(~zeroContrastTrials)-cellfun(@length,photoFlipsByTrial)); fprintf('Error in flashesfine tuning \n'); keyboard; end
+    misMatchFlashtrain = expectedFlashTrainLength(~zeroContrastTrials)-cellfun(@length,photoFlipsByTrial);
+    if any(misMatchFlashtrain)
+        photoFlipsByTrial(misMatchFlashtrain~=0) = [];
+        fprintf('Warning: Removing flash times for trials that do not match predicted flash length \n');
+    end
     
     block.events.visStimOnOffTimes = sort(photoDiodeFlipTimes(cell2mat(photoFlipsByTrial)))';
     block.events.visStimOnOffValues = photoDiodeFlipTimes(cell2mat(photoFlipsByTrial))'*0+1;
     block.events.visStimOnOffValues(2:2:end) = 0;
     vStimOnOffTV = [block.events.visStimOnOffTimes' block.events.visStimOnOffValues'];
     aligned.visStimOnOff = [vStimOnOffTV(vStimOnOffTV(:,2)==1,1) vStimOnOffTV(vStimOnOffTV(:,2)==0,1)];
+end
+
+if any(contains(fineTune, 'movements'))
+    %%
+    responseMadeIdx = block.events.feedbackValues ~= 0;
+    stimOnsetIdx = round(stimStartBlock(responseMadeIdx)*sampleRate)';
+    closedLoopPeriodIdx = round(block.events.closedLoopOnOffTimes*sampleRate);
+    closedLoopValues = block.events.closedLoopOnOffValues(1:find(block.events.closedLoopOnOffValues==0, 1, 'last'));
+    
+    wheel = timelinehWeelPosition;
+    move4Response = wheel(closedLoopPeriodIdx(closedLoopValues==0)) - wheel(closedLoopPeriodIdx(closedLoopValues==1));
+    wheelThresh = median(abs(move4Response(responseMadeIdx)))/2;
+    
+    movementTimes = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sampleRate*1.5)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx)./sampleRate;
+    caculatedChoice = -sign(wheel(round(movementTimes*sampleRate)) - wheel(round(stimOnsetIdx)));
+    aligned.mindChange = movementTimes(caculatedChoice~=block.events.responseTypeValues(responseMadeIdx)');
+    aligned.movementTimes = movementTimes;
+end
+
+rawFields = fields(aligned);
+for i = 1:length(rawFields)
+    currField = rawFields{i};
+    currData = aligned.(currField);
+    aligned.(currField) = prc.indexByTrial(trialStEnTimes, currData(:,1), currData);
+    
+    maxRowsCols = max(cell2mat(cellfun(@(x) size(x), aligned.(currField), 'uni', 0)));
+    if maxRowsCols(1) == 1
+        emptyIdx = cellfun(@isempty, aligned.(currField));
+        aligned.(currField)(emptyIdx) = {nan*ones(1, maxRowsCols(2))};
+        aligned.(currField) = cell2mat(aligned.(currField));
+    end
 end
 
 correctedBlock = block;

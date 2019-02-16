@@ -53,8 +53,8 @@ files1 = sortstruct(dir(p1), 'name');
 files2 = sortstruct(dir(p2), 'name');
 
 if ~includeTimeline
-    files1 = files1(~contains({files1.name}', {'..';'Timeline'; '.npy'}));
-    files2 = files2(~contains({files2.name}', {'..';'Timeline'; '.npy'}));
+    files1 = files1(~contains({files1.name}', {'..';'Timeline'; '.npy'; 'eye'; 'fus.mat'}));
+    files2 = files2(~contains({files2.name}', {'..';'Timeline'; '.npy'; 'eye'; 'fus.mat'}));
 end
 if ~includeVideo
     files1 = files1(~contains({files1.name}', {'.mj2'}));
