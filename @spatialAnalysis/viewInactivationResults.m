@@ -3,13 +3,12 @@ if ~exist('plotType', 'var'); plotType = 'unires'; end
 if ~exist('nShuffles', 'var'); nShuffles = 0; end
 plotType = lower(plotType);
 if ~isempty(obj.expDate)
-    switch plotType(1:3)
-        case {'uni'; 'bil'}
-            subsets = {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'};
-            runMouseReplicate(copy(obj), subsets, ['viewInactivationResults(''' plotType ''',' num2str(nShuffles) ')']);
-        case {'dif'}
-            runMouseReplicate(copy(obj), {'VisUni(L-R)', 'AudUni(L-R)', 'CohUni(VL-VR)', 'ConUni(AL-AR)'}, 'viewInactivationResults(''dif'')');
+    if contains(plotType, 'dif')
+        subsets = {'VL', 'AL', 'CohL','ConL'};
+    else
+        subsets = {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'};
     end
+    runMouseReplicate(copy(obj), subsets, ['viewInactivationResults(''' plotType ''',' num2str(nShuffles) ')']);
     return;
 end
 figure;
@@ -18,15 +17,31 @@ axesOpt.btlrMargins =  [50 100 10 10];
 axesOpt.gapBetweenAxes = [40 0];
 axesOpt.figureHWRatio = 0.8;
 axesOpt.figureSize = 400;
-
+%%
 initBlock = prc.filtStruct(obj.blocks{1}, obj.blocks{1}.galvoPosition(:,2)~=4.5);
-initBlock = prc.filtStruct(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]));
+initBlock = prc.filtStruct(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | initBlock.laserType~=0);
 initBlock = prc.filtStruct(initBlock, initBlock.timeOutsBeforeResponse==0);
+
 op2Use = @mean;
 
 subjectIndexes = unique(initBlock.subjectIdx);
 condLabels = unique(initBlock.conditionLabelRow(:,1));
 
+if contains(plotType, 'grp')
+%     galvoGrps = {[1.8, -3; 1.8 -4; 1.8 -2; 3, -4; 3, -3; 3, -2; 4.2, -4; 4.2, -3; 4.2, -2;];[0.6 2; 1.8, 2; 0.6, 3]};%;[4.2 -2; 4.2, -3]};
+    galvoGrps = {[1.8 -4; 3, -4; 3, -3];[0.6 2; 1.8, 2; 0.6, 3]};%;[4.2 -2; 4.2, -3]};
+    galvoGrps = [galvoGrps; cellfun(@(x) [-x(:,1) x(:,2)], galvoGrps, 'uni', 0)];
+    groupedBlock = cellfun(@(x) prc.filtStruct(initBlock, ismember(initBlock.galvoPosition, x, 'rows') & initBlock.laserType~=0), galvoGrps);
+    meanPositions = cellfun(@mean, galvoGrps, 'uni', 0);
+    meanPositions = cellfun(@(x,y) x*0+repmat(y, size(x,1),1), {groupedBlock.galvoPosition}', meanPositions, 'uni', 0);
+    [groupedBlock.galvoPosition] = deal(meanPositions{:});
+    initBlock = prc.combineBlocks([groupedBlock; prc.filtStruct(initBlock, initBlock.laserType==0)]);
+end
+
+if contains(plotType, 'dif')
+    initBlock = prc.switchBlockToContraIpsi(initBlock);
+end
+%%
 if contains(plotType, 'res')
     initBlock = prc.filtStruct(initBlock, initBlock.responseMade~=0);
     initBlock.data2Use = initBlock.responseMade==2;
@@ -52,9 +67,9 @@ uniBlock = prc.filtStruct(initBlock, initBlock.laserType==1);
 bilBlock = prc.filtStruct(initBlock, initBlock.laserType==2);
 
 for i  = 1:length(obj.subjects)
-    if ~contains(plotType, {'sig'; 'dif'})
+    if ~contains(plotType, {'sig'})
         if ~nShuffles; nShuffles = 50; end
-        contBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});   
+        contBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});
         contData = repmat(contBlock.data2Use,1,nShuffles);
         subSamples = prc.makeFreqUniform(contBlock.subjectIdx,nShuffles);
         contData(~subSamples) = nan;
@@ -87,6 +102,8 @@ for i  = 1:length(obj.subjects)
         totalLoops = nShuffles + normEstRepeats;
         testBlock = prc.getDefinedSubset(uniBlock, obj.subjects{i});
         contBlock = prc.getDefinedSubset(normBlock, obj.subjects{i});
+        
+        contBlock.galvoPosition = testBlock.galvoPosition(randi(size(testBlock.galvoPosition,1), size(contBlock.galvoPosition,1),1),:);
         %%
         trialIdx = (1:length(testBlock.subjectIdx))';
         nonUniformLaser = prc.makeGrid(testBlock, [testBlock.subjectIdx trialIdx], [], 'galvouni',2);

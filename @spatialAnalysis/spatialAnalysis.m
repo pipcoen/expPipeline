@@ -122,7 +122,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             axesOpt.numOfRows = 2;
             axesOpt.figureHWRatio = 1.1;
             for i  = 1:length(obj.subjects)
-                normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
+                normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',1);
                 plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
                 obj.hand.axes = plt.getAxes(axesOpt, i);
                 switch plotType(1:3)

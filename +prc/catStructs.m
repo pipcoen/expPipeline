@@ -1,4 +1,4 @@
-function A = catstruct(varargin)
+function A = catStructs(varargin)
 % CATSTRUCT   Concatenate or merge structures with different fieldnames
 %   X = CATSTRUCT(S1,S2,S3,...) merges the structures S1, S2, S3 ...
 %   into one new structure X. X contains all fields present in the various
