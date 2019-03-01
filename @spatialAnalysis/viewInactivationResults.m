@@ -28,8 +28,8 @@ subjectIndexes = unique(initBlock.subjectIdx);
 condLabels = unique(initBlock.conditionLabelRow(:,1));
 
 if contains(plotType, 'grp')
-%     galvoGrps = {[1.8, -3; 1.8 -4; 1.8 -2; 3, -4; 3, -3; 3, -2; 4.2, -4; 4.2, -3; 4.2, -2;];[0.6 2; 1.8, 2; 0.6, 3]};%;[4.2 -2; 4.2, -3]};
-    galvoGrps = {[1.8 -4; 3, -4; 3, -3];[0.6 2; 1.8, 2; 0.6, 3]};%;[4.2 -2; 4.2, -3]};
+    galvoGrps = {[1.8, -3; 1.8 -4; 1.8 -2; 3, -4; 3, -3; 3, -2; 4.2, -4; 4.2, -3; 4.2, -2;];[0.6 2; 1.8, 2; 0.6, 3]};%;[4.2 -2; 4.2, -3]};
+%     galvoGrps = {[1.8 -4; 3, -4; 3, -3];[0.6 2; 1.8, 2; 0.6, 3]};%;[4.2 -2; 4.2, -3]};
     galvoGrps = [galvoGrps; cellfun(@(x) [-x(:,1) x(:,2)], galvoGrps, 'uni', 0)];
     groupedBlock = cellfun(@(x) prc.filtStruct(initBlock, ismember(initBlock.galvoPosition, x, 'rows') & initBlock.laserType~=0), galvoGrps);
     meanPositions = cellfun(@mean, galvoGrps, 'uni', 0);
@@ -60,7 +60,7 @@ elseif contains(plotType, 'rea')
     [~,normReactionIdx] = ismember(refData, cell2mat(allCombos), 'rows');
     initBlock.data2Use = initBlock.timeToWheelMove./normReactionTimes(normReactionIdx);
     op2Use = @median;
-    scanPlot.colorBarLimits = [-0.3 0.3];
+    scanPlot.colorBarLimits = [-0.2 0.2];
 end
 normBlock = prc.filtStruct(initBlock, initBlock.laserType==0);
 uniBlock = prc.filtStruct(initBlock, initBlock.laserType==1);
@@ -132,7 +132,7 @@ for i  = 1:length(obj.subjects)
         sortedData = cellfun(@squeeze, num2cell(sort(abs(cat(3,shuffleData, contData)),3,'descend'),3), 'uni', 0);
         scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, abs(contData), sortedData,'uni', 0));
         
-        scanPlot.data = contData;
+        scanPlot.data = contData; disp(contData);
         scanPlot.addTrialNumber = 0;
         axesOpt.numOfRows = 4;
     end
