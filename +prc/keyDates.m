@@ -11,6 +11,7 @@ switch lower(dataTag{1})
             case 'PC022'; dateRange = {'rng', '2018-02-20', '2018-05-11'}; %Regular trials within inactivation
             case 'PC027'; dateRange = {'rng', '2018-02-05', '2018-05-09'}; %Regular trials within inactivation
             case 'PC029'; dateRange = {'rng', '2018-02-27', '2018-06-21'};
+            case 'PC031'; dateRange = {'rng', '2019-02-19', '2019-03-01'};
             case 'DJ007'; dateRange = {'rng', '2018-05-11', '2018-06-19'}; %Intermediate days without conflicts are excluded
             case 'DJ008'; dateRange = {'rng', '2018-05-11', '2018-05-30'};
             case 'DJ010'; dateRange = {'rng', '2018-06-09', '2018-06-18'};
