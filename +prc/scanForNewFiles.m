@@ -68,7 +68,7 @@ for i = 1:cycles
     processList = cellfun(@(x) java.io.File(x), processList, 'uni', 0);
     processList = cellfun(@(x) arrayfun(@char,x.listFiles,'uni',0), processList, 'uni', 0);
     processList = vertcat(processList{:});
-    processList = processList(~contains(processList, {'Lightsheet'; 'ephys';'Backup'},'IgnoreCase',true));
+    processList = processList(~contains(processList, {'Lightsheet';'ephys';'Backup'},'IgnoreCase',true));
 end
 processList = processList(~cellfun(@isempty, regexp(processList, '20.*arameters.mat')));
 if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return; 
@@ -118,10 +118,11 @@ for i = 1:length(processList)
     else, clear b; load(processList{i}); 
         if exist(tempLoc.rawTimeline, 'file'); load(tempLoc.rawTimeline); 
         else, expList(end).excluded = 1; continue; end
-        if strcmp(parameters.experimentType, 'mpep')
+        if isfield(parameters, 'experimentType') && strcmp(parameters.experimentType, 'mpep')
             b.expDef = parameters.Protocol.xfile;
             b.rigName = 'lilrig-stim';
             b.duration = Timeline.lastTimestamp;
+        else, expList(end).excluded = 1; continue;
         end
     end
        
@@ -130,7 +131,10 @@ for i = 1:length(processList)
     expList(end).expType = 'training';
     
     if contains(expList(end).rigName, {'zym1'; 'zym2'}) && exist(tempLoc.galvoLog, 'file'); expList(end).expType = 'inactivation'; end
-    if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'ephys'; end
+    if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'ephys'; 
+    end
+    
+%     if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'widefield'; end
     if strcmp(expList(end).rigName, 'zatteo') && ~isempty(dir([tempLoc.rawFolder '\*fus.mat*'])); expList(end).expType = 'fusi'; end
     if isfield(b, 'duration'); expList(end).expDuration = b.duration; else, expList(end).expDuration = 0; end
     expList(end).blockFunction = str2func(['prc.expDef.' expList(end).expDef]);

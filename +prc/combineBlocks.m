@@ -1,7 +1,7 @@
 function combinedBlocks = combineBlocks(blocks)
 %% Function to combine and filter block files.
 nTrials = sum(arrayfun(@(x) size(x.trialStartEnd(:,1),1), blocks));
-blnkMat = cellfun(@(x) x*0, {blocks.feedback}', 'uni', 0);
+blnkMat = cellfun(@(x) x(:,1)*0, {blocks.trialStartEnd}', 'uni', 0);
 if length(blocks) == 1 
     if ~isfield(blocks, 'sessionIdx'); combinedBlocks = struct('sessionIdx',  ones(nTrials, 1), 'subjectIdx', ones(nTrials, 1));
     else; combinedBlocks = struct('sessionIdx',  blocks.sessionIdx, 'subjectIdx', blocks.subjectIdx);
