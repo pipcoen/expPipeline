@@ -22,7 +22,7 @@ for i  = subjects2Run
     boxPlot.subject = obj.subjects{i};
     boxPlot.trialNumber = length(normBlock.responseMade);
     boxPlot.nSessions = obj.blocks{i}.nSessions;
-    if boxPlot.nSessions == 1; boxPlot.expDate = obj.blocks{i}.params.expDate; end
+    if boxPlot.nSessions == 1; boxPlot.extraInf = [obj.blocks{i}.params.expDate ' on ' obj.blocks{i}.params.rigName]; end
     boxPlot.xyValues = {normBlock.visValues*100; normBlock.audValues};
     boxPlot.xyLabel = {'AuditoryAzimuth'; 'VisualContrast'};
     switch lower(plotType(1:3))
