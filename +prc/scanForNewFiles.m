@@ -1,4 +1,4 @@
-function expList = scanForNewFiles(rebuildList, checkDirectories)
+function expList = scanForNewFiles(rebuildList, checkDirectories, checkExpRigs)
 %% A funciton to check for new files for specified mice, copy them to a local directory, and update a related experimental list object
 
 % Inputs(default values)
@@ -28,10 +28,11 @@ function expList = scanForNewFiles(rebuildList, checkDirectories)
 %% Define which mice should be included and which start/end dates (defaults to all files for that mouse)
 if ~exist('rebuildList', 'var'); rebuildList = 0; end
 if ~exist('checkDirectories', 'var'); checkDirectories = 0; end
+if ~exist('checkExpRigs', 'var'); checkExpRigs = 0; end
 expInfo = prc.pathFinder('expInfo');
 includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...
-   'PC035'; 'PC036'; 'PC037'; 'PC038'; 'PC039'; 'PC040'; 'PC041'; 'PC042'; 'PC043'; 'PC044'; ...
-                'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR010'};
+    'PC035'; 'PC036'; 'PC037'; 'PC038'; 'PC039'; 'PC040'; 'PC041'; 'PC042'; 'PC043'; 'PC044'; ...
+    'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR010'};
 
 startedDates = {...
     'CR010' '2018-01-29'};
@@ -53,14 +54,14 @@ if any(retiredIdx); includedMice(retiredIdx > 0,3) = num2cell(datenum(retiredDat
 %% Check for all files generated in the past 3 weeks for included mice.
 recentDates = cellfun(@(x,y) num2cell([repmat([expInfo y '\'],[15,1]) datestr(datenum(x)-14:datenum(x), 'yyyy-mm-dd')],2),includedMice(:,3), includedMice(:,1), 'uni', 0);
 
-if rebuildList ~= 1 
-    cycles = 2; 
-    processList = vertcat(recentDates{:}); 
+if rebuildList ~= 1
+    cycles = 2;
+    processList = vertcat(recentDates{:});
     expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
 else
     cycles = 3;
-    processList = cellfun(@(x) [expInfo x], includedMice(:,1), 'uni', 0);  
-    expList = struct; 
+    processList = cellfun(@(x) [expInfo x], includedMice(:,1), 'uni', 0);
+    expList = struct;
 end
 
 for i = 1:cycles
@@ -71,9 +72,10 @@ for i = 1:cycles
     processList = processList(~contains(processList, {'Lightsheet';'ephys';'Backup'},'IgnoreCase',true));
 end
 processList = processList(~cellfun(@isempty, regexp(processList, '20.*arameters.mat')));
-if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return; 
+if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return;
 elseif ~rebuildList, processList = processList(~contains(processList,{expList.rawFolder}'));
-end 
+end
+
 if length(unique(cellfun(@fileparts, processList, 'uni', 0))) ~= length(processList); error('Every detected folder should be unique'); end
 %% Loop to created struture for new files and add them to the expList
 addedFiles  = 0;
@@ -93,9 +95,9 @@ for i = 1:length(processList)
     end
     
     timeSinceParamFileCreation = dir(prc.pathFinder('origparams', subject, expDate, expNum));
-    timeSinceParamFileCreation = -([timeSinceParamFileCreation.datenum]-now)*24*60; 
+    timeSinceParamFileCreation = -([timeSinceParamFileCreation.datenum]-now)*24*60;
     if ~exist(prc.pathFinder('origblock', subject, expDate, expNum), 'file') && timeSinceParamFileCreation < 80; continue; end
-        
+    
     fprintf('Adding recording %s %s %s\n', expDate, subject, expNum);
     addedFiles = 1;
     %Poplate fields for addition to expList
@@ -115,8 +117,8 @@ for i = 1:length(processList)
     
     tempLoc = prc.updatePaths(expList(end), 0);
     if exist(tempLoc.rawBlock, 'file'); load(tempLoc.rawBlock, 'block'); b = block;
-    else, clear b; load(processList{i}); 
-        if exist(tempLoc.rawTimeline, 'file'); load(tempLoc.rawTimeline); 
+    else, clear b; load(processList{i});
+        if exist(tempLoc.rawTimeline, 'file'); load(tempLoc.rawTimeline);
         else, expList(end).excluded = 1; continue; end
         if isfield(parameters, 'experimentType') && strcmp(parameters.experimentType, 'mpep')
             b.expDef = parameters.Protocol.xfile;
@@ -125,16 +127,14 @@ for i = 1:length(processList)
         else, expList(end).excluded = 1; continue;
         end
     end
-       
+    
     if isfield(b, 'expDef'); [~, expList(end).expDef] = fileparts(b.expDef); end
     expList(end).rigName = b.rigName;
     expList(end).expType = 'training';
     
     if contains(expList(end).rigName, {'zym1'; 'zym2'}) && exist(tempLoc.galvoLog, 'file'); expList(end).expType = 'inactivation'; end
-    if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'ephys'; 
-    end
     
-%     if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'widefield'; end
+    %     if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'widefield'; end
     if strcmp(expList(end).rigName, 'zatteo') && ~isempty(dir([tempLoc.rawFolder '\*fus.mat*'])); expList(end).expType = 'fusi'; end
     if isfield(b, 'duration'); expList(end).expDuration = b.duration; else, expList(end).expDuration = 0; end
     expList(end).blockFunction = str2func(['prc.expDef.' expList(end).expDef]);
@@ -151,6 +151,15 @@ for i = 1:length(processList)
 end
 % If new files were identified, add them to expList
 if ~addedFiles; fprintf('No new files found\n'); end
+[expList(cellfun(@isempty, {expList.rigName}')).rigName] = deal('');
+
+if checkExpRigs
+    expRigs = find(contains({expList.rigName}', {'zatteo'; 'lilrig-stim'}));
+    for i = expRigs
+        if strcmp(expList(i).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'ephys'; end
+    
+    end
+end
 
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
 expList = prc.updatePaths(expList,0);
