@@ -77,7 +77,7 @@ A = zeros(numOfTimepoints,numWinSampsTotal);
 
 for i = 1:length(eventTimes)
     [theseET, sortI] = sort(eventTimes{i}(:));
-    [~, timeIdx] = findNearestPoint(theseET, t);
+    timeIdx = prc.nearestPoint(theseET, t);
     eventFrames = round(timeIdx+startOffset(i)); % the "frames", i.e. indices of t, at which the start of each event's window occurs
     
      if isempty(kernalOpt.eventValues{i}); theseEventValues = ones(size(eventFrames));
