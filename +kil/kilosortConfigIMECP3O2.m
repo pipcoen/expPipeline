@@ -1,4 +1,7 @@
-ops.datatype = 'openEphys';
+ops.fproc       = [dataPath filesep 'temp_wh.dat'];
+ops.trange      = tRange; % time range to sort
+ops.NchanTOT    = 384; % total number of channels in your recording
+ops.fbinary     = dataFilename;
 
 ops.chanMap             = 'D:\Dropbox (Personal)\XMatlabProg\GitHub\expPipeline\helper\forPRBimecP3opt3.mat'; % make this file using createChannelMapFile.m		
 % ops.chanMap = 1:ops.Nchan; % treated as linear probe if no chanMap file

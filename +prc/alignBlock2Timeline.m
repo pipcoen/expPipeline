@@ -124,7 +124,7 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     
     %% Sanity check (should be match between stim starts from block and from timeline)
     audstimStartTimeline = block.events.audStimPeriodOnOffTimes(block.events.audStimPeriodOnOffValues==1);
-    nonAudTrials = [block.paramsValues.audAmplitude]==0;
+    nonAudTrials = [block.paramsValues.audAmplitude]==0; nonAudTrials = nonAudTrials(1:length(stimStartBlock));
     [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline);
     if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching auditory stimulus start and end times \n'); keyboard; end
     

@@ -44,7 +44,7 @@ existDirectories = prc.pathFinder('directoryCheck');
 if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
-expList = prc.scanForNewFiles;
+expList = prc.scanForNewFiles(0,0,1);
 if all(existDirectories==[0,1])
     newPathList = {expList.sharedData}';
     [expList.processedData] = newPathList{:};
@@ -204,20 +204,25 @@ end
 
 %%
 function x = convEphysFile(x)
-if ~exist(x.kilosortOutput, 'dir') || ~exist([x.kilosortOutput '/spike_templates.npy'], 'file')
+siteList = dir([fileparts(x.kilosortOutput) '\*site*']);
+if isempty(siteList); siteList = {x.kilosortOutput}; else; siteList = cellfun(@(y) [x.kilosortOutput '\' y], {siteList.name}', 'uni', 0); end
+if ~exist(x.kilosortOutput, 'dir') || any(cellfun(@(x) ~exist([x '/spike_templates.npy'], 'file'), siteList))
     kil.preProcessPhase3(x.subject, x.expDate);
-    kil.liklihoodNoise(x.kilosortOutput);
-elseif ~exist([x.kilosortOutput '\cluster_pNoise.tsv'], 'file')
-    kil.liklihoodNoise(x.kilosortOutput);
+    cellfun(@kil.liklihoodNoise, siteList);
+elseif any(cellfun(@(x) ~exist([x '\cluster_pNoise.tsv'], 'file'), siteList))
+    cellfun(@kil.liklihoodNoise, siteList);
 end
 
-clusterGroups = tdfread([x.kilosortOutput '\cluster_group.tsv']);
-if size(unique(clusterGroups.group, 'rows'),1) == 3 && all(contains({'good '; 'noise'; 'mua  '}, cellstr(clusterGroups.group)))
-    fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
-    [eph] = kil.loadEphysData(x); %#ok<NASGU>
-    whoD = unique([who('-file', x.processedData); 'eph']); %#ok<NASGU>
-    save(x.processedData, 'eph', 'whoD', '-append');
-else, fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
+for i = 1:length(siteList)
+    currSite = siteList{i};
+    clusterGroups = tdfread([currSite '\cluster_group.tsv']);
+    if size(unique(clusterGroups.group, 'rows'),1) == 3 && all(contains({'good '; 'noise'; 'mua  '}, cellstr(clusterGroups.group)))
+        fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
+        [eph] = kil.loadEphysData(x); %#ok<NASGU>
+        whoD = unique([who('-file', x.processedData); 'eph']); %#ok<NASGU>
+        save(x.processedData, 'eph', 'whoD', '-append');
+    else, fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
+    end
 end
 end
 

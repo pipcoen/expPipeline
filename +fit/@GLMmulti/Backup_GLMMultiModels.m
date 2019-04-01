@@ -20,23 +20,15 @@ audTags = arrayfun(@(x) [num2str(x) 'Aud'], uniA, 'uni', 0);
 
 getC50 = @(visData,N,C50) (visData.^N)./(visData.^N + C50^N);
 
-switch obj.modelString      
-    case {'ReducedLog'}
-        obj.prmLabels = {'bias';'visScale';'N';'C50';'audScale'};
-        if exist('P', 'var')
-            visContributionLR = (P(2)*(getC50(abs(visDiff), P(3), P(4))).*sign(visDiff));
-            audContributionLR = P(5).*sign(audDiff);
-            logOddsLR = P(1)+visContributionLR + audContributionLR;
-        end
-        obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
-        obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
-    
-    case {'BiasOnly';'BiasOnlyNest';'AudDom'; 'SimpLog'; 'SimpLogSplit'; 'SimpLogNest'; 'SimpLogNestConf'; 'SimpLogBiasTONest'}
-        if contains(obj.modelString, 'BiasOnly'); notBOnly = 0; else; notBOnly = 1; end
-        if any(contains(obj.modelString, {'BiasTO'; 'BiasTO'})); notBOnlyTO = 0; else; notBOnlyTO = 1; end
-        if any(contains(obj.modelString, {'split'})); splitV = 1; else; splitV = 0; end
+switch obj.modelString        
+    case {'biasOnly';'biasOnlyNest';'VisOnly';'AudOnly';'AudDom'; 'SimpLog'; 'SimpLogSplit'; 'SimpLogNest'; 'SimpLogNestConf'; 'SimpLogBiasTONest'}
+        if contains(obj.modelString, 'VisOnly'); vOnly = 0; else; vOnly = 1; end
+        if contains(obj.modelString, 'AudOnly'); aOnly = 0; else; aOnly = 1; end
+        if contains(obj.modelString, 'biasOnly'); bOnly = 0; else; bOnly = 1; end
+        if any(contains(obj.modelString, {'BiasTO'; 'BiasTO'})); bOnlyTO = 0; else; bOnlyTO = 1; end
+        if any(contains(obj.modelString, {'splitV'})); splitV = 0; else; splitV = 1; end
         if contains(obj.modelString, 'AudDom'); domIdx = confTrials; else; domIdx = zeros(length(confTrials),1); end
-        if ~splitV; obj.prmLabels = [{'bias';'visScale';'N';'C50'}; audTags];
+        if splitV; obj.prmLabels = [{'bias';'visScale';'N';'C50'}; audTags];
         else, obj.prmLabels = [{'bias';'visScaleR';'visScaleL';'N';'C50'}; audTags];
         end
         
@@ -44,23 +36,22 @@ switch obj.modelString
         if nested; obj.prmLabels = [obj.prmLabels; cellfun(@(x) [x 'TO'], obj.prmLabels(~contains(obj.prmLabels, {'N';'C50'})), 'uni', 0)]; end
         if addConf; obj.prmLabels = [obj.prmLabels; 'confWeight']; end
         if exist('P', 'var')
-            if ~splitV; visContributionLR = (P(2)*(getC50(abs(visDiff), P(3), P(4))).*sign(visDiff)).*(~domIdx);
+            if splitV; visContributionLR = (P(2)*(getC50(abs(visDiff), P(3), P(4))).*sign(visDiff)).*(~domIdx);
             else, visContributionLR = P(2)*(getC50(abs(visDiff.*(visDiff>0)), P(4), P(5))) + P(3)*getC50(abs(visDiff.*(visDiff<0)), P(4), P(5));
             end
             audContributionLR = arrayfun(@(x,y,z) x*(y{1}==z), P(5:TOSrt), repAud, uniA', 'uni', 0);
-            logOddsLR = P(1)+visContributionLR*notBOnly + sum(cell2mat(audContributionLR),2)*notBOnly;
+            logOddsLR = P(1)+visContributionLR*aOnly*bOnly + sum(cell2mat(audContributionLR),2)*vOnly*bOnly;
             
             if nested
                 visContributionTO = P(TOSrt+2)*(getC50(abs(visDiff), P(3), P(4)));
                 audContributionTO = arrayfun(@(x,y,z) x*(y{1}==z), P(TOSrt+3:TOSrt+2+length(uniA)), repAud, uniA', 'uni', 0);
-                logOddsTO = P(TOSrt+1)+visContributionTO*notBOnly*notBOnlyTO +  sum(cell2mat(audContributionTO),2)*notBOnly*notBOnlyTO;
+                logOddsTO = P(TOSrt+1)+visContributionTO*bOnly*bOnlyTO +  sum(cell2mat(audContributionTO),2)*bOnly*bOnlyTO;
                 if addConf; logOddsTO = logOddsTO+P(end)*double(confTrials); end
             end
             
         end
         obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
         obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
-        
         
     case {'SimpLogSplitDelta'}
         obj.prmLabels = [{'bias';'visScaleR';'visScaleL';'N';'C50'}; audTags];
@@ -75,9 +66,7 @@ switch obj.modelString
         end
         obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',600,1)];
         
-    case {'SimpEmp'; 'SimpEmpNest'; 'SimpEmpNestConf'; 'VisOnly'; 'AudOnly'}
-        if contains(obj.modelString, 'VisOnly'); notVOnly = 0; else; notVOnly = 1; end
-        if contains(obj.modelString, 'AudOnly'); notAOnly = 0; else; notAOnly = 1; end
+    case {'SimpEmp'; 'SimpEmpNest'; 'SimpEmpNestConf'}
         obj.prmLabels = ['bias'; arrayfun(@(x) [num2str(x) 'Vis'], uniV, 'uni', 0); audTags];
         TOSrt = length(obj.prmLabels);
         if nested; obj.prmLabels = [obj.prmLabels; cellfun(@(x) [x 'TO'], obj.prmLabels, 'uni', 0)]; end
@@ -85,7 +74,7 @@ switch obj.modelString
         if exist('P', 'var')
             visContributionLR = arrayfun(@(x,y,z) x*(y{1}==z), P(2:(length(uniV)+1)), repVis, uniV', 'uni', 0);
             audContributionLR = arrayfun(@(x,y,z) x*(y{1}==z), P((length(uniV)+2):TOSrt), repAud, uniA', 'uni', 0);
-            logOddsLR = P(1)+sum(cell2mat(visContributionLR), 2)*notVOnly+sum(cell2mat(audContributionLR),2)*notAOnly;
+            logOddsLR = P(1)+sum(cell2mat(visContributionLR), 2)+sum(cell2mat(audContributionLR),2);
             
             if nested
                 visContributionTO = arrayfun(@(x,y,z) x*(y{1}==z), P(2+TOSrt:(length(uniV)+1)+TOSrt), repVis, uniV', 'uni', 0);

@@ -1,4 +1,4 @@
-function runKilosort(dataFilename, sampleRate)
+function runKilosort(dataFilename, sampleRate, tRange)
 % AP_run_kilosort(dataFilename,sampleRate)
 %
 % dataFilename = .dat flat binary file of all channels together
@@ -18,15 +18,14 @@ if ops.GPU
     gpuDevice(1); % initialize GPU (will erase any existing GPU arrays)
 end
 
-if strcmp(ops.datatype , 'openEphys')
-   ops = convertOpenEphysToRawBInary(ops);  % convert data, only for OpenEphys
-end
-
 % Run kilosort
 rez = preprocessDataSub(ops);
 rez = clusterSingleBatches(rez);
 rez = learnAndSolve8b(rez);
-rez = splitAllClusters(rez);
+rez = find_merges(rez, 1);
+rez = splitAllClusters(rez, 1);
+rez = splitAllClusters(rez, 0);
+rez = set_cutoff(rez);
 
 % Convert results to phy, save
 resultsDir = [dataPath '\results'];

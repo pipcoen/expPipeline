@@ -260,8 +260,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             if ~exist('tag', 'var'); error('Must specificy tag'); end
             if ~exist('removeTimeouts', 'var'); removeTimeouts = 1; end
             if removeTimeouts; timeOutFilter =  block.responseMade~=0; else, timeOutFilter =  block.responseMade*0+1; end
-            laserOff = prc.filtStruct(block, block.laserPower==0 | isnan(block.laserPower) & timeOutFilter);
-            laserOn = prc.filtStruct(block, block.laserPower~=0 & ~isnan(block.laserPower) & timeOutFilter);            
+            laserOff = prc.filtStruct(block, (block.laserType==0 | isnan(block.laserType)) & timeOutFilter);
+            laserOn = prc.filtStruct(block, (block.laserType~=0 & ~isnan(block.laserType)) & timeOutFilter);            
             switch lower(tag(1:3))
                 case 'nor'; filteredBlock = laserOff;
                 case 'las'; filteredBlock = laserOn;

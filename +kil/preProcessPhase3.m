@@ -141,7 +141,8 @@ for currSite = 1:length(dataPaths)
     delete(apTempFilename);
     
     % Run kilosort on CAR data
-    kil.runKilosort(apTempCarFilename, apSampleRate);
+    if ~exist('tRange','var'); tRange = [0,inf]; end
+    kil.runKilosort(apTempCarFilename, apSampleRate, tRange);
     
     
     %% Copy kilosort results to server
