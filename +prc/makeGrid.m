@@ -32,6 +32,6 @@ switch split
     case 0; gridData = cell2mat(cellfun(@(x) operation(data(all(conditions==x,2))), gridIdx, 'uni', 0));
     case 1; gridData = cell2mat(cellfun(@(x,y) operation(data(all(conditions==x,2) & blocks.sessionIdx==y)), fullGrid, repSessions, 'uni', 0));
     case 2; gridData = cellfun(@(x) data(all(conditions==x,2),:), gridIdx, 'uni', 0);
-%     case 2; gridData = cellfun(@(x) prc.filtStruct(data, all(conditions==x,2)), gridIdx, 'uni', 0);
+    case 3; gridData = cellfun(@(x) prc.filtStruct(data, all(conditions==x,2)), gridIdx, 'uni', 0);
 end
 end

@@ -1,5 +1,5 @@
 function compareModels(fileNames, minTrials)
-if ~exist('fileNames', 'var'); fileNames = {'CrossVal_SimpLog'; 'CrossVal_ReducedLog'; 'CrossVal_SimpEmp'}; end
+if ~exist('fileNames', 'var'); fileNames = {'CrossVal_AudOnly';'CrossVal_ReducedLogCN'; 'CrossVal_ReducedLog'; 'CrossVal_SimpLog'; 'CrossVal_SimpEmp'}; end
 if ~exist('minTrials', 'var'); minTrials = 1; end
 plotOpt.yData = cell(length(fileNames),1);
 if any(contains(fileNames, 'Nest')); load FullEmpNestMaxPerformance s;

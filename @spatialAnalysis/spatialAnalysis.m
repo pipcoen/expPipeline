@@ -43,6 +43,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             axesOpt.gapBetweenAxes = [100 60];
             axesOpt.numOfRows = 2;
             axesOpt.figureHWRatio = 1.1;
+            obj.glmFit = cell(length(obj.subjects),1);
             for i  = 1:length(obj.subjects)
                 if contains(lower(modelString), 'nest')
                     normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
@@ -75,18 +76,20 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         end
         
         function getGLMPerturbations(obj, modelString)
-            if ~exist('modelString', 'var'); modelString = 'SimpLogSplitDelta'; end
-            axesOpt = struct('totalNumOfAxes', length(obj.subjects), 'btlrMargins', [50 100 10 10], 'gapBetweenAxes', [40 0], ...
-                'numOfRows', 2, 'figureHWRatio', 0.8, 'figureSize', 400);
+            if ~exist('modelString', 'var'); modelString = 'ReducedLogCNSplitDelta'; end
             
             figure;
-            normBlock = spatialAnalysis.getBlockType(obj.blocks{1},'norm',0);
-            laserBlock = spatialAnalysis.getBlockType(obj.blocks{1},'las',0);
-            laserBlock = prc.filtStruct(laserBlock, laserBlock.galvoPosition(:,2)~=4.5 & laserBlock.laserType == 1);
+            initBlock = prc.filtStruct(obj.blocks{1}, obj.blocks{1}.galvoPosition(:,2)~=4.5);
+            initBlock = prc.filtStruct(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | initBlock.laserType==0);
+            initBlock = prc.filtStruct(initBlock, initBlock.timeOutsBeforeResponse==0);
+            
+            normBlock = spatialAnalysis.getBlockType(initBlock,'norm',1);
+            laserBlock = spatialAnalysis.getBlockType(initBlock,'las',1);
+            
             obj.glmFit = fit.GLMmulti(normBlock);
             obj.glmFit.GLMMultiModels(modelString);
             obj.glmFit.fit;
-            [galvoBlocks, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock, [], 'galvouni', 2);
+            [galvoBlocks, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock, [], 'galvouni', 3);
             scanPlot.data = nan(size(galvoBlocks));
             numTrials = zeros(size(galvoBlocks));
             for j = find(~cellfun(@isempty, galvoBlocks))'
@@ -97,20 +100,32 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 subGLM.blockData.freeP = [];
                 subGLM.fit;
                 minLL = subGLM.calculateLogLik(subGLM.prmFits);
-                subGLM.blockData.freeP = [1:3 5:8];%(obj.glmFit.prmFits);
+                subGLM.blockData.freeP = 1:length(subGLM.prmFits);%(obj.glmFit.prmFits);
                 subGLM.fit;
                 maxLL = subGLM.calculateLogLik(subGLM.prmFits);
                 
                 [xIdx, yIdx] = ind2sub(size(galvoBlocks), j);
                 scanPlot.data(xIdx, yIdx) = maxLL-minLL;
+                prmChange(xIdx, yIdx,:) = subGLM.prmFits;
                 numTrials(xIdx, yIdx, 1) = length(galvoBlocks{j}.responseMade);
             end
-            for i  = 1:length(obj.subjects)
+            %%
+            axesOpt = struct('totalNumOfAxes', length(subGLM.prmFits), 'btlrMargins', [50 100 10 10], 'gapBetweenAxes', [40 0], ...
+                'numOfRows', 2, 'figureHWRatio', 0.8, 'figureSize', 400);
+            for j  = 1:length(subGLM.prmFits)
                 hold on; box off;
-                obj.hand.axes = plt.getAxes(axesOpt, i);
-                scanPlot.colorBarLimits = [-0.1 0.1];
+                scanPlot.data = prmChange(:,:,j);
+                scanPlot.title = subGLM.prmLabels{j};
+                obj.hand.axes = plt.getAxes(axesOpt, j);
+                scanPlot.colorBarLimits = max(abs(scanPlot.data(:)))*[-1 1];
                 plt.scanningBrainEffects(scanPlot);
             end
+%             for i  = 1:length(obj.subjects)
+%                 hold on; box off;
+%                 obj.hand.axes = plt.getAxes(axesOpt, i);
+%                 scanPlot.colorBarLimits = [-0.1 0.1];
+%                 plt.scanningBrainEffects(scanPlot);
+%             end
         end
         
         function viewDataWithoutFits(obj, plotType)
@@ -150,11 +165,12 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             figure;
             allTimes = [];
             for i  = 1:length(obj.subjects)
-                normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
+                normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm');
                 timeGrid = prc.makeGrid(normBlock, round(normBlock.timeToWheelMove*1e3), @median, 'abscondition');
                 trialGrid = prc.makeGrid(normBlock, round(normBlock.trialType), @mean, 'abscondition');
                 tkIdx = trialGrid.*fliplr(trialGrid)==12;
                 allTimes = [allTimes; [mean(timeGrid(tkIdx & trialGrid==3)), mean(timeGrid(tkIdx & fliplr(trialGrid)==3))]];
+%                 allTimes(end,:) = allTimes(end,:)./nanmean(timeGrid(:));
             end
             scatter(allTimes(:,1), allTimes(:,2), 'k', 'markerfacecolor', 'k');
             xlim([200 450]);

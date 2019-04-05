@@ -17,6 +17,8 @@ switch expDef
         fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
 end
 
+
+
 switch alignType
     case 'wheel'
         smoothWindow = sampleRate/10+1;

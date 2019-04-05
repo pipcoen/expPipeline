@@ -19,7 +19,7 @@ axesOpt.figureHWRatio = 0.8;
 axesOpt.figureSize = 400;
 %%
 initBlock = prc.filtStruct(obj.blocks{1}, obj.blocks{1}.galvoPosition(:,2)~=4.5);
-initBlock = prc.filtStruct(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | initBlock.laserType~=0);
+initBlock = prc.filtStruct(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | initBlock.laserType==0);
 initBlock = prc.filtStruct(initBlock, initBlock.timeOutsBeforeResponse==0);
 
 op2Use = @mean;

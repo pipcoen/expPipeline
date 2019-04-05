@@ -30,7 +30,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             if isempty(obj.modelString); error('Set model first'); end
             options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',10000);
             fittingObjective = @(b) (obj.calculateLogLik(b));
-            [obj.prmFits,~,exitflag] = fmincon(fittingObjective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
+            [obj.prmFits,~,exitflag] = fmincon(fittingObjective, obj.prmInit, [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
             if ~any(exitflag == [1,2])
                 obj.prmFits = nan(1,length(obj.prmLabels));
             end

@@ -9,7 +9,7 @@ APCoord = scanPlot.gridXY{2}(:);
 pVals = scanPlot.pVals(:);
 minSig = min(pVals);
 sigLevels = [0.01; 0.001; 0.0001];
-if ~isfield(scanPlot, 'pVals') || minSig > 0.01
+if ~scanPlot.pVals || minSig > 0.01
     warning('Pvals do not exist or are all > 0.01');
     spotSize = APCoord*0+200;
 else
