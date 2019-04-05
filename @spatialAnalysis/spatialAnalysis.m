@@ -294,4 +294,60 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             end
         end
     end
+    
+    methods
+        
+        function classifyCells(obj, params1, params2, selected, spikeTimes, clu, timeWinPre, timeWinPost)
+
+        if strcmp(obj.blocks{1,1}.expDef, 'multiSpaceWorld') 
+            fltblk = prc.filtStruct(obj.blocks{1,1}, obj.blocks{1,1}.responseMade~=0);
+        else
+            fltblk = obj.blocks;
+        end
+
+        if ~exist('params1', 'var'); params1 = fltblk.stimPeriodStart(:,1); end
+        if ~exist('params2', 'var'); params2 = 0; end
+        if ~exist('selected', 'var') || params2 == 0; selected = 1; end
+        if ~exist('spikeTimes', 'var'); spikeTimes = fltblk.ephSpikeTimes; end
+        if ~exist('clu', 'var'); clu = fltblk.ephSpikeTemplates; end
+        if ~exist('timeWinPre', 'var'); timeWinPre = 0.2; end
+        if ~exist('timeWinPost', 'var'); timeWinPost = 0.3; end 
+        window = [-0.3 1]; % look at spike times from 0.3 sec before each event to 1 sec after
+
+        % if your events come in different types, like different orientations of a
+        % visual stimulus, then you can provide those values as "trial groups",
+        % which will be used to construct a tuning curve. Here we just give a
+        % vector of all ones. 
+        trialGroups1 = ones(size(params1));
+
+        sigparams1 = prc.sigsort(obj, double(spikeTimes), double(clu), double(params1), timeWinPre, timeWinPost);
+        
+        if params2 == 0
+            params1OnlyClusters = sigparams1;
+        elseif params2 ~= 0
+            trialGroups2 = ones(size(params2));
+            sigparams2 = prc.sigsort(obj, double(spikeTimes),double(clu), double(params2), timeWinPre, timeWinPost);
+            params2OnlyClusters = setdiff(sigparams2, sigparams1);
+            params1OnlyClusters = setdiff(sigparams1, sigparams2);
+            bimodalClusters = sigparams2(ismember(sigparams2, sigparams1));
+        end
+
+        %%
+        if selected == 1
+           selectvar = params1OnlyClusters;
+        elseif selected == 2
+            selectvar = params2OnlyClusters;
+        end
+        
+        selectedIdx = ismember(double(clu), selectvar);
+
+        psthViewer(double(spikeTimes(selectedIdx)), double(clu(selectedIdx)), double(params1), window, trialGroups1);
+        if params2 ~= 0; psthViewer(double(spikeTimes(selectedIdx)), double(clu(selectedIdx)), double(params2), window, trialGroups2); end
+
+        end
+        
+    end
+
+
+        
 end

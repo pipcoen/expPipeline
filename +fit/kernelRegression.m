@@ -149,9 +149,9 @@ function X = solveLinEq(A, B)
 % This is just mldivide, but it turns out to be faster, empirically, to
 % make the variables gpuArrays and use pinv instead. 
 
-gA = gpuArray(single(A));
-gB = gpuArray(single(B));
-X = gather(pinv(gA)*gB);
+%gA = gpuArray(single(A));
+%gB = gpuArray(single(B));
+%X = gather(pinv(gA)*gB);
 
 % if you don't have gpu, use this one:
-% X = A\B;
+X = A\B;
