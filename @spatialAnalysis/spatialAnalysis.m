@@ -226,13 +226,14 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         
         function obj = changeMouse(obj, subjects, expDate, combineMice, extraTag, specificExpDef)
             if ~exist('combineMice', 'var'); combineMice = 0; end
+            if ~exist('extraTag', 'var'); extraTag = []; end
+            if ~exist('specificExpDef', 'var'); specificExpDef = 'multiSpaceWorld'; end
             dataType = [extraTag 'bloprm'];
             obj.blocks  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, dataType, specificExpDef), subjects(:), expDate(:), 'uni', 0);
             obj.blocks = vertcat(obj.blocks{:});
             obj.expDate = expDate;
-            
             mouseList = unique({obj.blocks.subject})';
-            if combineMice; mouseList = {cell2mat(mouseList')}; end       
+            if combineMice==1; mouseList = {cell2mat(mouseList')}; end       
             
             retainIdx = ones(length(obj.blocks),1)>0;
             %If there are multiple parameter sets in the requested date range for a mouse, use only the most common parameter set.
@@ -241,7 +242,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 mouseParams = [obj.blocks(mouseIdx).params];
                 mouseCondiitions = {obj.blocks(mouseIdx).uniqueConditions}';
                 [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) num2str([x(:)', y]), mouseCondiitions, {mouseParams.laserSession}','uni',0));
-                if length(conditionSets)>1
+                if length(conditionSets)>1 && combineMice~=-1
                     fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', mouseList{i});
                     retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
                 end
@@ -249,9 +250,9 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.blocks = obj.blocks(retainIdx);
             
             obj.subjects = unique({obj.blocks.subject})';
-            if combineMice; obj.expDate = cell2mat([obj.expDate{ismember(subjects, obj.subjects)}]); obj.subjects = {cell2mat(obj.subjects')}; end          
+            if combineMice==1; obj.expDate = cell2mat([obj.expDate{ismember(subjects, obj.subjects)}]); obj.subjects = {cell2mat(obj.subjects')}; end          
             [~, subjectIdx] = ismember({obj.blocks.subject}', obj.subjects);
-            if combineMice; subjectIdx = subjectIdx*0+1; end
+            if combineMice==1; subjectIdx = subjectIdx*0+1; end
 
             idx = 1:length(obj.subjects);
             obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectIdx==x)), idx, 'uni', 0)';

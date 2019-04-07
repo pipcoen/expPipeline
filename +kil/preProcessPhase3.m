@@ -7,12 +7,13 @@ savePaths = {['\\zubjects.cortexlab.net\Subjects\' animal '\' day '\ephys\kiloso
 
 % Check for multiple sites (based on the data path containing only folders)
 dataPathDir = dir(dataPaths{1});
+dataPathDir = dataPathDir(~contains({dataPathDir.name}', 'kilosort'));
 if all([dataPathDir(3:end).isdir])
     dataPaths = cellfun(@(x) [dataPaths{1} filesep x],{dataPathDir(3:end).name},'uni',false);
     savePaths = cellfun(@(x) [savePaths{1} filesep x],{dataPathDir(3:end).name},'uni',false);
 end
 
-for currSite = 1:length(dataPaths)
+for currSite = 2:length(dataPaths)
     
     currDataPath = dataPaths{currSite};
     currSavePath = savePaths{currSite};
@@ -113,45 +114,48 @@ for currSite = 1:length(dataPaths)
     %% Run kilosort
     
     % Set up local directory and clear out
-    KilosortPath = 'C:\Temp\kilosort';
-    if exist(KilosortPath, 'dir'); rmdir(KilosortPath,'s'); end
-    mkdir(KilosortPath);
+    initKilosortPath = 'D:\Temp\kilosort'; if exist(initKilosortPath, 'dir'); rmdir(initKilosortPath,'s'); end; mkdir(initKilosortPath);
+    finKilosortPath = 'D:\Temp\kilosort'; if exist(finKilosortPath, 'dir'); rmdir(finKilosortPath,'s'); end; mkdir(finKilosortPath);
     
     % Clear out whatever's currently in phy (usually not enough room)
-    localPhyPath = 'C:\Temp\phy';
-    if exist(localPhyPath, 'dir'); rmdir(localPhyPath,'s'); end
-    mkdir(localPhyPath);
+    localPhyPath = 'D:\Temp\phy'; if exist(localPhyPath, 'dir'); rmdir(localPhyPath,'s'); end; mkdir(localPhyPath);
     
     % Copy data locally
     disp('Copying data to local drive...')
-    apTempFilename = [KilosortPath filesep animal '_' day  '_' 'ephys_apband.dat'];
-    if ~exist(KilosortPath,'dir')
-        mkdir(KilosortPath)
+    apTempFilename = [initKilosortPath filesep animal '_' day  '_' 'ephys_apband.dat'];
+    if ~exist(apTempFilename, 'file')
+        if exist(initKilosortPath, 'dir'); rmdir(initKilosortPath,'s'); end; mkdir(initKilosortPath);
+        copyfile(apDataFileName,apTempFilename); 
     end
-    copyfile(apDataFileName,apTempFilename);
-    
-    disp('Done');
-    
+    disp('Done'); 
+   
     % Subtract common median across AP-band channels (hardcode channels?)
     ops.NchanTOT = 384;
     medianTrace = applyCARtoDat(apTempFilename, ops.NchanTOT);
-    apTempCarFilename = [apTempFilename(1:end-4) '_CAR.dat'];
-    
-    % Get rid of the original non-CAR (usually not enough disk space)
+%     %%
+    apTempCarFilenameInit = [apTempFilename(1:end-4) '_CAR.dat'];
+    apTempCarFilename = ['D' apTempCarFilenameInit(2:end)];
+% 
+%     % Get rid of the original non-CAR (usually not enough disk space)
     delete(apTempFilename);
     
+%     disp('Moving CAR file before processing');
+%     %%
+%     movefile(apTempCarFilenameInit, apTempCarFilename);
+    
     % Run kilosort on CAR data
+    %%
     if ~exist('tRange','var'); tRange = [0,inf]; end
     kil.runKilosort(apTempCarFilename, apSampleRate, tRange);
     
     
-    %% Copy kilosort results to server
+    % Copy kilosort results to server
     
     disp('Copying sorted data to server...');
-    resultsPath = [KilosortPath '\results'];
+    resultsPath = [finKilosortPath '\results'];
     copyfile(resultsPath,currSavePath);
     
-    %% Copy kilosort results and raw data to phy folder for clustering
+    % Copy kilosort results and raw data to phy folder for clustering
     % Clear out whatever's currently in phy
     rmdir(localPhyPath,'s');
     mkdir(localPhyPath);
@@ -163,10 +167,9 @@ for currSite = 1:length(dataPaths)
     % Copy the results
     movefile([resultsPath filesep '*'],localPhyPath)
     
-    %% Delete all temporarly local data
-    rmdir(KilosortPath,'s');
-    mkdir(KilosortPath);
-    
+    % Delete all temporarly local data
+    rmdir(finKilosortPath,'s');
+    rmdir(initKilosortPath,'s');   
 end
 
 disp('Done processing phase 3 data.');

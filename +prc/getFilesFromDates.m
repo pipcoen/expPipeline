@@ -20,10 +20,10 @@ if all(existDirectories==[0,1])
 end
 
 % get list of references and dates for subject
-selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'==0);
+selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'~=1);
 excludedFiles = ~strcmp({selectedFiles.expDef}', expDef);
 selectedFiles(excludedFiles)  = [];
-if isempty(expList); warning(['No processed files matching ' subject]); varargout = {}; return; end
+if isempty(selectedFiles); warning(['No processed files matching ' subject]); varargout = {}; return; end
 expDates = datenum(cell2mat({selectedFiles.expDate}'));
 
 switch lower(requestedDates{1}(1:3))

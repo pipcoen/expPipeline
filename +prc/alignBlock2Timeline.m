@@ -17,6 +17,11 @@ switch expDef
         fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
 end
 
+if strcmp(alignType, 'wheel') && max(timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'))) == 1;
+    warning('Max wheel value is 1---will not process timeline wheel data');
+    alignType = 'photoDiode';
+    fineTune = fineTune(~contains(fineTune, 'movements'));
+end
 switch alignType
     case 'wheel'
         smoothWindow = sampleRate/10+1;
@@ -63,9 +68,9 @@ switch alignType
         photoDiodeFlips([strfind(ismember(photoDiodeFlips, photoDiodeFlipOn), [1 1])+1 strfind(ismember(photoDiodeFlips, photoDiodeFlipOff), [1 1])+1]) = [];
         photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
         photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
-        
-        blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>2);
-        timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>2);
+            
+        blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>0.5);
+        timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>0.5);
         
         if length(blockRefTimes) ~= length(timelineRefTimes) && length(blockRefTimes) < length(timelineRefTimes)
             extraPoints = finddelay(diff(blockRefTimes), diff(timelineRefTimes));

@@ -129,6 +129,7 @@ spikeTemplates = newSpikeIdx(spikeTemplates+1);
 %%
 fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'};
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
+eph.recordingSiteIdx = single(spikeTimesTimeline);
 eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);
 eph.clusterID = uint16(spikeTemplates);
