@@ -17,7 +17,7 @@ switch expDef
         fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
 end
 
-if strcmp(alignType, 'wheel') && max(timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'))) == 1;
+if strcmp(alignType, 'wheel') && max(timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'))) == 1
     warning('Max wheel value is 1---will not process timeline wheel data');
     alignType = 'photoDiode';
     fineTune = fineTune(~contains(fineTune, 'movements'));
@@ -53,11 +53,13 @@ switch alignType
         delayValues = smooth(delayValues, 0.05, 'rlowess');
         blockRefTimes = movmedian(timelineRefTimes(:)-delayValues-baseDelay, 7)';
         blockRefTimes = interp1(timelineRefTimes(4:end-3), blockRefTimes(4:end-3), timelineRefTimes, 'linear', 'extrap');
+        block.alignment = 'wheel';
     case 'reward'
         blockRefTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
         thresh = max(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')))/2;
         rewardTrace = timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')) > thresh;
         timelineRefTimes = timeline.rawDAQTimestamps(strfind(rewardTrace', [0 1])+1);
+        block.alignment = 'reward';
     case 'photoDiode'
         photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));
         [~, thresh] = kmeans(photoDiodeTrace,2);
@@ -78,6 +80,7 @@ switch alignType
             elseif  extraPoints < 0; timelineRefTimes(end+extraPoints+1:end) = [];
             end
         end
+        block.alignment = 'photodiode';
         if length(blockRefTimes) ~= length(timelineRefTimes) && length(blockRefTimes) < length(timelineRefTimes)
             error('Photodiode alignment error');
         end
@@ -234,7 +237,12 @@ for i = 1:length(rawFields)
         aligned.(currField) = cell2mat(aligned.(currField));
     end
 end
+requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff';'mindChange';'movementTimes';'rewardTimes'};
+for i = 1:length(requiredFields)
+    if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
+end
 
+aligned.alignment = block.alignment;
 correctedBlock = block;
 correctedBlock.fineTuned = 1;
 end

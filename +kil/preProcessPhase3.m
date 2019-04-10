@@ -1,8 +1,6 @@
-function preProcessPhase3(animal,day,testData)
+function preProcessPhase3(animal,day,sites2Process)
 % AP_preprocess_phase3(animal,day,testData)
-if exist('testData','var') && testData; dataPaths =  {'C:\Temp\ephys'};
-else, dataPaths = {['\\zubjects.cortexlab.net\Subjects\' animal '\' day '\ephys']};
-end
+dataPaths = {['\\zubjects.cortexlab.net\Subjects\' animal '\' day '\ephys']};
 savePaths = {['\\zubjects.cortexlab.net\Subjects\' animal '\' day '\ephys\kilosort']};
 
 % Check for multiple sites (based on the data path containing only folders)
@@ -13,11 +11,11 @@ if all([dataPathDir(3:end).isdir])
     savePaths = cellfun(@(x) [savePaths{1} filesep x],{dataPathDir(3:end).name},'uni',false);
 end
 
-for currSite = 2:length(dataPaths)
-    
+for currSite = find(sites2Process')
     currDataPath = dataPaths{currSite};
     currSavePath = savePaths{currSite};
     
+    disp(['Processing data from ' currDataPath '...'])
     if ~exist(currSavePath,'dir'); mkdir(currSavePath); end
     if exist([currDataPath filesep 'experiment1'],'dir'); newStructure = 1; else, newStructure = 0; end
     
@@ -168,8 +166,8 @@ for currSite = 2:length(dataPaths)
     movefile([resultsPath filesep '*'],localPhyPath)
     
     % Delete all temporarly local data
-    rmdir(finKilosortPath,'s');
-    rmdir(initKilosortPath,'s');   
+    if exist(initKilosortPath, 'dir'); rmdir(initKilosortPath,'s'); end
+    if exist(finKilosortPath, 'dir'); rmdir(finKilosortPath,'s'); end 
 end
 
 disp('Done processing phase 3 data.');

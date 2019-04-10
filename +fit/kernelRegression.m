@@ -1,4 +1,4 @@
-function [fitKernels, chosenTemplates, predictedSignals, cvErr] = kernelRegression(blk, events, kernalOpt)
+function [fitKernels, chosenClusters, predictedSignals, cvErr] = kernelRegression(blk, events, kernalOpt)
 %%
 % -- spikeTrains is nS by nTimePoints, any number of signals to be fit
 % -- t is 1 by nTimePoints
@@ -43,7 +43,7 @@ for i = 1:length(events)
 end
 
 %%
-[spikeTrains, t, chosenTemplates] = kil.mkSpikeTrains(double(blk.ephSpikeTimes), double(blk.ephSpikeTemplates), 10/1000);
+[spikeTrains, t, chosenClusters] = kil.mkSpikeTrains(double(blk.ephSpikeTimes), double(blk.ephSpikeClusters), 10/1000);
 if kernalOpt.validTrialsOnly
     windows2Keep = [blk.trialStartEnd(:,1) blk.trialStartEnd(:,2)+0.5];
     validTimes = cell2mat(arrayfun(@(x,y) t(t>x & t<y)', windows2Keep(:,1), windows2Keep(:,2), 'uni', 0));
@@ -53,7 +53,7 @@ if kernalOpt.validTrialsOnly
 end
 
 numOfSpikes = sum(spikeTrains,2);
-chosenTemplates = chosenTemplates(numOfSpikes>kernalOpt.minSpikes);
+chosenClusters = chosenClusters(numOfSpikes>kernalOpt.minSpikes);
 spikeTrains = spikeTrains(numOfSpikes>kernalOpt.minSpikes,:);
 if kernalOpt.zscore; spikeTrains = zscore(spikeTrains, [], 2); end
 %%

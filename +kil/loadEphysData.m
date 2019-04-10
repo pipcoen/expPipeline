@@ -98,7 +98,7 @@ end
 %%
 
 % Get the depths of each template
-[spikeAmps, ~, templateDepths, ~, ~, templateDuration, waveforms] = ...
+[spikeAmps, ~, templateDepths, templateAmps, ~, templateDuration, waveforms] = ...
     kil.templatePositionsAmplitudes(templates,winv,channelPositions(:,2),spikeTemplates,templateAmplitudes);
 % Eliminate spikes that were classified as not "good"    
 fprintf('Removing noise and MUA templates... \n');
@@ -110,6 +110,7 @@ goodTemplatesIdx = ismember(0:size(templates,1)-1,goodTemplatesList);
 % Throw out all non-good template data
 % templates = templates(goodTemplatesIdx,:,:);
 templateDepths = templateDepths(goodTemplatesIdx);
+templateAmps = templateAmps(goodTemplatesIdx);
 waveforms = waveforms(goodTemplatesIdx,:);
 templateDuration = templateDuration(goodTemplatesIdx);
 %%
@@ -134,8 +135,10 @@ eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);
 eph.clusterID = uint16(spikeTemplates);
 eph.clusterDepths = templateDepths;
+eph.clusterAmps = templateAmps;
 eph.clusterDuration = templateDuration;
 eph.waveforms = waveforms;
+eph.channelMap = readNPY([kilosortOutput '\channel_positions.npy']);
 eph = prc.catStructs(eph, prc.filtStruct(x.aligned, x.validTrials));
 %%
 fprintf('Finished loading experiment... \n');

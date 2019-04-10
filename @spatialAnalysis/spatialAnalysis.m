@@ -173,6 +173,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
 %                 allTimes(end,:) = allTimes(end,:)./nanmean(timeGrid(:));
             end
             scatter(allTimes(:,1), allTimes(:,2), 'k', 'markerfacecolor', 'k');
+            [~, pVal] = ttest(allTimes(:,1), allTimes(:,2));
+            disp(pVal);
             xlim([200 450]);
             ylim([200 450]);
             axis equal; axis square;

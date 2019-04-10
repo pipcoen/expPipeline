@@ -17,6 +17,7 @@ plot(nanmean(first10Multi), 'color', meanColor(3,:), 'LineWidth', 3);
 box off;
 ylim([40 100]); xlim([1 10])
 plot([1 10],[50, 50], '--k')
+title(sprintf('First 10 sessions from %d mice', length(tempObj.subjects)));
 
 tempObj.hand.axes = plt.getAxes(axesOpt,2); hold on
 for i = 1:2
@@ -28,6 +29,8 @@ end
 box off;
 ylim([40 100]); xlim([1 10])
 plot([1 10],[50 50], '--k')
+title(sprintf('First 10 unisensory sessions from %d mice', length(tempObj.subjects)));
+
 %%
 tempObj = spatialAnalysis(obj.subjects(~contains(obj.subjects, 'DJ')), 'last');
 lastDay = cell2mat(cellfun(@(x) datenum(x.params(1).expDate),tempObj.blocks, 'uni', 0));
@@ -47,4 +50,5 @@ end
 box off;
 ylim([40 100]); xlim([1 10])
 plot([1 10],[50, 50], '--k')
+title(sprintf('10 Sessions after 6 months from %d mice', length(tempObj.subjects)));
 end

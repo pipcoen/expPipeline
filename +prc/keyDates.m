@@ -55,6 +55,17 @@ switch lower(dataTag{1})
             otherwise, dateRange = dataTag;
                 %PC022 dateRange = {'rng', '2017-11-02', '2017-11-21'}; %Data without any inactivation, but fewer trials
         end
+        
+    case 'm2ephys'
+        switch subjectID{1}
+            case 'all'; dateRange = {'DJ007','PC029','PC032','PC033'}';
+            case 'DJ007'; dateRange = {'rng', '2018-11-28', '2018-12-02'}; %Power was only 1.5mW
+            case 'PC029'; dateRange = {'rng', '2018-10-18', '2018-10-19'};
+            case 'PC032'; dateRange = {'rng', '2019-04-03', '2019-04-07'};
+            case 'PC033'; dateRange = {'rng', '2019-03-27', '2019-03-31'};
+            otherwise, dateRange = dataTag;
+                %PC022 dateRange = {'rng', '2017-11-02', '2017-11-21'}; %Data without any inactivation, but fewer trials
+        end
     otherwise, dateRange = dataTag;
 end
 end

@@ -126,7 +126,7 @@ for i = files2Run(files2Run>srtIdx)
     end 
     
     if (~contains({'fus'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'fusi') && contains(dataType, {'all'; 'fus'})
-        fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
+        fprintf('Converting fusi recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convfUSiFile(x);
         whoD = unique(who('-file', x.processedData));
     end
@@ -174,6 +174,7 @@ x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardiz
 if contains(x.expType, {'ephys'; 'fusi'})
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
+else, x.alignment = 'none';
 end
 %%
 
@@ -186,9 +187,6 @@ repeatPoints = [strfind(diff([-1000,x.standardizedBlock.inputs.wheelValues])~=0,
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
 x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
-
-if isfield(x, 'aligned'); x.aligned.wheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]); end
-
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
@@ -223,15 +221,18 @@ end
 function x = convEphysFile(x)
 siteList = dir([fileparts(x.kilosortOutput) '\*site*']);
 if isempty(siteList); siteList = {x.kilosortOutput}; else; siteList = cellfun(@(y) [x.kilosortOutput '\' y], {siteList.name}', 'uni', 0); end
-if ~exist(x.kilosortOutput, 'dir') || any(cellfun(@(x) ~exist([x '/spike_templates.npy'], 'file'), siteList))
-    kil.preProcessPhase3(x.subject, x.expDate);
+sites2Process = cellfun(@(x) ~exist([x '/spike_templates.npy'], 'file'), siteList);
+if ~exist(x.kilosortOutput, 'dir') || any(sites2Process)
+    kil.preProcessPhase3(x.subject, x.expDate, sites2Process);
     cellfun(@kil.liklihoodNoise, siteList);
 elseif any(cellfun(@(x) ~exist([x '\cluster_pNoise.tsv'], 'file'), siteList))
     cellfun(@kil.liklihoodNoise, siteList);
 end
+if ~exist(x.processedData, 'file'); x = convBlockFile(x); end
 
 clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
 clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
+%%
 if length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id))
     fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
     x = convBlockFile(x);

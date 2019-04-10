@@ -2,7 +2,7 @@ function syncfolder(p1, p2, syncdirect, includeTimeline, includeVideo)
 %prc.syncfolder sync two folds
 %
 %  prc.syncfolder(p1, p2, syncdirect), sync between p1 and p2. p1 and p2 are
-%  two directories. The exact behavior depends on the third parameter
+%  two directories. The exact behavior depends on the third parameterexpList
 %  'syncdirect'
 %
 %   syncdirect = 0, p1 and p2 are synced two-ways, i.e. the newest file
