@@ -239,7 +239,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             if combineMice==1; mouseList = {cell2mat(mouseList')}; end   
             if combineMice==-2 && length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
             if combineMice==-2
-                mouseList = arrayfun(@(x) [mouseList{1} '_' obj.blocks(x).expDate], 1:length(obj.blocks), 'uni',0);
+                mouseList = arrayfun(@(x) [mouseList{1} '_' num2str(x)], 1:length(obj.blocks), 'uni',0);
                 obj.subjects = mouseList;
                 obj.expDate = {obj.blocks.expDate}';
                 [obj.blocks.subject] = deal(mouseList{:});
