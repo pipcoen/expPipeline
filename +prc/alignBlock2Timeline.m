@@ -10,8 +10,8 @@ switch expDef
         alignType = 'wheel';
         fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'};
     case 'multiSpaceWorldPassive'
-        if contains('rotaryEncoder', inputNames); alignType = 'wheel';
-        elseif contains('photoDiode', inputNames); alignType = 'photoDiode';
+        if contains('photoDiode', inputNames); alignType = 'photoDiode';
+        elseif contains('rotaryEncoder', inputNames); alignType = 'wheel';
         else, error('What am I supposed to use to align block with timeline?!')
         end
         fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
@@ -70,7 +70,7 @@ switch alignType
         photoDiodeFlips([strfind(ismember(photoDiodeFlips, photoDiodeFlipOn), [1 1])+1 strfind(ismember(photoDiodeFlips, photoDiodeFlipOff), [1 1])+1]) = [];
         photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
         photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
-            
+        
         blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>0.5);
         timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>0.5);
         
@@ -126,7 +126,7 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     if length(timelineClickOn)~=length(timelineClickOff); error('There should always be an equal number on/off signals for clicks'); end
     if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000))>3; error('Diff in detected and requested click durations'); end
     
-    aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);    
+    aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);
     block.events.audStimOnOffTimes = aStimOnOffTV(:,1)';
     block.events.audStimOnOffValues = aStimOnOffTV(:,2)';
     aligned.audStimOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
@@ -160,7 +160,7 @@ if any(contains(fineTune, 'flashes'))
     photoDiodeFlips([strfind(ismember(photoDiodeFlips, photoDiodeFlipOn), [1 1])+1 strfind(ismember(photoDiodeFlips, photoDiodeFlipOff), [1 1])+1]) = [];
     photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
     photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
-        
+    
     largeGapThresh = 1./max([block.paramsValues.clickRate])*3;
     largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>largeGapThresh); find(diff([photoDiodeFlipTimes; 10e10])>largeGapThresh)]));
     zeroContrastTrials = arrayfun(@(x) max(abs(x.visContrast)),block.paramsValues)'==0;
@@ -185,7 +185,7 @@ if any(contains(fineTune, 'flashes'))
     block.events.visStimPeriodOnOffValues = 0*sort(largeVisGaps(:))'+1;
     block.events.visStimPeriodOnOffValues(2:2:end) = 0;
     block.events.visStimPeriodOnOffTimes = sort(largeVisGaps(:))';
-
+    
     vStimOnOffTV = [block.events.visStimPeriodOnOffTimes' block.events.visStimPeriodOnOffValues'];
     vStimOnOffTV = vStimOnOffTV(1:find(vStimOnOffTV(:,2)==0,1,'last'),:);
     aligned.visStimPeriodOnOff = [vStimOnOffTV(vStimOnOffTV(:,2)==1,1) vStimOnOffTV(vStimOnOffTV(:,2)==0,1)];
@@ -216,12 +216,15 @@ if any(contains(fineTune, 'movements'))
     
     wheel = timelinehWeelPosition;
     move4Response = wheel(closedLoopPeriodIdx(closedLoopValues==0)) - wheel(closedLoopPeriodIdx(closedLoopValues==1));
-    wheelThresh = median(abs(move4Response(responseMadeIdx)))/2;
+    wheelThresh = median(abs(move4Response(responseMadeIdx)))*0.4;
     
     movementTimes = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sampleRate*1.5)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx)./sampleRate;
-    caculatedChoice = -sign(wheel(round(movementTimes*sampleRate)) - wheel(round(stimOnsetIdx)));
-    aligned.mindChange = movementTimes(caculatedChoice~=block.events.responseTypeValues(responseMadeIdx)');
     aligned.movementTimes = movementTimes;
+    
+    movementTimes(isnan(movementTimes)) = 1;
+    caculatedChoice = -sign(wheel(round(movementTimes*sampleRate)) - wheel(round(stimOnsetIdx)));
+    aligned.mindChange = single(caculatedChoice~=block.events.responseTypeValues(responseMadeIdx)');
+    aligned.mindChange(isnan(aligned.movementTimes)) = nan;
 end
 
 rawFields = fields(aligned);
@@ -231,9 +234,9 @@ for i = 1:length(rawFields)
     aligned.(currField) = prc.indexByTrial(trialStEnTimes, currData(:,1), currData);
     
     maxRowsCols = max(cell2mat(cellfun(@(x) size(x), aligned.(currField), 'uni', 0)));
-    if maxRowsCols(1) == 1
+    if maxRowsCols(1) < 2
         emptyIdx = cellfun(@isempty, aligned.(currField));
-        aligned.(currField)(emptyIdx) = {nan*ones(1, maxRowsCols(2))};
+        aligned.(currField)(emptyIdx) = {nan*ones(1, max([1 maxRowsCols(2)]))};
         aligned.(currField) = cell2mat(aligned.(currField));
     end
 end

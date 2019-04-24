@@ -2,7 +2,7 @@ function [pathOut] = pathFinder(pathType, subject, expDate, expNum)
 %% A funciton to return various paths used in processing and anlysis. Changes in file struture should be reflected here.
 if nargin < 1; error('pathType required'); end
 if nargin < 2; subject = '.'; end
-if nargin < 3; expDate = datestr(today, 'yyyy-mm-dd'); end
+if nargin < 3; expDate = datestr(now, 'yyyy-mm-dd'); end
 if nargin < 4; expNum = '1'; end
 if isnumeric(expNum); expNum = num2str(expNum); end
 

@@ -214,7 +214,9 @@ function x = convfUSiFile(x)
     for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.(fields2copy{i}); end
     fields2copy = fields(x.aligned);
     for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.aligned.(fields2copy{i}); end
-    whoD = unique([who('-file', x.processedData); 'fus']); save(x.processedData, 'fus', 'whoD', '-append'); 
+    whoD = unique([who('-file', x.processedData); 'fus']); 
+    save(x.processedData, 'fus', 'whoD', '-append'); 
+    copyfile(x.processedData, strrep(x.rawTimeline, 'Timeline', 'ProcBlock'));
 end
 
 %%
@@ -245,7 +247,8 @@ if length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.clust
     eph = eph(1); %#ok<NASGU>
     
     whoD = unique([who('-file', x.processedData); 'eph']); save(x.processedData, 'eph', 'whoD', '-append');
-else, fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
+else
+    fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
 end
 end
 

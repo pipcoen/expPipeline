@@ -234,8 +234,17 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.blocks  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, dataType, specificExpDef), subjects(:), expDate(:), 'uni', 0);
             obj.blocks = vertcat(obj.blocks{:});
             obj.expDate = expDate;
+            
             mouseList = unique({obj.blocks.subject})';
-            if combineMice==1; mouseList = {cell2mat(mouseList')}; end       
+            if combineMice==1; mouseList = {cell2mat(mouseList')}; end   
+            if combineMice==-2 && length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
+            if combineMice==-2
+                mouseList = arrayfun(@(x) [mouseList{1} '_' obj.blocks(x).expDate], 1:length(obj.blocks), 'uni',0);
+                obj.subjects = mouseList;
+                obj.expDate = {obj.blocks.expDate}';
+                [obj.blocks.subject] = deal(mouseList{:});
+            end
+                
             
             retainIdx = ones(length(obj.blocks),1)>0;
             %If there are multiple parameter sets in the requested date range for a mouse, use only the most common parameter set.
@@ -244,7 +253,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 mouseParams = [obj.blocks(mouseIdx).params];
                 mouseCondiitions = {obj.blocks(mouseIdx).uniqueConditions}';
                 [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) num2str([x(:)', y]), mouseCondiitions, {mouseParams.laserSession}','uni',0));
-                if length(conditionSets)>1 && combineMice~=-1
+                if length(conditionSets)>1 && combineMice>=0
                     fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', mouseList{i});
                     retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
                 end

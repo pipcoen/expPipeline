@@ -53,22 +53,22 @@ if contains(lower(dataType), {'blk'; 'blo'; 'all'})
     blk = [selectedBlocks{:}]'; blk = [blk(:).blk]';
     
     if contains(lower(dataType), {'raw'; 'all'})
-        selectedParams = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
-        raw = [selectedParams{:}]'; raw = [raw(:).raw]';
+        selectedData = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
+        raw = [selectedData{:}]'; raw = [raw(:).raw]';
         blk = prc.catStructs(blk,raw);
     end
     
     if contains(lower(dataType), {'eph'; 'all'})
-        selectedParams = cellfun(@(x) load(x, 'eph'), selectedFiles, 'uni', 0);
-        eph = [selectedParams{:}]'; eph = [eph(:).eph]';
+        selectedData = cellfun(@(x) load(x, 'eph'), selectedFiles, 'uni', 0);
+        eph = [selectedData{:}]'; eph = [eph(:).eph]';
         eph = prc.chkThenRemoveFields(eph, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
         fields2copy = fields(eph);
-        for i = 1:length(fields2copy); blk.(['eph' upper(fields2copy{i}(1)) fields2copy{i}(2:end)]) = eph.(fields2copy{i}); end
+        for i = 1:length(fields2copy); [blk.(['eph' upper(fields2copy{i}(1)) fields2copy{i}(2:end)])] = eph.(fields2copy{i}); end
     end
     
     if contains(lower(dataType), {'prm'; 'par'; 'all'})
-        selectedParams = cellfun(@(x) load(x, 'prm'), selectedFiles, 'uni', 0);
-        prm = [selectedParams{:}]'; prm = {prm(:).prm}';
+        selectedData = cellfun(@(x) load(x, 'prm'), selectedFiles, 'uni', 0);
+        prm = [selectedData{:}]'; prm = {prm(:).prm}';
         [blk.params] = deal(prm{:});
     end
     varargout{outputCount} = blk;
