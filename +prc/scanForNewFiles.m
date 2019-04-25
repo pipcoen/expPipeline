@@ -31,7 +31,7 @@ if ~exist('checkDirectories', 'var'); checkDirectories = 0; end
 if ~exist('checkExpRigs', 'var'); checkExpRigs = 0; end
 expInfo = prc.pathFinder('expInfo');
 includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...
-    'PC035'; 'PC036'; 'PC037'; 'PC038'; 'PC039'; 'PC040'; 'PC041'; 'PC042'; 'PC043'; 'PC044'; ...
+    'PC035'; 'PC036'; 'PC037'; 'PC038'; 'PC040'; 'PC041'; 'PC042'; 'PC043'; 'PC044'; ...
     'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR010'};
 
 startedDates = {...
@@ -153,14 +153,6 @@ end
 if ~addedFiles; fprintf('No new files found\n'); end
 [expList(cellfun(@isempty, {expList.rigName}')).rigName] = deal('');
 
-if checkExpRigs
-    expRigs = find(contains({expList.rigName}', {'zatteo'; 'lilrig-stim'}));
-    for i = expRigs
-        if strcmp(expList(i).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.rawFolder) '\*hys*'])); expList(end).expType = 'ephys'; end
-    
-    end
-end
-
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
 expList = prc.updatePaths(expList,0);
 if checkDirectories
@@ -170,6 +162,14 @@ if checkDirectories
         if ~isempty(txtF); expList(i).excluded = 1; end
     end
 end
+
+if checkExpRigs
+    expRigs = find(contains({expList.rigName}', {'zatteo'; 'lilrig-stim'}));
+    for i = expRigs'
+        if strcmp(expList(i).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(expList(i).rawFolder) '\*hys*'])); expList(i).expType = 'ephys'; end
+    end
+end
+
 %% This section section deals with cases of files on non-training rigs when multiple files are detected for a mouse on same day, rig, and expDef
 processList = cellfun(@fileparts, {expList.rawFolder}', 'uni', 0);
 processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expList.expDef}', 'uni', 0);

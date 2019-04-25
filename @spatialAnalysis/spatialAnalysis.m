@@ -43,6 +43,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             axesOpt.gapBetweenAxes = [100 60];
             axesOpt.numOfRows = 2;
             axesOpt.figureHWRatio = 1.1;
+            obj.glmFit = cell(length(obj.subjects),1);
             for i  = 1:length(obj.subjects)
                 if contains(lower(modelString), 'nest')
                     normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
@@ -75,18 +76,20 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         end
         
         function getGLMPerturbations(obj, modelString)
-            if ~exist('modelString', 'var'); modelString = 'SimpLogSplitDelta'; end
-            axesOpt = struct('totalNumOfAxes', length(obj.subjects), 'btlrMargins', [50 100 10 10], 'gapBetweenAxes', [40 0], ...
-                'numOfRows', 2, 'figureHWRatio', 0.8, 'figureSize', 400);
+            if ~exist('modelString', 'var'); modelString = 'ReducedLogCNSplitDelta'; end
             
             figure;
-            normBlock = spatialAnalysis.getBlockType(obj.blocks{1},'norm',0);
-            laserBlock = spatialAnalysis.getBlockType(obj.blocks{1},'las',0);
-            laserBlock = prc.filtStruct(laserBlock, laserBlock.galvoPosition(:,2)~=4.5 & laserBlock.laserType == 1);
+            initBlock = prc.filtStruct(obj.blocks{1}, obj.blocks{1}.galvoPosition(:,2)~=4.5);
+            initBlock = prc.filtStruct(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | initBlock.laserType==0);
+            initBlock = prc.filtStruct(initBlock, initBlock.timeOutsBeforeResponse==0);
+            
+            normBlock = spatialAnalysis.getBlockType(initBlock,'norm',1);
+            laserBlock = spatialAnalysis.getBlockType(initBlock,'las',1);
+            
             obj.glmFit = fit.GLMmulti(normBlock);
             obj.glmFit.GLMMultiModels(modelString);
             obj.glmFit.fit;
-            [galvoBlocks, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock, [], 'galvouni', 2);
+            [galvoBlocks, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock, [], 'galvouni', 3);
             scanPlot.data = nan(size(galvoBlocks));
             numTrials = zeros(size(galvoBlocks));
             for j = find(~cellfun(@isempty, galvoBlocks))'
@@ -97,20 +100,32 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 subGLM.blockData.freeP = [];
                 subGLM.fit;
                 minLL = subGLM.calculateLogLik(subGLM.prmFits);
-                subGLM.blockData.freeP = [1:3 5:8];%(obj.glmFit.prmFits);
+                subGLM.blockData.freeP = 1:length(subGLM.prmFits);%(obj.glmFit.prmFits);
                 subGLM.fit;
                 maxLL = subGLM.calculateLogLik(subGLM.prmFits);
                 
                 [xIdx, yIdx] = ind2sub(size(galvoBlocks), j);
                 scanPlot.data(xIdx, yIdx) = maxLL-minLL;
+                prmChange(xIdx, yIdx,:) = subGLM.prmFits;
                 numTrials(xIdx, yIdx, 1) = length(galvoBlocks{j}.responseMade);
             end
-            for i  = 1:length(obj.subjects)
+            %%
+            axesOpt = struct('totalNumOfAxes', length(subGLM.prmFits), 'btlrMargins', [50 100 10 10], 'gapBetweenAxes', [40 0], ...
+                'numOfRows', 2, 'figureHWRatio', 0.8, 'figureSize', 400);
+            for j  = 1:length(subGLM.prmFits)
                 hold on; box off;
-                obj.hand.axes = plt.getAxes(axesOpt, i);
-                scanPlot.colorBarLimits = [-0.1 0.1];
+                scanPlot.data = prmChange(:,:,j);
+                scanPlot.title = subGLM.prmLabels{j};
+                obj.hand.axes = plt.getAxes(axesOpt, j);
+                scanPlot.colorBarLimits = max(abs(scanPlot.data(:)))*[-1 1];
                 plt.scanningBrainEffects(scanPlot);
             end
+%             for i  = 1:length(obj.subjects)
+%                 hold on; box off;
+%                 obj.hand.axes = plt.getAxes(axesOpt, i);
+%                 scanPlot.colorBarLimits = [-0.1 0.1];
+%                 plt.scanningBrainEffects(scanPlot);
+%             end
         end
         
         function viewDataWithoutFits(obj, plotType)
@@ -150,13 +165,16 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             figure;
             allTimes = [];
             for i  = 1:length(obj.subjects)
-                normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',0);
+                normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm');
                 timeGrid = prc.makeGrid(normBlock, round(normBlock.timeToWheelMove*1e3), @median, 'abscondition');
                 trialGrid = prc.makeGrid(normBlock, round(normBlock.trialType), @mean, 'abscondition');
                 tkIdx = trialGrid.*fliplr(trialGrid)==12;
                 allTimes = [allTimes; [mean(timeGrid(tkIdx & trialGrid==3)), mean(timeGrid(tkIdx & fliplr(trialGrid)==3))]];
+%                 allTimes(end,:) = allTimes(end,:)./nanmean(timeGrid(:));
             end
             scatter(allTimes(:,1), allTimes(:,2), 'k', 'markerfacecolor', 'k');
+            [~, pVal] = ttest(allTimes(:,1), allTimes(:,2));
+            disp(pVal);
             xlim([200 450]);
             ylim([200 450]);
             axis equal; axis square;
@@ -210,13 +228,23 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         
         function obj = changeMouse(obj, subjects, expDate, combineMice, extraTag, specificExpDef)
             if ~exist('combineMice', 'var'); combineMice = 0; end
+            if ~exist('extraTag', 'var'); extraTag = []; end
+            if ~exist('specificExpDef', 'var'); specificExpDef = 'multiSpaceWorld'; end
             dataType = [extraTag 'bloprm'];
             obj.blocks  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, dataType, specificExpDef), subjects(:), expDate(:), 'uni', 0);
             obj.blocks = vertcat(obj.blocks{:});
             obj.expDate = expDate;
             
             mouseList = unique({obj.blocks.subject})';
-            if combineMice; mouseList = {cell2mat(mouseList')}; end       
+            if combineMice==1; mouseList = {cell2mat(mouseList')}; end   
+            if combineMice==-2 && length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
+            if combineMice==-2
+                mouseList = arrayfun(@(x) [mouseList{1} '_' obj.blocks(x).expDate], 1:length(obj.blocks), 'uni',0);
+                obj.subjects = mouseList;
+                obj.expDate = {obj.blocks.expDate}';
+                [obj.blocks.subject] = deal(mouseList{:});
+            end
+                
             
             retainIdx = ones(length(obj.blocks),1)>0;
             %If there are multiple parameter sets in the requested date range for a mouse, use only the most common parameter set.
@@ -225,7 +253,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 mouseParams = [obj.blocks(mouseIdx).params];
                 mouseCondiitions = {obj.blocks(mouseIdx).uniqueConditions}';
                 [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) num2str([x(:)', y]), mouseCondiitions, {mouseParams.laserSession}','uni',0));
-                if length(conditionSets)>1
+                if length(conditionSets)>1 && combineMice>=0
                     fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', mouseList{i});
                     retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
                 end
@@ -233,9 +261,9 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.blocks = obj.blocks(retainIdx);
             
             obj.subjects = unique({obj.blocks.subject})';
-            if combineMice; obj.expDate = cell2mat([obj.expDate{ismember(subjects, obj.subjects)}]); obj.subjects = {cell2mat(obj.subjects')}; end          
+            if combineMice==1; obj.expDate = cell2mat([obj.expDate{ismember(subjects, obj.subjects)}]); obj.subjects = {cell2mat(obj.subjects')}; end          
             [~, subjectIdx] = ismember({obj.blocks.subject}', obj.subjects);
-            if combineMice; subjectIdx = subjectIdx*0+1; end
+            if combineMice==1; subjectIdx = subjectIdx*0+1; end
 
             idx = 1:length(obj.subjects);
             obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectIdx==x)), idx, 'uni', 0)';
@@ -260,8 +288,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             if ~exist('tag', 'var'); error('Must specificy tag'); end
             if ~exist('removeTimeouts', 'var'); removeTimeouts = 1; end
             if removeTimeouts; timeOutFilter =  block.responseMade~=0; else, timeOutFilter =  block.responseMade*0+1; end
-            laserOff = prc.filtStruct(block, block.laserPower==0 | isnan(block.laserPower) & timeOutFilter);
-            laserOn = prc.filtStruct(block, block.laserPower~=0 & ~isnan(block.laserPower) & timeOutFilter);            
+            laserOff = prc.filtStruct(block, (block.laserType==0 | isnan(block.laserType)) & timeOutFilter);
+            laserOn = prc.filtStruct(block, (block.laserType~=0 & ~isnan(block.laserType)) & timeOutFilter);            
             switch lower(tag(1:3))
                 case 'nor'; filteredBlock = laserOff;
                 case 'las'; filteredBlock = laserOn;

@@ -30,7 +30,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             if isempty(obj.modelString); error('Set model first'); end
             options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',10000);
             fittingObjective = @(b) (obj.calculateLogLik(b));
-            [obj.prmFits,~,exitflag] = fmincon(fittingObjective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
+            [obj.prmFits,~,exitflag] = fmincon(fittingObjective, obj.prmInit, [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
             if ~any(exitflag == [1,2])
                 obj.prmFits = nan(1,length(obj.prmLabels));
             end
@@ -49,14 +49,14 @@ classdef GLMmulti < matlab.mixin.Copyable
             obj.pHat = [];
             obj.logLik = nan(cvObj.NumTestSets,1);
             for i = 1:cvObj.NumTestSets
-                cvTrainObj = copy(obj); cvTrainObj.blockData = prc.combineBlocks(cvTrainObj.blockData, cvObj.training(i));
+                cvTrainObj = copy(obj); cvTrainObj.blockData = prc.filtStruct(cvTrainObj.blockData, cvObj.training(i));
                 disp(['Model: ' obj.modelString '. Fold: ' num2str(i) '/' num2str(cvObj.NumTestSets)]);
                 
                 fittingObjective = @(b) (cvTrainObj.calculateLogLik(b));
                 [obj.prmFits(i,:),~,exitflag] = fmincon(fittingObjective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
                 if ~any(exitflag == [1,2]); obj.prmFits(i,:) = nan(1,length(obj.prmLabels)); end
                 
-                cvTestObj = copy(obj); cvTestObj.blockData = prc.combineBlocks(cvTestObj.blockData, cvObj.test(i));
+                cvTestObj = copy(obj); cvTestObj.blockData = prc.filtStruct(cvTestObj.blockData, cvObj.test(i));
                 pHatTested = cvTestObj.calculatepHat(obj.prmFits(i,:));
                 if min(cvTestObj.blockData.responseMade) == 0; idxMod = 1; else, idxMod = 0; end
                 obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.responseMade+idxMod));

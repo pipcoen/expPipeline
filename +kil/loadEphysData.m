@@ -1,4 +1,5 @@
-function [eph] = loadEphysData(x)
+function [eph] = loadEphysData(x, kilosortOutput)
+if ~exist('kilosortOutput', 'var'); kilosortOutput = x.kilosortOutput; end
 %% Load timeline and associated inputs
 if ~exist(x.rawTimeline, 'file'); error('No timeline file exists for requested ephys session'); end
 fprintf('Loading timeline... \n');
@@ -33,12 +34,12 @@ acqLiveSyncIdx = 2;
 flipperSyncIdx = 4;
 %%
 % Load clusters and sync/photodiode
-clusterGroups = tdfread([x.kilosortOutput '\cluster_group.tsv']);
-sync = load([x.kilosortOutput '\sync.mat']); sync = sync.sync;
+clusterGroups = tdfread([kilosortOutput '\cluster_group.tsv']);
+sync = load([kilosortOutput '\sync.mat']); sync = sync.sync;
 
 %%
 % Read header information
-headerFID = fopen([x.kilosortOutput '\dat_params.txt']);
+headerFID = fopen([kilosortOutput '\dat_params.txt']);
 headerInfo = textscan(headerFID,'%s %s', 'delimiter',{' = '});
 fclose(headerFID);
 headerInfo = [headerInfo{1}'; headerInfo{2}'];
@@ -46,13 +47,13 @@ header = struct(headerInfo{:});
 %%
 % Load spike data
 ephysSampleRate = str2double(header.apSampleRate);
-spikeTimes = double(readNPY([x.kilosortOutput '\spike_times.npy']))./ephysSampleRate;
-spikeTemplates = readNPY([x.kilosortOutput '\spike_templates.npy']);
-templates = readNPY([x.kilosortOutput '\templates.npy']);
-channelPositions = readNPY([x.kilosortOutput '\channel_positions.npy']);
-channelMap = readNPY([x.kilosortOutput '\channel_map.npy']); %#ok<NASGU>
-winv = readNPY([x.kilosortOutput '\whitening_mat_inv.npy']);
-templateAmplitudes = readNPY([x.kilosortOutput '\amplitudes.npy']);
+spikeTimes = double(readNPY([kilosortOutput '\spike_times.npy']))./ephysSampleRate;
+spikeTemplates = readNPY([kilosortOutput '\spike_templates.npy']);
+templates = readNPY([kilosortOutput '\templates.npy']);
+channelPositions = readNPY([kilosortOutput '\channel_positions.npy']);
+channelMap = readNPY([kilosortOutput '\channel_map.npy']); %#ok<NASGU>
+winv = readNPY([kilosortOutput '\whitening_mat_inv.npy']);
+templateAmplitudes = readNPY([kilosortOutput '\amplitudes.npy']);
 
 % Default channel map/positions are from end: make from surface
 channelPositions(:,2) = max(channelPositions(:,2)) - channelPositions(:,2);
@@ -97,7 +98,7 @@ end
 %%
 
 % Get the depths of each template
-[spikeAmps, ~, templateDepths, ~, ~, templateDuration, waveforms] = ...
+[spikeAmps, ~, templateDepths, templateAmps, ~, templateDuration, waveforms] = ...
     kil.templatePositionsAmplitudes(templates,winv,channelPositions(:,2),spikeTemplates,templateAmplitudes);
 % Eliminate spikes that were classified as not "good"    
 fprintf('Removing noise and MUA templates... \n');
@@ -109,6 +110,7 @@ goodTemplatesIdx = ismember(0:size(templates,1)-1,goodTemplatesList);
 % Throw out all non-good template data
 % templates = templates(goodTemplatesIdx,:,:);
 templateDepths = templateDepths(goodTemplatesIdx);
+templateAmps = templateAmps(goodTemplatesIdx);
 waveforms = waveforms(goodTemplatesIdx,:);
 templateDuration = templateDuration(goodTemplatesIdx);
 %%
@@ -128,12 +130,15 @@ spikeTemplates = newSpikeIdx(spikeTemplates+1);
 %%
 fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'};
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
+eph.recordingSiteIdx = single(spikeTimesTimeline);
 eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);
-eph.spikeTemplates = uint16(spikeTemplates);
-eph.templateDepths = templateDepths;
-eph.templateDuration = templateDuration;
+eph.clusterID = uint16(spikeTemplates);
+eph.clusterDepths = templateDepths;
+eph.clusterAmps = templateAmps;
+eph.clusterDuration = templateDuration;
 eph.waveforms = waveforms;
+eph.channelMap = readNPY([kilosortOutput '\channel_positions.npy']);
 eph = prc.catStructs(eph, prc.filtStruct(x.aligned, x.validTrials));
 %%
 fprintf('Finished loading experiment... \n');

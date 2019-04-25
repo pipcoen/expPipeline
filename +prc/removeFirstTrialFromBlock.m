@@ -12,6 +12,7 @@ for i = 1:2:length(fieldList)
     block.events.(fieldList{i})(:,1:(cutOff*eventRatio)) = [];
     block.events.(fieldList{i+1})(:,1:cutOff) = [];
 end
+
 %%
 fieldList = fieldnames(block.outputs);
 for i = 1:2:length(fieldList)

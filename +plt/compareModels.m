@@ -1,6 +1,6 @@
 function compareModels(fileNames, minTrials)
-if ~exist('fileNames', 'var'); fileNames = {'CrossValAudOnlyFit'; ...
-       'CrossValVisOnlyFit'; 'CrossValAudDomFit'; 'CrossValSimpLogFit'}; end
+% if ~exist('fileNames', 'var'); fileNames = {'CrossVal_AudOnly';'CrossVal_VisOnly'; 'CrossVal_AudDom'; 'CrossVal_SimpLog'}; end
+if ~exist('fileNames', 'var'); fileNames = {'CrossVal_ReducedLogCN'; 'CrossVal_SimpLog'}; end
 if ~exist('minTrials', 'var'); minTrials = 1; end
 plotOpt.yData = cell(length(fileNames),1);
 if any(contains(fileNames, 'Nest')); load FullEmpNestMaxPerformance s;
@@ -15,8 +15,6 @@ else, load BiasOnlyPerformance.mat s;
 end
 minPerformance(:,1) = s.subjects(included);
 minPerformance(:,2) = cellfun(@(x) x.logLik, s.glmFit(included), 'uni', 0)';
-
-...0
 plotOpt.xTickLabels = fileNames;
 for i = 1:length(fileNames)
     load(fileNames{i});  

@@ -3,40 +3,52 @@ figure;
 axesOpt.totalNumOfAxes = 3;
 axesOpt.btlrMargins =  [80 100 80 40];
 axesOpt.gapBetweenAxes = [100 60];
-allPerformance = cell(length(obj.subjects),3);
-for i  = 1:length(obj.subjects)
-    tempObj = copy(obj);
-    tempObj = tempObj.changeMouse(tempObj.subjects(i), {'first200'}, 0, 'prm');
-    tempDat = [tempObj.params{1}.audPerformance tempObj.params{1}.visPerformance tempObj.params{1}.mulPerformance];
-    tempDat(tempObj.params{1}.validResponses<10,:) = [];
-    allPerformance(i,:) = arrayfun(@(x) tempDat(~isnan(tempDat(:,x)),x),1:3,'uni', 0);
-end
-
-indiColor = [[0 0.5 0.5]; [0.5 0 0.5]; [0.5 0.5 0.5]];
-meanColor = 'cmk';
-obj.axesHandles = plt.getAxes(axesOpt,1); hold on
-cellfun(@(x) plot(x(1:20), 'color', indiColor(3,:)),allPerformance(:,3));
-plot(mean(cell2mat(cellfun(@(x) x(1:20), allPerformance(:,3)', 'uni', 0)),2), meanColor(3), 'linewidth', 3)
+numSessions = 40;
+tempObj = spatialAnalysis(obj.subjects(~contains(obj.subjects, 'DJ')), ['first' num2str(numSessions)], -1);
+firstDay = cell2mat(cellfun(@(x) datenum(x.params(1).expDate),tempObj.blocks, 'uni', 0));
+%%
+allPerformance = cellfun(@(x) [[x.params.audPerformance]' [x.params.visPerformance]' [x.params.mulPerformance]'],tempObj.blocks, 'uni', 0);
+indiColor = [[0.5 0 0.5]; [0.9294 0.6902 0.1294]/2; [0.5 0.5 0.5]];
+meanColor = [[1 0 1]; [0.9294 0.6902 0.1294]; [0 0 0]];
+tempObj.hand.axes = plt.getAxes(axesOpt,1); hold on
+first10Multi = cell2mat(cellfun(@(x) x(1:10,3)',allPerformance, 'uni', 0));
+plt.stdPatch(1:10, nanmean(first10Multi), nanstd(first10Multi), indiColor(3,:), 0.3, 1)
+plot(nanmean(first10Multi), 'color', meanColor(3,:), 'LineWidth', 3);
 box off;
-ylim([40 100]); xlim([1 20])
-plot([1 20],[50, 50], '--k')
+ylim([40 100]); xlim([1 10])
+plot([1 10],[50, 50], '--k')
+title(sprintf('First 10 sessions from %d mice', length(tempObj.subjects)));
 
-obj.axesHandles = plt.getAxes(axesOpt,2); hold on
-ylim([40 100]); xlim([1 20])
+tempObj.hand.axes = plt.getAxes(axesOpt,2); hold on
 for i = 1:2
-    cellfun(@(x) plot(x(1:20), 'color', indiColor(i,:)),allPerformance(:,i));
-    plot(mean(cell2mat(cellfun(@(x) x(1:20), allPerformance(:,i)', 'uni', 0)),2), meanColor(i), 'linewidth', 3)
+    uniIdx = num2cell(cellfun(@(x) find(~isnan(x(:,i)),1), allPerformance));
+    first10Uni = cell2mat(cellfun(@(x,y) x(y:y+9,i)',allPerformance, uniIdx, 'uni', 0));
+    plt.stdPatch(1:10, nanmean(first10Uni), nanstd(first10Uni), indiColor(i,:), 0.3, 1)
+    plot(nanmean(first10Uni), 'color', meanColor(i,:), 'LineWidth', 3);
 end
 box off;
-plot([1 20],[50 50], '--k')
+ylim([40 100]); xlim([1 10])
+plot([1 10],[50 50], '--k')
+title(sprintf('First 10 unisensory sessions from %d mice', length(tempObj.subjects)));
 
-obj.axesHandles = plt.getAxes(axesOpt, 3); hold on;
-allPerformance = allPerformance(cellfun(@length, allPerformance(:,3))>100,:);
+%%
+tempObj = spatialAnalysis(obj.subjects(~contains(obj.subjects, 'DJ')), 'last');
+lastDay = cell2mat(cellfun(@(x) datenum(x.params(1).expDate),tempObj.blocks, 'uni', 0));
+oldMice = (lastDay-firstDay)>200;
+dateRanges = arrayfun(@(x) {'rng', datestr(x+180, 'yyyy-mm-dd') datestr(x+180+numSessions, 'yyyy-mm-dd')}, firstDay, 'uni', 0);
+tempObj = spatialAnalysis(tempObj.subjects(oldMice), dateRanges(oldMice));
+
+%%
+tempObj.hand.axes = plt.getAxes(axesOpt,3); hold on
+allPerformance = cellfun(@(x) [[x.params.audPerformance]' [x.params.visPerformance]' [x.params.mulPerformance]'],tempObj.blocks, 'uni', 0);
 for i = 1:3
-    cellfun(@(x) plot(x(end-19:end), 'color', indiColor(i,:)),allPerformance(:,i));
-    plot(mean(cell2mat(cellfun(@(x) x(end-19:end), allPerformance(:,i)', 'uni', 0)),2), meanColor(i), 'linewidth', 3)
+    uniIdx = num2cell(cellfun(@(x) find(~isnan(x(:,i)),1), allPerformance));
+    first10Uni = cell2mat(cellfun(@(x,y) x(y:y+9,i)',allPerformance, uniIdx, 'uni', 0));
+    plt.stdPatch(1:10, nanmean(first10Uni), nanstd(first10Uni), indiColor(i,:), 0.3, 1)
+    plot(nanmean(first10Uni), 'color', meanColor(i,:), 'LineWidth', 3);
 end
 box off;
-ylim([40 100]); xlim([1 20])
-plot([1 20],[50, 50], '--k')
+ylim([40 100]); xlim([1 10])
+plot([1 10],[50, 50], '--k')
+title(sprintf('10 Sessions after 6 months from %d mice', length(tempObj.subjects)));
 end

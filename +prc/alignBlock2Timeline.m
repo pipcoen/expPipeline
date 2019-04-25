@@ -10,15 +10,18 @@ switch expDef
         alignType = 'wheel';
         fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'};
     case 'multiSpaceWorldPassive'
-        if contains('rotaryEncoder', inputNames); alignType = 'wheel';
-        elseif contains('photoDiode', inputNames); alignType = 'photoDiode';
+        if contains('photoDiode', inputNames); alignType = 'photoDiode';
+        elseif contains('rotaryEncoder', inputNames); alignType = 'wheel';
         else, error('What am I supposed to use to align block with timeline?!')
         end
         fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
 end
 
-
-
+if strcmp(alignType, 'wheel') && max(timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'))) == 1
+    warning('Max wheel value is 1---will not process timeline wheel data');
+    alignType = 'photoDiode';
+    fineTune = fineTune(~contains(fineTune, 'movements'));
+end
 switch alignType
     case 'wheel'
         smoothWindow = sampleRate/10+1;
@@ -50,11 +53,13 @@ switch alignType
         delayValues = smooth(delayValues, 0.05, 'rlowess');
         blockRefTimes = movmedian(timelineRefTimes(:)-delayValues-baseDelay, 7)';
         blockRefTimes = interp1(timelineRefTimes(4:end-3), blockRefTimes(4:end-3), timelineRefTimes, 'linear', 'extrap');
+        block.alignment = 'wheel';
     case 'reward'
         blockRefTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
         thresh = max(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')))/2;
         rewardTrace = timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')) > thresh;
         timelineRefTimes = timeline.rawDAQTimestamps(strfind(rewardTrace', [0 1])+1);
+        block.alignment = 'reward';
     case 'photoDiode'
         photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));
         [~, thresh] = kmeans(photoDiodeTrace,2);
@@ -66,10 +71,19 @@ switch alignType
         photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
         photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
         
-        blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>2);
-        timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>2);
+        blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>0.5);
+        timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>0.5);
         
-        if length(blockRefTimes) ~= length(timelineRefTimes); error('Photodiode alignment error'); keyboard; end
+        if length(blockRefTimes) ~= length(timelineRefTimes) && length(blockRefTimes) < length(timelineRefTimes)
+            extraPoints = finddelay(diff(blockRefTimes), diff(timelineRefTimes));
+            if  extraPoints > 0; timelineRefTimes(1:extraPoints) = [];
+            elseif  extraPoints < 0; timelineRefTimes(end+extraPoints+1:end) = [];
+            end
+        end
+        block.alignment = 'photodiode';
+        if length(blockRefTimes) ~= length(timelineRefTimes) && length(blockRefTimes) < length(timelineRefTimes)
+            error('Photodiode alignment error');
+        end
 end
 
 
@@ -91,16 +105,16 @@ timeline.rawDAQData(1:cutOff,:) = repmat(timeline.rawDAQData(cutOff,:), cutOff, 
 trialStEnTimes = [block.events.newTrialTimes(1:length(block.events.endTrialTimes))', block.events.endTrialTimes'];
 stimStartBlock = block.events.stimPeriodOnOffTimes(block.events.stimPeriodOnOffValues==1);
 %%
- if contains('reward', fineTune)
+if contains('reward', fineTune) && contains('rewardEcho',inputNames)
     blockRewardTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
-    thresh = max(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')))/2;
-    rewardTrace = timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')) > thresh;
+    rewardTrace = mat2gray(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho'))) > 0.5;
     timelineRewardTimes = timeline.rawDAQTimestamps(strfind(rewardTrace', [0 1])+1);
     if length(timelineRewardTimes)~=length(blockRewardTimes); error('There should always be an equal number of reward signals'); end
     block.outputs.rewardTimes(block.outputs.rewardValues > 0) = timelineRewardTimes(prc.nearestPoint(blockRewardTimes,timelineRewardTimes));
     aligned.rewardTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
     aligned.rewardTimes = aligned.rewardTimes(:);
 end
+if contains('reward', fineTune) && ~contains('rewardEcho',inputNames); warning('No reward input echo... skipping'); end
 
 if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     timelineClickTrace = [0;diff(detrend(timeline.rawDAQData(:,strcmp(inputNames, 'audioOut'))))];
@@ -112,7 +126,7 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     if length(timelineClickOn)~=length(timelineClickOff); error('There should always be an equal number on/off signals for clicks'); end
     if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000))>3; error('Diff in detected and requested click durations'); end
     
-    aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);    
+    aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);
     block.events.audStimOnOffTimes = aStimOnOffTV(:,1)';
     block.events.audStimOnOffValues = aStimOnOffTV(:,2)';
     aligned.audStimOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
@@ -124,7 +138,7 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     
     %% Sanity check (should be match between stim starts from block and from timeline)
     audstimStartTimeline = block.events.audStimPeriodOnOffTimes(block.events.audStimPeriodOnOffValues==1);
-    nonAudTrials = [block.paramsValues.audAmplitude]==0;
+    nonAudTrials = [block.paramsValues.audAmplitude]==0; nonAudTrials = nonAudTrials(1:length(stimStartBlock));
     [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline);
     if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching auditory stimulus start and end times \n'); keyboard; end
     
@@ -146,7 +160,7 @@ if any(contains(fineTune, 'flashes'))
     photoDiodeFlips([strfind(ismember(photoDiodeFlips, photoDiodeFlipOn), [1 1])+1 strfind(ismember(photoDiodeFlips, photoDiodeFlipOff), [1 1])+1]) = [];
     photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
     photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
-        
+    
     largeGapThresh = 1./max([block.paramsValues.clickRate])*3;
     largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>largeGapThresh); find(diff([photoDiodeFlipTimes; 10e10])>largeGapThresh)]));
     zeroContrastTrials = arrayfun(@(x) max(abs(x.visContrast)),block.paramsValues)'==0;
@@ -171,7 +185,7 @@ if any(contains(fineTune, 'flashes'))
     block.events.visStimPeriodOnOffValues = 0*sort(largeVisGaps(:))'+1;
     block.events.visStimPeriodOnOffValues(2:2:end) = 0;
     block.events.visStimPeriodOnOffTimes = sort(largeVisGaps(:))';
-
+    
     vStimOnOffTV = [block.events.visStimPeriodOnOffTimes' block.events.visStimPeriodOnOffValues'];
     vStimOnOffTV = vStimOnOffTV(1:find(vStimOnOffTV(:,2)==0,1,'last'),:);
     aligned.visStimPeriodOnOff = [vStimOnOffTV(vStimOnOffTV(:,2)==1,1) vStimOnOffTV(vStimOnOffTV(:,2)==0,1)];
@@ -202,12 +216,15 @@ if any(contains(fineTune, 'movements'))
     
     wheel = timelinehWeelPosition;
     move4Response = wheel(closedLoopPeriodIdx(closedLoopValues==0)) - wheel(closedLoopPeriodIdx(closedLoopValues==1));
-    wheelThresh = median(abs(move4Response(responseMadeIdx)))/2;
+    wheelThresh = median(abs(move4Response(responseMadeIdx)))*0.4;
     
     movementTimes = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sampleRate*1.5)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx)./sampleRate;
-    caculatedChoice = -sign(wheel(round(movementTimes*sampleRate)) - wheel(round(stimOnsetIdx)));
-    aligned.mindChange = movementTimes(caculatedChoice~=block.events.responseTypeValues(responseMadeIdx)');
     aligned.movementTimes = movementTimes;
+    
+    movementTimes(isnan(movementTimes)) = 1;
+    caculatedChoice = -sign(wheel(round(movementTimes*sampleRate)) - wheel(round(stimOnsetIdx)));
+    aligned.mindChange = single(caculatedChoice~=block.events.responseTypeValues(responseMadeIdx)');
+    aligned.mindChange(isnan(aligned.movementTimes)) = nan;
 end
 
 rawFields = fields(aligned);
@@ -217,13 +234,18 @@ for i = 1:length(rawFields)
     aligned.(currField) = prc.indexByTrial(trialStEnTimes, currData(:,1), currData);
     
     maxRowsCols = max(cell2mat(cellfun(@(x) size(x), aligned.(currField), 'uni', 0)));
-    if maxRowsCols(1) == 1
+    if maxRowsCols(1) < 2
         emptyIdx = cellfun(@isempty, aligned.(currField));
-        aligned.(currField)(emptyIdx) = {nan*ones(1, maxRowsCols(2))};
+        aligned.(currField)(emptyIdx) = {nan*ones(1, max([1 maxRowsCols(2)]))};
         aligned.(currField) = cell2mat(aligned.(currField));
     end
 end
+requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff';'mindChange';'movementTimes';'rewardTimes'};
+for i = 1:length(requiredFields)
+    if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
+end
 
+aligned.alignment = block.alignment;
 correctedBlock = block;
 correctedBlock.fineTuned = 1;
 end

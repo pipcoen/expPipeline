@@ -44,7 +44,7 @@ existDirectories = prc.pathFinder('directoryCheck');
 if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
-expList = prc.scanForNewFiles;
+expList = prc.scanForNewFiles(0,0,1);
 if all(existDirectories==[0,1])
     newPathList = {expList.sharedData}';
     [expList.processedData] = newPathList{:};
@@ -106,18 +106,17 @@ for i = files2Run(files2Run>srtIdx)
     end
     warning('on', 'MATLAB:load:variableNotFound');
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
-    varIdx = contains({'blk', 'eph', 'flu'}, ['ignore'; whoD]);
     
 %     Loop to run conv on any ephys files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
 %     function for the particular experiment definition file exists. If it does, process the block.
-    if (~varIdx(2) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'}) 
-        x = convBlockFile(x);
+    if (~contains({'eph'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'}) 
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convEphysFile(x);
+        whoD = unique(who('-file', x.processedData));
     end
     
     %Loop to run conv2PData on any 2P files that are missing the flu variable, or if instruct2P is set to 1
-    if (~varIdx(3) || redoTag) && contains(lower(x.expType), {'twophoton';'widefield'}) && contains(dataType, {'all'; 'flu'})
+    if (~contains({'flu'},['ignore'; whoD]) || redoTag) && contains(lower(x.expType), {'twophoton';'widefield'}) && contains(dataType, {'all'; 'flu'})
         switch lower(x.expType)
             case 'twophoton'
                 fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i);
@@ -126,10 +125,17 @@ for i = files2Run(files2Run>srtIdx)
         end
     end 
     
+    if (~contains({'fus'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'fusi') && contains(dataType, {'all'; 'fus'})
+        fprintf('Converting fusi recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
+        convfUSiFile(x);
+        whoD = unique(who('-file', x.processedData));
+    end
+    
     %If not converted through other processing steps, convert block file.
-    if  ((~varIdx(1) || redoTag) && ~strcmpi(x.expType, 'ephys')) && contains(dataType, {'all'; 'blk'})
+    if  (~contains({'blk'}, ['ignore'; whoD]) || redoTag) && contains(dataType, {'all'; 'blk'})
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x);
+        whoD = unique(who('-file', x.processedData));
     end
 end
 
@@ -140,7 +146,7 @@ if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
-function [x, blk, prm, raw] = convBlockFile(x)
+function [x, whoD] = convBlockFile(x)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 if exist(x.galvoLog, 'file'); x.galvoLog = load(x.galvoLog); else, x.galvoLog = 0; end
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
@@ -168,6 +174,7 @@ x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardiz
 if contains(x.expType, {'ephys'; 'fusi'})
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
+else, x.alignment = 'none';
 end
 %%
 
@@ -180,9 +187,6 @@ repeatPoints = [strfind(diff([-1000,x.standardizedBlock.inputs.wheelValues])~=0,
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
 x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
-
-if isfield(x, 'aligned'); x.aligned.wheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]); end
-
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
@@ -194,7 +198,7 @@ raw = x.newRaw;
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~exist(fileparts(strrep(x.processedData,'dData','dDataLite')), 'dir'); mkdir(fileparts(strrep(x.processedData,'dData','dDataLite'))); end
 if ~x.existProcessed(1)
-    whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw'); %#ok
+    whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw');
     save(strrep(x.processedData,'dData','dDataLite'), 'blk', 'prm');
 else
     whoD = unique([who('-file', x.processedData); 'blk'; 'prm'; 'raw']); save(x.processedData, 'blk', 'prm', 'whoD', 'raw', '-append');  %#ok
@@ -203,21 +207,48 @@ end
 end
 
 %%
-function x = convEphysFile(x)
-if ~exist(x.kilosortOutput, 'dir') || ~exist([x.kilosortOutput '/spike_templates.npy'], 'file')
-    kil.preProcessPhase3(x.subject, x.expDate);
-    kil.liklihoodNoise(x.kilosortOutput);
-elseif ~exist([x.kilosortOutput '\cluster_pNoise.tsv'], 'file')
-    kil.liklihoodNoise(x.kilosortOutput);
+function x = convfUSiFile(x)
+    x = convBlockFile(x);
+    fus = struct;
+    fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'; 'expDef'};
+    for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.(fields2copy{i}); end
+    fields2copy = fields(x.aligned);
+    for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.aligned.(fields2copy{i}); end
+    whoD = unique([who('-file', x.processedData); 'fus']); 
+    save(x.processedData, 'fus', 'whoD', '-append'); 
+    copyfile(x.processedData, strrep(x.rawTimeline, 'Timeline', 'ProcBlock'));
 end
 
-clusterGroups = tdfread([x.kilosortOutput '\cluster_group.tsv']);
-if size(unique(clusterGroups.group, 'rows'),1) == 3 && all(contains({'good '; 'noise'; 'mua  '}, cellstr(clusterGroups.group)))
+%%
+function x = convEphysFile(x)
+siteList = dir([fileparts(x.kilosortOutput) '\*site*']);
+if isempty(siteList); siteList = {x.kilosortOutput}; else; siteList = cellfun(@(y) [x.kilosortOutput '\' y], {siteList.name}', 'uni', 0); end
+sites2Process = cellfun(@(x) ~exist([x '/spike_templates.npy'], 'file'), siteList);
+if ~exist(x.kilosortOutput, 'dir') || any(sites2Process)
+    kil.preProcessPhase3(x.subject, x.expDate, sites2Process);
+    cellfun(@kil.liklihoodNoise, siteList);
+elseif any(cellfun(@(x) ~exist([x '\cluster_pNoise.tsv'], 'file'), siteList))
+    cellfun(@kil.liklihoodNoise, siteList);
+end
+if ~exist(x.processedData, 'file'); x = convBlockFile(x); end
+
+clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
+clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
+%%
+if length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id))
     fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
-    [eph] = kil.loadEphysData(x); %#ok<NASGU>
-    whoD = unique([who('-file', x.processedData); 'eph']); %#ok<NASGU>
-    save(x.processedData, 'eph', 'whoD', '-append');
-else, fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
+    x = convBlockFile(x);
+    eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y), siteList, 'uni', 0));
+    numClusters = [0;cellfun(@length, {eph.clusterDepths}')];
+    eph(1).recordingSiteIdx = uint8(cell2mat(arrayfun(@(x) eph(x).spikeTimes*0+x, 1:length(eph), 'uni', 0)'));
+    eph(1).clusterID = cell2mat(arrayfun(@(x) eph(x).clusterID+sum(numClusters(1:x)), 1:length(eph), 'uni', 0)');
+    combineList = {'spikeTimes';'spikeAmps';'clusterDepths';'clusterDuration';'waveforms'};
+    for i = 1:length(combineList); eph(1).(combineList{i}) = vertcat(eph.(combineList{i})); end
+    eph = eph(1); %#ok<NASGU>
+    
+    whoD = unique([who('-file', x.processedData); 'eph']); save(x.processedData, 'eph', 'whoD', '-append');
+else
+    fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
 end
 end
 
