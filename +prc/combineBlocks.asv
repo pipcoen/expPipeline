@@ -39,12 +39,12 @@ if isfield(blocks, 'ephRecordingSiteIdx')
     numClustersPerSession = [0;cellfun(@length, {blocks.ephClusterAmps}')];
     tDat = arrayfun(@(x) blocks(x).ephClusterID+sum(numClustersPerSession(1:x)), 1:length(blocks), 'uni', 0)';
     [blocks.ephClusterID] = tDat{:};
-    combinedBlocks.ephChannelMap = {blocks.ephChannelMap}';
+    combinedBlocks.
 end
 
 for fieldName = fieldNames'
     currField = fieldName{1};
-    if contains(currField, {'sessionNum';'nSessions';'subjectIdx';'ephChannelMap'}); continue; end
+    if contains(currField, {'sessionNum';'nSessions';'subjectIdx'}); continue; end
     if contains(currField, {'expType'; 'rigName'}); tDat = {blocks(:).(currField)}';
     else, tDat = vertcat(blocks(:).(currField));
     end

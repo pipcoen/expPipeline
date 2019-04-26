@@ -28,14 +28,14 @@ function expList = scanForNewFiles(rebuildList, checkDirectories, checkExpRigs)
 %% Define which mice should be included and which start/end dates (defaults to all files for that mouse)
 if ~exist('rebuildList', 'var'); rebuildList = 0; end
 if ~exist('checkDirectories', 'var'); checkDirectories = 0; end
-if ~exist('checkExpRigs', 'var'); checkExpRigs = 0; end
+if ~exist('checkExpRigs', 'var'); checkExpRigs = 1; end
 expInfo = prc.pathFinder('expInfo');
 includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...
-    'PC035'; 'PC036'; 'PC037'; 'PC038'; 'PC040'; 'PC041'; 'PC042'; 'PC043'; 'PC044'; ...
+    'PC036'; 'PC037'; 'PC038'; 'PC040'; 'PC041'; 'PC042'; 'PC043'; 'PC044'; ...
     'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR010'};
 
 startedDates = {...
-    'CR010' '2018-01-29'};
+    'CR010' '2019-01-29'};
 retiredDates = {...
     'PC005' '2017-07-28'; ...
     'PC006' '2017-07-28'; ...
@@ -109,12 +109,6 @@ for i = 1:length(processList)
     backUpFolder = prc.pathFinder('rawbackupfolder', subject, expDate, expNum);
     prc.syncfolder(fileparts(processList{i}), backUpFolder, 2); %#ok<*NODEF>
     
-    if exist(prc.pathFinder('galvoLog', subject, expDate, expNum), 'file')
-        expList(end).galvoLog = prc.pathFinder('galvoLog', subject, expDate, expNum);
-    else
-        expList(end).galvoLog = 0;
-    end
-    
     tempLoc = prc.updatePaths(expList(end), 0);
     if exist(tempLoc.rawBlock, 'file'); load(tempLoc.rawBlock, 'block'); b = block;
     else, clear b; load(processList{i});
@@ -142,7 +136,7 @@ for i = 1:length(processList)
     
     %If a ChoiceWorld experiment, or experiment lasts less than 60s, then ignore (Pip doesn't use Choiceworld)
     if strcmp(expList(end).expDef, 'ChoiceWorld'); expList(end).excluded = 1; continue; end
-    if expList(end).expDuration < 120; expList(end).excluded = 1; continue; end
+    if expList(end).expDuration < 300; expList(end).excluded = 1; continue; end
     
     txtF = [dir([fileparts(fileparts(processList{i})) '\*Exclude*.txt']); dir([fileparts(processList{i}) '\*Exclude*.txt'])];
     if ~isempty(txtF); expList(end).excluded = 1; end
@@ -166,7 +160,9 @@ end
 if checkExpRigs
     expRigs = find(contains({expList.rigName}', {'zatteo'; 'lilrig-stim'}));
     for i = expRigs'
-        if strcmp(expList(i).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(expList(i).rawFolder) '\*hys*'])); expList(i).expType = 'ephys'; end
+        if strcmp(expList(i).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(expList(i).rawFolder) '\*hys*']))
+            expList(i).expType = 'ephys';
+        end
     end
 end
 
@@ -187,9 +183,9 @@ for i = 1:length(duplicates)
 end
 
 
-%% This section section deals with short files when multiple files are detected for a mouse on same day and experiment type type
+%% This section section deals with short files when multiple files are detected for a mouse on same day and experiment type
 processList = cellfun(@fileparts, {expList.rawFolder}', 'uni', 0);
-processList = cellfun(@(x,y) [x, y], processList, {expList.expType}', 'uni', 0);
+processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expList.expDef}', 'uni', 0);
 [~, uniqueFileIdx] = unique(processList);
 duplicates = unique(processList(setdiff(1:length(processList),uniqueFileIdx)));
 for i = 1:length(duplicates)

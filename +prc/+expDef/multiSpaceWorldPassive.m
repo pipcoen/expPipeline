@@ -67,7 +67,6 @@ n.uniqueConditions = uniqueConditions;
 n.uniqueConditionLabels = uniqueConditionLabels;
 n.conditionLabelRow = [conditionLabel conditionRowIdx]; 
 
-
 x.newParams = prc.chkThenRemoveFields(p, {'postQuiescentDelay';'laserOnsetDelays';'waveformType';'maxRepeatIncorrect';'galvoType';'laserPower';...#
     'laserTypeProportions';'laserDuration';'rewardTotal';});
 x.newBlock = n;

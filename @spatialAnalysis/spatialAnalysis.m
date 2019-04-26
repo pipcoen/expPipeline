@@ -184,6 +184,11 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             ylabel('\fontsize{20} Conflict reaction time (ms)');
         end
         
+        function classifyNeurons(obj)
+            clusterSigLevel = kil.findResponsiveCells(obj.blocks{1});
+            
+        end
+        
         function viewJitterPlot(obj, plotType)
             if ~exist('plotType', 'var'); plotType = 'coh'; end
             figure;

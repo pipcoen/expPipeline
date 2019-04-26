@@ -230,7 +230,6 @@ if ~exist(x.kilosortOutput, 'dir') || any(sites2Process)
 elseif any(cellfun(@(x) ~exist([x '\cluster_pNoise.tsv'], 'file'), siteList))
     cellfun(@kil.liklihoodNoise, siteList);
 end
-if ~exist(x.processedData, 'file'); x = convBlockFile(x); end
 
 clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
 clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
@@ -250,6 +249,7 @@ if length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.clust
 else
     fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
 end
+if ~exist(x.processedData, 'file'); x = convBlockFile(x); end
 end
 
 %%
