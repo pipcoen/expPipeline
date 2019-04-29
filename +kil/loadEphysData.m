@@ -112,6 +112,7 @@ goodTemplatesIdx = ismember(0:size(templates,1)-1,goodTemplatesList);
 templateDepths = templateDepths(goodTemplatesIdx);
 templateAmps = templateAmps(goodTemplatesIdx);
 waveforms = waveforms(goodTemplatesIdx,:);
+templates = templates(goodTemplatesIdx,:,:);
 templateDuration = templateDuration(goodTemplatesIdx);
 %%
 % Throw out all non-good spike data
@@ -130,23 +131,18 @@ spikeTemplates = newSpikeIdx(spikeTemplates+1);
 %%
 fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'};
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
-eph.recordingSiteIdx = single(spikeTimesTimeline);
+eph.spikeSite = [];
 eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);
-eph.clusterID = uint16(spikeTemplates);
+eph.spikeCluster = uint16(spikeTemplates);
+eph.clusterSite = [];
 eph.clusterDepths = templateDepths;
 eph.clusterAmps = templateAmps;
 eph.clusterDuration = templateDuration;
-eph.waveforms = waveforms;
-eph.channelMap = readNPY([kilosortOutput '\channel_positions.npy']);
+eph.clusterWaveforms = waveforms;
+eph.clusterTemplates = {templates};
+eph.clusterSigLevel = [];
+eph.channelMap = {readNPY([kilosortOutput '\channel_positions.npy'])};
 eph = prc.catStructs(eph, prc.filtStruct(x.aligned, x.validTrials));
 %%
 fprintf('Finished loading experiment... \n');
-
-
-
-
-
-
-
-

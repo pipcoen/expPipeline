@@ -8,47 +8,43 @@ function cellRaster(blk,eventTimes,trialGroups,sortRule)
 % sortRule - sorting for scrolling through units (default = depth)
 %
 % These variables are required in the base workspace: 
-% ephWaveforms (output from kilosort)
+% ephClusterTemplates (output from kilosort)
 % channelPositions (output from kilosort)
 % clusterDepths (calculated from center-of-mass or otherwise)
 % spikeTimes_timeline (spikeTimes aligned to timeline)
-% ephClusterID (output from kilosort)
+% ephSpikeCluster (output from kilosort)
 % spikeAmps (output from kilosort)
 %
 % Controls: 
 % up/down - switch between units (clicking on unit also selects)
 % left/right - switch between alignments (if multiple)
-% m - select depth range to plot multiunit
 % u - go to unit number
 % s - change session nnumber
 
 guiData = struct;
-if ~isfield(blk, 'ephClustSessionIdx'); guiData.clustSessions = blk.ephClusterAmps*0+1; else, guiData.clustSessions = blk.ephClustSessionIdx; end
-if ~isfield(blk, 'ephSessionIdx'); guiData.spikeSessions = blk.ephSessionIdx*0+1; else, guiData.spikeSessions = blk.ephSessionIdx; end
+guiData.clusterSession = blk.ephClusterSession;
+guiData.clusterSite = blk.ephClusterSession;
+guiData.spikeSession = blk.ephSpikeSession;
+guiData.spikeSite = blk.ephSpikeSession;
 guiData.blk = blk;
 
 % Initiate eventTimes
 % (align times required as input)
 if ~exist('eventTimes','var'); error('No align times'); end
-if size(eventTimes,2)==1
-    if length(eventTimes) == lenghth(blk.sessionIdx); guiData.eventTimes = [guiData.eventTimes blk.sessionIdx];
-    else, error('Need to know which sessions each event relates to');
-    end
-end
-if exist('sortRule','var'); guiData.sortRule = sortRule; end
+if exist('sortRule','var'); guiData.sortRule = sortRule; else; guiData.sortRule = 'sig'; end
 
 % (put eventTimes into cell array if it isn't already, standardize dim)
 if ~iscell(eventTimes); eventTimes = {eventTimes}; end
 eventTimes = reshape(cellfun(@(x) reshape(x,[],1),eventTimes,'uni',false),1,[]);
+if size(eventTimes{1},2)==1
+    if length(eventTimes{1}) == length(blk.sessionIdx); eventTimes{1} = [eventTimes{1} blk.sessionIdx];
+    else, error('Need to know which sessions each event relates to');
+    end
+end
 
 % Initiate trialGroups
 % (if no align groups specified, create one group for each alignment)
-if ~exist('trialGroups','var') || isempty(trialGroups)
-   guiData.trialGroups =  cellfun(@(x) ones(size(x,1),1),eventTimes,'uni',false);
-else guiData.trialGroups = trialGroups;
-end
-
-% (put groups into cell array if it isn't already)
+if ~exist('trialGroups','var') || isempty(trialGroups); trialGroups =  cellfun(@(x) ones(size(x,1),1),eventTimes,'uni',false); end
 if ~iscell(trialGroups); trialGroups = {trialGroups}; end
 trialGroups = reshape(trialGroups,1,[]);
 
@@ -66,199 +62,208 @@ if any(cellfun(@isempty,group_dim))
 end
 trialGroups = cellfun(@(groups,dim) shiftdim(groups,dim-1),trialGroups,group_dim,'uni',false);
 
+trialGroups = {trialGroups{1}(~isnan(eventTimes{1}(:,1)),:)};
+eventTimes = {eventTimes{1}(~isnan(eventTimes{1}(:,1)),:)};
+
 % (if there isn't an all ones category first, make one)
-trialGroups = cellfun(@(x) padarray(x,[0,1-all(x(:,1) == 1)],1,'pre'),trialGroups,'uni',false);
+guiData.trialGroups = cellfun(@(x) padarray(x,[0,1-all(x(:,1) == 1)],1,'pre'),trialGroups,'uni',false);
 
 % Package gui data
 cellrasterGui = figure('color','w');
-guiData.selectedSession = 0;
-guiData.evenTimes = eventTimes;
+guiData.currSession = 1;
+guiData.currSite = 1;
+guiData.eventTimes = eventTimes;
+
+guiData.unitAxes = subplot(5,5,1:5:20,'YDir','reverse'); hold on;
+xlim([-0.1,1]);
+ylabel('Depth (\mum)')
+xlabel('Normalized log rate')
+
+guiData.waveformAxes = subplot(5,5,2:5:20,'visible','off'); hold on;
+linkaxes([guiData.unitAxes,guiData.waveformAxes],'y');
+
+guiData.psthAxes = subplot(5,5,[3,4,5],'YAxisLocation','right'); hold on;
+xlabel('Time from event (s)');
+ylabel('Spikes/s/trial');
+
+guiData.rasterAxes = subplot(5,5,[8,9,10,13,14,15,18,19,20],'YDir','reverse','YAxisLocation','right'); hold on;
+xlabel('Time from event (s)');
+ylabel('Trial');
+
+guiData.amplitudeAxes = subplot(5,5,21:25); hold on;
+xlabel('Experiment time (s)');
+ylabel('Template amplitude');
+axis tight
+
 guidata(cellrasterGui, guiData);
 cycleSession(cellrasterGui);
 end
 
 function cycleSession(cellrasterGui)
 guiData = guidata(cellrasterGui);
-guiData.selectedSession = mod(guiData.selectedSession+1, max(guiData.clustSessions));
-% Pull standard ephys variables from base workspace
-ephWaveforms = guiData.blk.ephWaveforms(guiData.clustSessions==guiData.selectedSession);
-channelPositions = guiData.blk.ephChannelMap{guiData.selectedSession};
-spikeTimes = guiData.blk.ephSpikeTimes(guiData.spikeSessions==guiData.selectedSession);
-ephClusterID = guiData.blk.ephClusterID(guiData.spikeSessions==guiData.selectedSession);
-spikeAmps = guiData.blk.ephSpikeAmps(guiData.clustSessions==guiData.selectedSession);
-clusterDepths = guiData.blk.ephClusterDepths(guiData.clustSessions==guiData.selectedSession);
-% clusterDepths = guiData.blk.ephClusterDepths(unique(ephClusterID));
+clustIdx = guiData.blk.ephClusterSession==guiData.currSession & guiData.blk.ephClusterSite==guiData.currSite;
+spikeIdx = guiData.blk.ephSpikeSession==guiData.currSession & guiData.blk.ephSpikeSite==guiData.currSite;
+blk = guiData.blk;
 
-% Sort the units by depth if not specified
-if ~isfield(guiData, 'sortRule'); [~,sortRule] = sort(clusterDepths); end
+if isfield(guiData, 'title');delete(guiData.title); end
+[~, guiData.title] = plt.suplabel(sprintf('%s: %s Site %d', ...
+    blk.subject{min([guiData.currSession length(blk.subject)])},blk.params(guiData.currSession).expDate,guiData.currSite),'t');
+ephClusterTemplates = blk.ephClusterTemplates{guiData.currSession}{guiData.currSite};
+channelPositions = blk.ephChannelMap{guiData.currSession}{guiData.currSite};
+spikeTimes = blk.ephSpikeTimes(spikeIdx);
+spikeCluster = blk.ephSpikeCluster(spikeIdx);
+spikeAmps = blk.ephSpikeAmps(spikeIdx);
+clusterDepths = blk.ephClusterDepths(clustIdx);
+spikeCluster = spikeCluster-min(spikeCluster)+1;
 
-% Initialize figure and axes
+guiData.currEventTimes = {guiData.eventTimes{1}(guiData.eventTimes{1}(:,2)==guiData.currSession,1)};
+guiData.currTrialGroups = {guiData.trialGroups{1}(guiData.eventTimes{1}(:,2)==guiData.currSession,:)};
 
-% (plot unit depths by depth and relative number of spikes)
-unit_axes = subplot(5,5,[1:5:20],'YDir','reverse');
-hold on;
-
-norm_spike_n = mat2gray(log(accumarray(ephClusterID,1)+1));
-unit_dots = plot(norm_spike_n,clusterDepths,'.k','MarkerSize',20,'ButtonDownFcn',@unit_click);
-curr_unit_dots = plot(0,0,'.r','MarkerSize',20);
-multiunit_lines = arrayfun(@(x) line(xlim,[0,0],'linewidth',2,'visible','off'),1:2);
-xlim(unit_axes,[-0.1,1]);
-ylim([-50, max(channelPositions(:,2))+50]);
-ylabel('Depth (\mum)')
-xlabel('Normalized log rate')
-
-% (plot of waveform across the probe)
-waveform_axes = subplot(5,5,[2:5:20],'visible','off','YDir','reverse');
-hold on;
-ylim([-50, max(channelPositions(:,2))+50]);
-waveform_lines = arrayfun(@(x) plot(waveform_axes,0,0,'k','linewidth',1),1:size(ephWaveforms,3));
-
-linkaxes([unit_axes,waveform_axes],'y');
-
-% (smoothed psth)
-psth_axes = subplot(5,5,[3,4,5],'YAxisLocation','right');
-hold on;
-max_n_groups = max(cell2mat(cellfun(@(x) 1+sum(diff(sort(x,1),[],1) ~= 0),trialGroups,'uni',false)));
-psth_lines = arrayfun(@(x) plot(NaN,NaN,'linewidth',2,'color','k'),1:max_n_groups);
-xlabel('Time from event (s)');
-ylabel('Spikes/s/trial');
-
-% (raster)
-raster_axes = subplot(5,5,[8,9,10,13,14,15,18,19,20],'YDir','reverse','YAxisLocation','right');
-hold on;
-raster_dots = scatter(NaN,NaN,5,'k','filled');
-raster_image = imagesc(NaN,'visible','off'); colormap(raster_axes,hot);
-xlabel('Time from event (s)');
-ylabel('Trial');
-
-% (spike amplitude across the recording)
-amplitude_axes = subplot(5,5,21:25); hold on;
-amplitude_plot = plot(NaN,NaN,'.k');
-amplitude_lines = arrayfun(@(x) line([0,0],ylim,'linewidth',2),1:2);
-xlabel('Experiment time (s)');
-ylabel('Template amplitude');
-axis tight
-
-% Set default raster times
-raster_window = [-0.5,1];
-psth_bin_size = 0.001;
-t_bins = raster_window(1):psth_bin_size:raster_window(2);
-t = t_bins(1:end-1) + diff(t_bins)./2;
-use_align = reshape(eventTimes{1},[],1);
-t_peri_event = use_align + t_bins;
-% (handle NaNs by setting rows with NaN times to 0)
-t_peri_event(any(isnan(t_peri_event),2),:) = 0;
-
-% Set functions for key presses
-set(cellrasterGui,'KeyPressFcn',@key_press);
-
-% (plots)
-guiData.unit_dots = unit_dots;
-guiData.curr_unit_dots = curr_unit_dots;
-guiData.multiunit_lines = multiunit_lines;
-guiData.waveform_lines = waveform_lines;
-guiData.psth_lines = psth_lines;
-guiData.raster_dots = raster_dots;
-guiData.raster_image = raster_image;
-guiData.amplitude_plot = amplitude_plot;
-guiData.amplitude_lines = amplitude_lines; 
-
-% (raster times)
-guiData.t = t;
-guiData.t_bins = t_bins;
-guiData.t_peri_event = t_peri_event;
-
-% (user inputs)
-guiData.eventTimes = eventTimes;
-guiData.trialGroups = trialGroups;
-guiData.sortRule = sortRule;
-
-% (spike data)
-guiData.ephWaveforms = ephWaveforms;
-guiData.channelPositions = channelPositions;
-guiData.spikeTimes = spikeTimes;
-guiData.ephClusterID = ephClusterID;
-guiData.spikeAmps = spikeAmps;
-
-% (current settings)
-guiData.curr_unit = sortRule(1);
-guiData.curr_align = 1;
-guiData.curr_group = 1;
-
-% Upload gui data and draw
-guidata(cellrasterGui, guiData);
-update_plot(cellrasterGui);
+switch guiData.sortRule(1:3)
+    case 'dep'
+        [~, guiData.currSortRule] = sort(clusterDepths);
+    case 'sig'
+        blk = guiData.blk; 
+        blk = prc.filtStruct(blk, clustIdx); 
+        blk = prc.filtStruct(blk, spikeIdx);
+        blk.ephSpikeCluster = blk.ephSpikeCluster-min(blk.ephSpikeCluster)+1;
+        guiData.clusterSigLevel = kil.findResponsiveCells(blk,guiData.currEventTimes{1});
+        [~, guiData.currSortRule] = sort(guiData.clusterSigLevel);
 end
 
 
-function update_plot(cellrasterGui,eventdata)
+% Initialize figure and axes
+axes(guiData.unitAxes); cla;
+ylim([-50, max(channelPositions(:,2))+50]);
 
+% (plot unit depths by depth and relative number of spikes)
+normSpikeNum = mat2gray(log(accumarray(spikeCluster,1)+1));
+if length(normSpikeNum)<length(clusterDepths); normSpikeNum(end+1:length(clusterDepths)) = min(normSpikeNum); end
+unitDots = plot(normSpikeNum,clusterDepths,'.k','MarkerSize',20,'ButtonDownFcn',@unitClick);
+currUnitDots = plot(0,0,'.r','MarkerSize',20);
+
+% (plot of waveform across the probe)
+axes(guiData.waveformAxes); cla;
+ylim([-50, max(channelPositions(:,2))+50]);
+waveformLines = arrayfun(@(x) plot(guiData.waveformAxes,0,0,'k','linewidth',1),1:size(ephClusterTemplates,3));
+
+% (smoothed psth)
+axes(guiData.psthAxes); cla;
+maxNumGroups = max(cell2mat(cellfun(@(x) 1+sum(diff(sort(x,1),[],1) ~= 0),guiData.currTrialGroups,'uni',false)));
+psthLines = arrayfun(@(x) plot(NaN,NaN,'linewidth',2,'color','k'),1:maxNumGroups);
+
+% (raster)
+axes(guiData.rasterAxes); cla;
+rasterDots = scatter(NaN,NaN,5,'k','filled');
+
+% (spike amplitude across the recording)
+axes(guiData.amplitudeAxes); cla;
+amplitudePlot = plot(NaN,NaN,'.k');
+amplitudeLines = arrayfun(@(x) line([0,0],ylim,'linewidth',2),1:2);
+
+% Set default raster times
+rasterWindow = [-0.5,1];
+psthBinSize = 0.001;
+tBins = rasterWindow(1):psthBinSize:rasterWindow(2);
+t = tBins(1:end-1) + diff(tBins)./2;
+useAlign = reshape(guiData.currEventTimes{1},[],1);
+tPeriEvent = useAlign + tBins;
+% (handle NaNs by setting rows with NaN times to 0)
+tPeriEvent(any(isnan(tPeriEvent),2),:) = 0;
+
+% Set functions for key presses
+set(cellrasterGui,'KeyPressFcn',@keyPress);
+
+% (plots)
+guiData.unitDots = unitDots;
+guiData.currUnitDots = currUnitDots;
+guiData.waveformLines = waveformLines;
+guiData.psthLines = psthLines;
+guiData.rasterDots = rasterDots;
+guiData.amplitudePlot = amplitudePlot;
+guiData.amplitudeLines = amplitudeLines; 
+
+% (raster times)
+guiData.t = t;
+guiData.tBins = tBins;
+guiData.tPeriEvent = tPeriEvent;
+
+% (spike data)
+guiData.ephClusterTemplates = ephClusterTemplates;
+guiData.channelPositions = channelPositions;
+guiData.spikeTimes = spikeTimes;
+guiData.spikeCluster = spikeCluster;
+guiData.spikeAmps = spikeAmps;
+
+% (current settings)
+guiData.currUnit = guiData.currSortRule(1);
+guiData.currAlign = 1;
+guiData.currGroup = 1;
+
+% Upload gui data and draw
+guidata(cellrasterGui, guiData);
+updatePlot(cellrasterGui);
+end
+
+
+function updatePlot(cellrasterGui)
 % Get guidata
 guiData = guidata(cellrasterGui);
 
 % Turn on/off the appropriate graphics
-if length(guiData.curr_unit) == 1
-    set(guiData.raster_dots,'visible','on');
-    set(guiData.multiunit_lines,'visible','off');
-    set(guiData.raster_image,'visible','off');
-elseif length(guiData.curr_unit) > 1
-    set(guiData.raster_dots,'visible','off');
-    set(guiData.multiunit_lines,'visible','on');
-    set(guiData.raster_image,'visible','on');
-end
+set(guiData.rasterDots,'visible','on');
 
 % Plot depth location on probe
-unit_x = get(guiData.unit_dots,'XData');
-unit_y = get(guiData.unit_dots,'YData');
-set(guiData.curr_unit_dots,'XData',unit_x(guiData.curr_unit), ...
-    'YData',unit_y(guiData.curr_unit));
+unitX = get(guiData.unitDots,'XData');
+unitY = get(guiData.unitDots,'YData');
+set(guiData.currUnitDots,'XData',unitX(guiData.currUnit), 'YData',unitY(guiData.currUnit));
 
 % Plot waveform across probe (reversed YDir, flip Y axis and plot depth)
-template_xscale = 7;
-template_yscale = 5;
+templateXScale = 7;
+templateYScale = 250;
 
-template_y = permute(mean(guiData.ephWaveforms(guiData.curr_unit,:,:),1),[3,2,1]);
-template_y = -template_y*template_yscale + guiData.channelPositions(:,2);
-template_x = (1:size(guiData.ephWaveforms,2)) + guiData.channelPositions(:,1)*template_xscale;
+templateY = permute(mean(guiData.ephClusterTemplates(guiData.currUnit,:,:),1),[3,2,1]);
+templateY = -templateY*templateYScale + guiData.channelPositions(:,2);
+templateX = (1:size(guiData.ephClusterTemplates,2)) + guiData.channelPositions(:,1)*templateXScale;
 
-template_channel_amp = range(guiData.ephWaveforms(guiData.curr_unit,:,:),2);
-template_thresh = max(template_channel_amp,[],3)*0.2;
-template_use_channels = any(template_channel_amp > template_thresh,1);
-[~,max_channel] = max(max(abs(guiData.ephWaveforms(guiData.curr_unit,:,:)),[],2),[],3);
+templateChannelAmp = range(guiData.ephClusterTemplates(guiData.currUnit,:,:),2);
+templateThresh = max(templateChannelAmp,[],3)*0.2;
+templateUseChannels = any(templateChannelAmp > templateThresh,1);
+[~,maxChannel] = max(max(abs(guiData.ephClusterTemplates(guiData.currUnit,:,:)),[],2),[],3);
 
-arrayfun(@(ch) set(guiData.waveform_lines(ch),'XData',template_x(ch,:),'YData',template_y(ch,:)),1:size(guiData.ephWaveforms,3));
-arrayfun(@(ch) set(guiData.waveform_lines(ch),'Color','r'),find(template_use_channels));
-arrayfun(@(ch) set(guiData.waveform_lines(ch),'Color','k'),find(~template_use_channels));
-set(guiData.waveform_lines(max_channel),'Color','b');
+arrayfun(@(ch) set(guiData.waveformLines(ch),'XData',templateX(ch,:),'YData',templateY(ch,:)),1:size(guiData.ephClusterTemplates,3));
+arrayfun(@(ch) set(guiData.waveformLines(ch),'Color','r'),find(templateUseChannels));
+arrayfun(@(ch) set(guiData.waveformLines(ch),'Color','k'),find(~templateUseChannels));
+set(guiData.waveformLines(maxChannel),'Color','b');
 
 % Bin spikes (use only spikes within time range, big speed-up)
-curr_spikes_idx = ismember(guiData.ephClusterID,guiData.curr_unit);
-curr_raster_spikeTimes = guiData.spikeTimes(curr_spikes_idx);
-curr_raster_spikeTimes(curr_raster_spikeTimes < min(guiData.t_peri_event(:)) | ...
-    curr_raster_spikeTimes > max(guiData.t_peri_event(:))) = [];
+currSpikeIdx = ismember(guiData.spikeCluster,guiData.currUnit);
+currRasterSpikeTimes = guiData.spikeTimes(currSpikeIdx);
+currRasterSpikeTimes(currRasterSpikeTimes < min(guiData.tPeriEvent(:)) | ...
+    currRasterSpikeTimes > max(guiData.tPeriEvent(:))) = [];
 
 curr_raster = cell2mat(arrayfun(@(x) ...
-    histcounts(curr_raster_spikeTimes,guiData.t_peri_event(x,:)), ...
-    [1:size(guiData.t_peri_event,1)]','uni',false));
+    histcounts(currRasterSpikeTimes,guiData.tPeriEvent(x,:)), ...
+    [1:size(guiData.tPeriEvent,1)]','uni',false));
 
 % Set color scheme
-curr_group = guiData.trialGroups{guiData.curr_align}(:,guiData.curr_group);
-if length(unique(curr_group)) == 1
+currGroup = guiData.currTrialGroups{guiData.currAlign}(:,guiData.currGroup);
+if length(unique(currGroup)) == 1
     % Black if one group
     group_colors = [0,0,0];
-elseif length(unique(sign(curr_group(curr_group ~= 0)))) == 1
+elseif length(unique(sign(currGroup(currGroup ~= 0)))) == 1
     % Black-to-red single-signed groups
-    n_groups = length(unique(curr_group));
+    n_groups = length(unique(currGroup));
     group_colors = [linspace(0,0.8,n_groups)',zeros(n_groups,1),zeros(n_groups,1)];
-elseif length(unique(sign(curr_group(curr_group ~= 0)))) == 2
+elseif length(unique(sign(currGroup(currGroup ~= 0)))) == 2
     % Symmetrical blue-black-red if negative and positive groups
-    n_groups_pos = length(unique(curr_group(curr_group > 0)));
+    n_groups_pos = length(unique(currGroup(currGroup > 0)));
     group_colors_pos = [linspace(0.3,1,n_groups_pos)',zeros(n_groups_pos,1),zeros(n_groups_pos,1)];
     
-    n_groups_neg = length(unique(curr_group(curr_group < 0)));
+    n_groups_neg = length(unique(currGroup(currGroup < 0)));
     group_colors_neg = [zeros(n_groups_neg,1),zeros(n_groups_neg,1),linspace(0.3,1,n_groups_neg)'];
     
-    n_groups_zero = length(unique(curr_group(curr_group == 0)));
+    n_groups_zero = length(unique(currGroup(currGroup == 0)));
     group_colors_zero = [zeros(n_groups_zero,1),zeros(n_groups_zero,1),zeros(n_groups_zero,1)];
     
     group_colors = [flipud(group_colors_neg);group_colors_zero;group_colors_pos];    
@@ -270,186 +275,161 @@ gw = gausswin(smooth_size,3)';
 smWin = gw./sum(gw);
 bin_t = mean(diff(guiData.t));
 
-curr_psth = grpstats(curr_raster,curr_group,@(x) mean(x,1));
+curr_psth = grpstats(curr_raster,currGroup,@(x) mean(x,1));
 curr_smoothed_psth = conv2(padarray(curr_psth, ...
     [0,floor(length(smWin)/2)],'replicate','both'), ...
     smWin,'valid')./bin_t;
 
 % (set the first n lines by group, set all others to NaN)
-arrayfun(@(align_group) set(guiData.psth_lines(align_group), ...
+arrayfun(@(align_group) set(guiData.psthLines(align_group), ...
     'XData',guiData.t,'YData',curr_smoothed_psth(align_group,:), ...
     'Color',group_colors(align_group,:)),1:size(curr_psth,1));
-arrayfun(@(align_group) set(guiData.psth_lines(align_group), ...
+arrayfun(@(align_group) set(guiData.psthLines(align_group), ...
     'XData',NaN,'YData',NaN), ...
-    size(curr_psth,1)+1:length(guiData.psth_lines));
+    size(curr_psth,1)+1:length(guiData.psthLines));
 
-ylim(get(guiData.psth_lines(1),'Parent'),[min(curr_smoothed_psth(:)), ...
+ylim(get(guiData.psthLines(1),'Parent'),[min(curr_smoothed_psth(:)), ...
     max(max(curr_smoothed_psth(:),min(curr_smoothed_psth(:))+1))]);
-if length(guiData.curr_unit) == 1
-title(get(guiData.psth_lines(1),'Parent'), ...
-    ['Unit ' num2str(guiData.curr_unit) ...
-    ', Align ' num2str(guiData.curr_align) ...
-    ', Group ' num2str(guiData.curr_group)],'FontSize',14);
-elseif length(guiData.curr_unit) > 1
-title(get(guiData.psth_lines(1),'Parent'), ...
-    ['Multiunit, Align ' num2str(guiData.curr_align)],'FontSize',14);
-end
+title(get(guiData.psthLines(1),'Parent'), ...
+    ['Unit ' num2str(guiData.currUnit) ...
+    ', Align ' num2str(guiData.currAlign) ...
+    ', Group ' num2str(guiData.currGroup)],'FontSize',14);
+
 
 % Plot raster
-if length(guiData.curr_unit) == 1
-    % (single unit mode)
-    [raster_y,raster_x] = find(curr_raster);
-    set(guiData.raster_dots,'XData',guiData.t(raster_x),'YData',raster_y);
-    xlim(get(guiData.raster_dots,'Parent'),[guiData.t_bins(1),guiData.t_bins(end)]);
-    ylim(get(guiData.raster_dots,'Parent'),[0,size(guiData.t_peri_event,1)]);
-    % (set dot color by group)
-    [~,~,row_group] = unique(guiData.trialGroups{guiData.curr_align}(:,guiData.curr_group),'sorted');
-    psth_colors = get(guiData.psth_lines,'color');
-    if iscell(psth_colors); psth_colors = cell2mat(psth_colors); end
-    raster_dot_color = psth_colors(row_group(raster_y),:);
-    set(guiData.raster_dots,'CData',raster_dot_color);
-    
-elseif length(guiData.curr_unit) > 1
-    % (multiunit mode)
-    raster_heatmap = imgaussfilt(curr_raster,[5,10]);
-    set(guiData.raster_image,'XData',guiData.t,'YData', ...
-        1:size(guiData.t_peri_event,1),'CData',raster_heatmap);
-    caxis(get(guiData.raster_image,'Parent'),prctile(raster_heatmap(:),[0.05,99.5]));
-    
-end
+% (single unit mode)
+[raster_y,raster_x] = find(curr_raster);
+set(guiData.rasterDots,'XData',guiData.t(raster_x),'YData',raster_y);
+xlim(get(guiData.rasterDots,'Parent'),[guiData.tBins(1),guiData.tBins(end)]);
+ylim(get(guiData.rasterDots,'Parent'),[0,size(guiData.tPeriEvent,1)]);
+% (set dot color by group)
+[~,~,row_group] = unique(guiData.currTrialGroups{guiData.currAlign}(:,guiData.currGroup),'sorted');
+psth_colors = get(guiData.psthLines,'color');
+if iscell(psth_colors); psth_colors = cell2mat(psth_colors); end
+raster_dot_color = psth_colors(row_group(raster_y),:);
+set(guiData.rasterDots,'CData',raster_dot_color);
+
 
 % Plot template amplitude over whole experiment
-if length(guiData.curr_unit) == 1
-    set(guiData.amplitude_plot,'XData', ...
-        guiData.spikeTimes(curr_spikes_idx), ...
-        'YData',guiData.spikeAmps(curr_spikes_idx),'linestyle','none');
-elseif length(guiData.curr_unit) > 1
-    long_bin_size = 60;
-    long_bins = guiData.spikeTimes(1):long_bin_size:guiData.spikeTimes(end);
-    long_bins_t = long_bins(1:end-1) + diff(long_bins)/2;
-    long_spikes_binned = discretize(guiData.spikeTimes,long_bins);
-    amplitude_binned = accumarray(long_spikes_binned(curr_spikes_idx & ~isnan(long_spikes_binned)), ...
-        guiData.spikeAmps(curr_spikes_idx & ~isnan(long_spikes_binned)),size(long_bins_t'),@nansum,NaN);
-    set(guiData.amplitude_plot,'XData',long_bins_t,'YData',amplitude_binned,'linestyle','-');
-end
+set(guiData.amplitudePlot,'XData', ...
+    guiData.spikeTimes(currSpikeIdx), ...
+    'YData',guiData.spikeAmps(currSpikeIdx),'linestyle','none');
 
-[ymin,ymax] = bounds(get(guiData.amplitude_plot,'YData'));
-set(guiData.amplitude_lines(1),'XData',repmat(min(guiData.t_peri_event(:)),2,1),'YData',[ymin,ymax]);
-set(guiData.amplitude_lines(2),'XData',repmat(max(guiData.t_peri_event(:)),2,1),'YData',[ymin,ymax]);
-
+[ymin,ymax] = bounds(get(guiData.amplitudePlot,'YData'));
+set(guiData.amplitudeLines(1),'XData',repmat(min(guiData.tPeriEvent(:)),2,1),'YData',[ymin,ymax]);
+set(guiData.amplitudeLines(2),'XData',repmat(max(guiData.tPeriEvent(:)),2,1),'YData',[ymin,ymax]);
+assignin('base','guiData',guiData)
 end
 
 
-function key_press(cellrasterGui,eventdata)
+function keyPress(cellrasterGui,eventdata)
 
 % Get guidata
 guiData = guidata(cellrasterGui);
 
 switch eventdata.Key
+    case 's'
+        numSessionSites = length(guiData.blk.ephClusterTemplates{guiData.currSession});
+        if guiData.currSite == numSessionSites; guiData.currSite = 1; guiData.currSession = guiData.currSession+1;
+        else; guiData.currSite = guiData.currSite+1; 
+        end
+        if guiData.currSession>max(guiData.clusterSession); guiData.currSession = 1; end
+        guidata(cellrasterGui,guiData);
+        cycleSession(cellrasterGui);
+        guiData = guidata(cellrasterGui);
+    
     case 'downarrow'
         % Next unit
-        curr_unit_idx = guiData.curr_unit(1) == guiData.sortRule;
-        new_unit = guiData.sortRule(circshift(curr_unit_idx,1));
-        guiData.curr_unit = new_unit;
+        currUnitIdx = guiData.currUnit(1) == guiData.currSortRule;
+        newUnit = guiData.currSortRule(circshift(currUnitIdx,1));
+        guiData.currUnit = newUnit;
         
     case 'uparrow'
         % Previous unit
-        curr_unit_idx = guiData.curr_unit(end) == guiData.sortRule;
-        new_unit = guiData.sortRule(circshift(curr_unit_idx,-1));
-        guiData.curr_unit = new_unit;
+        currUnitIdx = guiData.currUnit(end) == guiData.currSortRule;
+        newUnit = guiData.currSortRule(circshift(currUnitIdx,-1));
+        guiData.currUnit = newUnit;
         
     case 'rightarrow'
         % Next alignment
-        new_align = guiData.curr_align + 1;
-        if new_align > length(guiData.eventTimes)
-            new_align = 1;
+        newAlign = guiData.currAlign + 1;
+        if newAlign > length(guiData.currEventTimes)
+            newAlign = 1;
         end
-        use_align = reshape(guiData.eventTimes{new_align},[],1);
-        t_peri_event = use_align + guiData.t_bins;
+        useAlign = reshape(guiData.currEventTimes{newAlign},[],1);
+        tPeriEvent = useAlign + guiData.tBins;
         
         % (handle NaNs by setting rows with NaN times to 0)
-        t_peri_event(any(isnan(t_peri_event),2),:) = 0;
+        tPeriEvent(any(isnan(tPeriEvent),2),:) = 0;
         
-        guiData.curr_align = new_align;
-        guiData.t_peri_event = t_peri_event;
-        guiData.curr_group = 1;
+        guiData.currAlign = newAlign;
+        guiData.tPeriEvent = tPeriEvent;
+        guiData.currGroup = 1;
         
     case 'leftarrow'
         % Previous alignment
-        new_align = guiData.curr_align - 1;
-        if new_align < 1
-            new_align = length(guiData.eventTimes);
+        newAlign = guiData.currAlign - 1;
+        if newAlign < 1
+            newAlign = length(guiData.currEventTimes);
         end
-        use_align = reshape(guiData.eventTimes{new_align},[],1);
-        t_peri_event = use_align + guiData.t_bins;
+        useAlign = reshape(guiData.currEventTimes{newAlign},[],1);
+        tPeriEvent = useAlign + guiData.tBins;
         
         % (handle NaNs by setting rows with NaN times to 0)
-        t_peri_event(any(isnan(t_peri_event),2),:) = 0;
+        tPeriEvent(any(isnan(tPeriEvent),2),:) = 0;
         
-        guiData.curr_align = new_align;
-        guiData.t_peri_event = t_peri_event;
-        guiData.curr_group = 1;
+        guiData.currAlign = newAlign;
+        guiData.tPeriEvent = tPeriEvent;
+        guiData.currGroup = 1;
 
     case 'pagedown'
         % Next group
-        next_group = guiData.curr_group + 1;
-        if next_group > size(guiData.trialGroups{guiData.curr_align},2)
-            next_group = 1;
+        nextGroup = guiData.currGroup + 1;
+        if nextGroup > size(guiData.currTrialGroups{guiData.currAlign},2)
+            nextGroup = 1;
         end
-        guiData.curr_group = next_group;
+        guiData.currGroup = nextGroup;
         
     case 'pageup'
         % Previous group
-        next_group = guiData.curr_group - 1;
-        if next_group < 1
-            next_group = size(guiData.trialGroups{guiData.curr_align},2);
+        nextGroup = guiData.currGroup - 1;
+        if nextGroup < 1
+            nextGroup = size(guiData.currTrialGroups{guiData.currAlign},2);
         end
-        guiData.curr_group = next_group;
-                
-    case 'm'
-        % Multiunit (select on unit depth plot)
-        [~,multiunit_top] = ginput(1);
-        set(guiData.multiunit_lines(1),'visible','on','YData',repmat(multiunit_top,1,2));
-        [~,multiunit_bottom] = ginput(1);
-        set(guiData.multiunit_lines(2),'visible','on','YData',repmat(multiunit_bottom,1,2));
-        
-        clusterDepths = get(guiData.unit_dots,'YData');
-        guiData.curr_unit = find(clusterDepths >= multiunit_top & ...
-            clusterDepths <= multiunit_bottom);       
+        guiData.currGroup = nextGroup;     
         
     case 'u'
         % Enter and go to unit
-        new_unit = str2num(cell2mat(inputdlg('Go to unit:')));
-        if ~ismember(new_unit,unique(guiData.ephClusterID))
-            error(['Unit ' num2str(new_unit) ' not present'])
+        newUnit = str2num(cell2mat(inputdlg('Go to unit:')));
+        if ~ismember(newUnit,unique(guiData.spikeCluster))
+            error(['Unit ' num2str(newUnit) ' not present'])
         end
-        guiData.curr_unit = new_unit;
+        guiData.currUnit = newUnit;
         
 end
 
 % Upload gui data and draw
 guidata(cellrasterGui,guiData);
-update_plot(cellrasterGui);
-        
+updatePlot(cellrasterGui);
 end
 
-function unit_click(cellrasterGui,eventdata)
+function unitClick(cellrasterGui,eventdata)
 
 % Get guidata
 guiData = guidata(cellrasterGui);
 
 % Get the clicked unit, update current unit
-unit_x = get(guiData.unit_dots,'XData');
-unit_y = get(guiData.unit_dots,'YData');
+unitX = get(guiData.unitDots,'XData');
+unitY = get(guiData.unitDots,'YData');
 
-[~,clicked_unit] = min(sqrt(sum(([unit_x;unit_y] - ...
+[~,clicked_unit] = min(sqrt(sum(([unitX;unitY] - ...
     eventdata.IntersectionPoint(1:2)').^2,1)));
 
-guiData.curr_unit = clicked_unit;
+guiData.currUnit = clicked_unit;
 
 % Upload gui data and draw
 guidata(cellrasterGui,guiData);
-update_plot(cellrasterGui);
+updatePlot(cellrasterGui);
 
 end
 

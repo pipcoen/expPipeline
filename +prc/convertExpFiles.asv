@@ -239,12 +239,12 @@ if length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.clust
     x = convBlockFile(x);
     eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y), siteList, 'uni', 0));
     numClusters = [0;cellfun(@length, {eph.clusterDepths}')];
-    eph(1).spikeSite = uint8(cell2mat(arrayfun(@(x) eph(x).spikeTimes*0+x, 1:length(eph), 'uni', 0)'));
-    eph(1).clusterSite = cell2mat(arrayfun(@(x) zeros(numClusters(x+1),1)+x, 1:length(eph), 'uni', 0)');
-    eph(1).spikeCluster = cell2mat(arrayfun(@(x) eph(x).spikeCluster+sum(numClusters(1:x)), 1:length(eph), 'uni', 0)');
-    combineList = {'spikeTimes';'spikeAmps';'clusterDepths';'clusterDuration';'clusterWaveforms';'clusterAmps'};
+    eph(1).spikeSiteIdx = uint8(cell2mat(arrayfun(@(x) eph(x).spikeTimes*0+x, 1:length(eph), 'uni', 0)'));
+    eph(1).clusterSiteIdx = cell2mat(arrayfun(@(x) eph(x).clusterID+sum(numClusters(1:x)), 1:length(eph), 'uni', 0)');
+    eph(1).clusterID = cell2mat(arrayfun(@(x) eph(x).clusterID+sum(numClusters(1:x)), 1:length(eph), 'uni', 0)');
+    combineList = {'spikeTimes';'spikeAmps';'clusterDepths';'clusterDuration';'waveforms';'clusterAmps'};
     for i = 1:length(combineList); eph(1).(combineList{i}) = cat(1,eph.(combineList{i})); end
-    eph(1).clusterTemplates = [eph.clusterTemplates]';
+    eph(1).templates = [eph.templates]';
     eph(1).channelMap = [eph.channelMap]';
     eph = eph(1);
     

@@ -22,6 +22,7 @@ if strcmp(alignType, 'wheel') && max(timeline.rawDAQData(:,strcmp(inputNames, 'r
     alignType = 'photoDiode';
     fineTune = fineTune(~contains(fineTune, 'movements'));
 end
+
 switch alignType
     case 'wheel'
         smoothWindow = sampleRate/10+1;
@@ -59,6 +60,7 @@ switch alignType
         thresh = max(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')))/2;
         rewardTrace = timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')) > thresh;
         timelineRefTimes = timeline.rawDAQTimestamps(strfind(rewardTrace', [0 1])+1);
+        if length(timelineRefTimes)>length(blockRefTimes); timelineRefTimes = timelineRefTimes(2:end); end
         block.alignment = 'reward';
     case 'photoDiode'
         photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));
@@ -85,7 +87,6 @@ switch alignType
             error('Photodiode alignment error');
         end
 end
-
 
 fieldList = fieldnames(block.inputs);
 fieldList = fieldList(cellfun(@(x) strcmp(x(end-4:end), 'Times'), fieldnames(block.inputs)));
@@ -214,6 +215,10 @@ if any(contains(fineTune, 'movements'))
     closedLoopPeriodIdx = round(block.events.closedLoopOnOffTimes*sampleRate);
     closedLoopValues = block.events.closedLoopOnOffValues(1:find(block.events.closedLoopOnOffValues==0, 1, 'last'));
     
+    if ~exist('timelinehWeelPosition', 'var')
+        timelinehWeelPosition = timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'));
+        timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
+    end
     wheel = timelinehWeelPosition;
     move4Response = wheel(closedLoopPeriodIdx(closedLoopValues==0)) - wheel(closedLoopPeriodIdx(closedLoopValues==1));
     wheelThresh = median(abs(move4Response(responseMadeIdx)))*0.4;
