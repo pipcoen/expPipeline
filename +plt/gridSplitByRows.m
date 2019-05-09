@@ -1,8 +1,11 @@
 function gridSplitByRows(dataGrid, visValues, audValues, plotOpts)
 if size(dataGrid,1) ~= length(audValues); error('Must provide an auditory value for each row'); end
-colorChoices = plt.selectRedBlueColors(audValues);
+realAudValues = audValues(~isinf(audValues));
+colorChoices = plt.selectRedBlueColors(realAudValues);
 for j = 1:length(audValues)
-    plotOpts.Color = colorChoices(j,:);
+    if isinf(audValues(j)); plotOpts.Color = 'k'; 
+    else, plotOpts.Color = colorChoices(j,:);
+    end
     plot(visValues, dataGrid(j,:), plotOpts);
     hold on;
 end

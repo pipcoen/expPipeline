@@ -143,7 +143,7 @@ for currSite = find(sites2Process')
 % 
 %     % Get rid of the original non-CAR (usually not enough disk space)
     delete(apTempFilename);
-    
+    prc.convertExpFiles;
 %     disp('Moving CAR file before processing');
 %     %%
 %     movefile(apTempCarFilenameInit, apTempCarFilename);
