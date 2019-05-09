@@ -127,7 +127,7 @@ switch guiData.sortRule(1:3)
         blk = prc.filtStruct(blk, clustIdx); 
         blk = prc.filtStruct(blk, spikeIdx);
         blk.ephSpikeCluster = blk.ephSpikeCluster-min(blk.ephSpikeCluster)+1;
-        guiData.clusterSigLevel = kil.findResponsiveCells(blk,guiData.currEventTimes{1});
+        guiData.clusterSigLevel = kil.findResponsiveCells(blk,guiData.currEventTimes{1}, [-0.5 -0.1 0.05 0.1]);
         [~, guiData.currSortRule] = sort(guiData.clusterSigLevel);
 end
 

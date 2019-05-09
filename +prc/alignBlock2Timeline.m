@@ -127,22 +127,42 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     if length(timelineClickOn)~=length(timelineClickOff); error('There should always be an equal number on/off signals for clicks'); end
     if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000))>3; error('Diff in detected and requested click durations'); end
     
-    aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);
+    aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);  
+    largeGapThresh = 1./max([block.paramsValues.clickRate])*3;
+    largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>largeGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>largeGapThresh)]);
+
+    
+    %% Sanity check (should be match between stim starts from block and from timeline)
+    audstimStartTimeline = aStimOnOffTV(largeAudGaps,1);
+    audstimStartTimeline = audstimStartTimeline(aStimOnOffTV(largeAudGaps,2)==1);
+    nonAudTrials = [block.paramsValues.audAmplitude]==0; nonAudTrials = nonAudTrials(1:length(stimStartBlock));
+    [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline);
+    audError = 0;
+    if any(compareIndex-(1:numel(compareIndex)))
+        audError = 1;
+        [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline(~nonAudTrials));
+        if ~any(compareIndex-(1:numel(compareIndex))) && length(largeAudGaps)/2 == length(nonAudTrials)
+            fprintf('WARNING: Detected that zero aud trials still generated signals in Timeline. Will removed these \n')
+            
+            largeAudGaps([find(nonAudTrials)*2-1 find(nonAudTrials)*2]) = [];
+            audstimStartTimeline = aStimOnOffTV(largeAudGaps,1);
+            audstimStartTimeline = audstimStartTimeline(aStimOnOffTV(largeAudGaps,2)==1);
+            [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline);
+            if ~any(compareIndex-(1:numel(compareIndex)))
+                audError = 0; 
+                keepIdx = cell2mat(arrayfun(@(x) largeAudGaps(x):largeAudGaps(x+1), 1:2:length(largeAudGaps), 'uni', 0));
+                aStimOnOffTV = aStimOnOffTV(keepIdx,:);
+                largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>largeGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>largeGapThresh)]);
+            end
+        end
+    end
+    if audError; fprintf('Error in matching auditory stimulus start and end times \n'); keyboard; end
+    
     block.events.audStimOnOffTimes = aStimOnOffTV(:,1)';
     block.events.audStimOnOffValues = aStimOnOffTV(:,2)';
     aligned.audStimOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
-    
-    largeGapThresh = 1./max([block.paramsValues.clickRate])*3;
-    largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>largeGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>largeGapThresh)]);
     block.events.audStimPeriodOnOffTimes = aStimOnOffTV(largeAudGaps,1)';
     block.events.audStimPeriodOnOffValues = aStimOnOffTV(largeAudGaps,2)';
-    
-    %% Sanity check (should be match between stim starts from block and from timeline)
-    audstimStartTimeline = block.events.audStimPeriodOnOffTimes(block.events.audStimPeriodOnOffValues==1);
-    nonAudTrials = [block.paramsValues.audAmplitude]==0; nonAudTrials = nonAudTrials(1:length(stimStartBlock));
-    [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline);
-    if any(compareIndex-(1:numel(compareIndex))); fprintf('Error in matching auditory stimulus start and end times \n'); keyboard; end
-    
     aStimOnOffTV = aStimOnOffTV(largeAudGaps,:);
     aligned.audStimPeriodOnOff = [aStimOnOffTV(aStimOnOffTV(:,2)==1,1) aStimOnOffTV(aStimOnOffTV(:,2)==0,1)];
 elseif contains('clicks', fineTune)

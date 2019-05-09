@@ -15,7 +15,7 @@ if ~exist('eventTimes', 'var')
     end
 elseif size(eventTimes,2) == 1 && size(eventTimes,1) == length(blk.sessionIdx); eventTimes = [eventTimes blk.sessionIdx];
 elseif size(eventTimes,2) == 1 && length(unique(sessionIDs)) == 1; eventTimes = [eventTimes eventTimes*0+1];
-else, error('Could not figure out session info for event times');
+else error('Could not figure out session info for event times');
 end
 
 if ~exist('tWin', 'var'); tWin = [-0.5 -0.1 0 0.5];
@@ -27,23 +27,20 @@ end
 clusterSigLevel = nan*ones(length(blk.ephClusterAmps),1);
 clusterTTestData = cell(length(blk.ephClusterAmps),1);
 for i = sessionIDs'
-    selEvents = sort(eventTimes(eventTimes(:,2)==i,1));
-    currSessionIdx = i == blk.ephSpikeSession;
-    sessionSpikeTimes = blk.ephSpikeTimes(currSessionIdx);
-    sessionSpikeCluster = blk.ephSpikeCluster(currSessionIdx);
-    sessClusters  = unique(sessionSpikeCluster);
-    
-    if ~isempty(selEvents)
-        eventWindows = selEvents+tWin;
-        spikeCounts = histcounts2(sessionSpikeTimes, sessionSpikeCluster, sort(eventWindows(:)), 1:max(sessClusters)+1);
-        spikeCountsPre = spikeCounts(1:4:end,sessClusters)./range(tWin(1:2));
-        spikeCountsPost = spikeCounts(3:4:end,sessClusters)./range(tWin(3:4));
-        ttestData = spikeCountsPost - spikeCountsPre;
-        
-        [~, pVal] = ttest(ttestData);
-        clusterTTestData(sessClusters) = num2cell(ttestData,1)';
-        clusterSigLevel(sessClusters) = pVal';
+    selEvents = eventTimes(i == eventTimes(:,2));
+    sessClust = unique(blk.ephSpikeCluster(i == blk.ephSpikeSession));
+    ttestData = zeros(length(sessClust), length(selEvents));
+    for j = 1:length(selEvents)
+        idx2Take = i == blk.ephSpikeSession & blk.ephSpikeTimes<(selEvents(j)+tWin(4)) & blk.ephSpikeTimes>(selEvents(j)+tWin(1));
+        spikeTimes = blk.ephSpikeTimes(idx2Take)-selEvents(j);
+        spikeCluster = blk.ephSpikeCluster(idx2Take);
+        spikeCounts = cell2mat(arrayfun(@(x) [sum(x==spikeCluster(spikeTimes<tWin(2))) sum(x==spikeCluster(spikeTimes>tWin(3)))], sessClust, 'uni', 0));
+        diffSpikeRates = diff(spikeCounts./[range(tWin(1:2)) range(tWin(3:4))], [], 2);
+        ttestData(:,j) = diffSpikeRates;
     end
+    [~, pVal] = ttest(ttestData');
+    clusterTTestData(sessClust) = num2cell(ttestData',1)';
+    clusterSigLevel(sessClust) = pVal;
 end
 end
 

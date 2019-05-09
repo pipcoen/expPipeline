@@ -12,4 +12,5 @@ for fieldName = fieldNames'
     if find(fieldSize==refLength)~=1; error('Fitlering only takes place along rows'); end
     inputStructure.(currField) = inputStructure.(currField)(criterion,:);
 end
+
 filteredStructure = inputStructure;

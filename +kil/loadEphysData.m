@@ -67,10 +67,31 @@ if exist('flipperFlipTimesTimeline','var') && length(sync) >= 4
     experimentDurations = diff(flipTimes(flipperStEnIdx),[],2);
     [~, currExpIdx] = min(abs(experimentDurations-timeline.rawDAQTimestamps(end)));
     flipperFlipTimesFPGA = flipTimes(flipperStEnIdx(currExpIdx,1):flipperStEnIdx(currExpIdx,2));
-   
+    
     % Check that number of flipper flips in timeline matches ephys
     if length(flipperFlipTimesFPGA) ~= length(flipperFlipTimesTimeline)
         fprintf([x.subject ' ' x.expDate ': WARNING = Flipper flip times different in timeline/ephys \n']);
+        if diff([length(flipperFlipTimesFPGA) length(flipperFlipTimesTimeline)])<20 && length(flipperFlipTimesFPGA) > 500
+            fprintf([x.subject ' ' x.expDate ': Trying to account for missing flips.../ephys \n']);
+            while length(flipperFlipTimesTimeline) > length(flipperFlipTimesFPGA)
+                compareVect = [flipperFlipTimesFPGA-(flipperFlipTimesFPGA(1)) flipperFlipTimesTimeline(1:length(flipperFlipTimesFPGA))-flipperFlipTimesTimeline(1)];
+                errPoint = find(abs(diff(diff(compareVect,[],2)))>0.005,1);
+                flipperFlipTimesTimeline(errPoint+2) = [];
+                flipperFlipTimesFPGA(errPoint-2:errPoint+2) = [];
+                flipperFlipTimesTimeline(errPoint-2:errPoint+2) = [];
+            end
+            while length(flipperFlipTimesFPGA) > length(flipperFlipTimesTimeline)
+                compareVect = [flipperFlipTimesTimeline-(flipperFlipTimesTimeline(1)) flipperFlipTimesFPGA(1:length(flipperFlipTimesTimeline))-flipperFlipTimesFPGA(1)];
+                errPoint = find(abs(diff(diff(compareVect,[],2)))>0.005,1);
+                flipperFlipTimesFPGA(errPoint+2) = [];
+                flipperFlipTimesFPGA(errPoint-2:errPoint+2) = [];
+                flipperFlipTimesTimeline(errPoint-2:errPoint+2) = [];
+            end
+            compareVect = [flipperFlipTimesFPGA-(flipperFlipTimesFPGA(1)) flipperFlipTimesTimeline-flipperFlipTimesTimeline(1)];
+            if isempty(find(abs(diff(diff(compareVect,[],2)))>0.005,1)); fprintf('Success! \n');
+                spikeTimesTimeline = interp1(flipperFlipTimesFPGA,flipperFlipTimesTimeline,spikeTimes,'linear','extrap');
+            end
+        end
     else, spikeTimesTimeline = interp1(flipperFlipTimesFPGA,flipperFlipTimesTimeline,spikeTimes,'linear','extrap');
     end
     
@@ -100,7 +121,7 @@ end
 % Get the depths of each template
 [spikeAmps, ~, templateDepths, templateAmps, ~, templateDuration, waveforms] = ...
     kil.templatePositionsAmplitudes(templates,winv,channelPositions(:,2),spikeTemplates,templateAmplitudes);
-% Eliminate spikes that were classified as not "good"    
+% Eliminate spikes that were classified as not "good"
 fprintf('Removing noise and MUA templates... \n');
 
 goodTemplatesList = clusterGroups.cluster_id(contains(num2cell(clusterGroups.group,2), 'good '));
