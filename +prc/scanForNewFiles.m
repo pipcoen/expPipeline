@@ -26,6 +26,7 @@ function expList = scanForNewFiles(rebuildList, checkDirectories, checkExpRigs)
 
 %#ok<*AGROW>
 %% Define which mice should be included and which start/end dates (defaults to all files for that mouse)
+
 if ~exist('rebuildList', 'var'); rebuildList = 0; end
 if ~exist('checkDirectories', 'var'); checkDirectories = 0; end
 if ~exist('checkExpRigs', 'var'); checkExpRigs = 1; end
@@ -33,6 +34,7 @@ expInfo = prc.pathFinder('expInfo');
 includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...
     'PC036'; 'PC037'; 'PC038'; 'PC040'; 'PC041'; 'PC042'; 'PC043'; 'PC044'; ...
     'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR010'};
+if strcmp(hostname, 'zip'); syncFiles = 1; else, syncFiles = 0; end
 
 startedDates = {...
     'CR010' '2019-01-29'};
@@ -91,7 +93,8 @@ for i = 1:length(processList)
     if datenum(expDate, 'yyyy-mm-dd') < includedMice{mouseIdx,2} || datenum(expDate, 'yyyy-mm-dd') > includedMice{mouseIdx,3}
         if exist([prc.pathFinder('rawbackup') subject '\' expDate], 'dir'); rmdir([prc.pathFinder('rawbackup') subject '\' expDate], 's'); end
         continue;
-    else, prc.syncfolder([prc.pathFinder('expinfo') subject '\' expDate '\' expNum], [prc.pathFinder('rawbackup') subject '\' expDate '\' expNum], 2);
+    elseif syncFiles
+        prc.syncfolder([prc.pathFinder('expinfo') subject '\' expDate '\' expNum], [prc.pathFinder('rawbackup') subject '\' expDate '\' expNum], 2);
     end
     
     timeSinceParamFileCreation = dir(prc.pathFinder('origparams', subject, expDate, expNum));
@@ -107,7 +110,7 @@ for i = 1:length(processList)
     expList(end).expDef = 'ChoiceWorld';
     
     backUpFolder = prc.pathFinder('rawbackupfolder', subject, expDate, expNum);
-    prc.syncfolder(fileparts(processList{i}), backUpFolder, 2); %#ok<*NODEF>
+    if syncFiles; prc.syncfolder(fileparts(processList{i}), backUpFolder, 2); end %#ok<*NODEF>
     
     tempLoc = prc.updatePaths(expList(end), 0);
     if exist(tempLoc.rawBlock, 'file'); load(tempLoc.rawBlock, 'block'); b = block;

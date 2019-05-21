@@ -11,7 +11,7 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %"blk" is a structure comprising a reduced, processed block file which contains all essential information. Fields common to all experiments are:
 %.subject-----------Name of the mouse
 %.expDate-----------Date that the experiment was recorded
-%.expNum--------Session number for experiment
+%.expNum------------Session number for experiment
 %.rigName-----------Name of the rig where the experiment took place
 %.expType-----------Type of the rig where the experiment took place
 %.trialStart--------nx1 vector of trial start times relative to the start of the experiment (s)
@@ -21,7 +21,7 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %"prm" is a structure comprising a reduced, processed parameters file which contains all essential information. Fields common to all experiments are:
 %.subject-----------Name of the mouse
 %.expDate-----------Date that the experiment was recorded
-%.expNum--------Session number for experiment
+%.expNum------------Session number for experiment
 %.rigName-----------Name of the rig where the experiment took place
 %.expType-----------Type of the rig where the experiment took place
 %.minutesOnRig------Number of minutes spent on the rig

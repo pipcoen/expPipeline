@@ -9,11 +9,13 @@ switch expDef
     case 'multiSpaceWorld'
         alignType = 'wheel';
         fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'};
+        trialGapThresh = 1;
     case 'multiSpaceWorldPassive'
         if contains('photoDiode', inputNames); alignType = 'photoDiode';
         elseif contains('rotaryEncoder', inputNames); alignType = 'wheel';
         else, error('What am I supposed to use to align block with timeline?!')
         end
+        trialGapThresh = 1./max([block.paramsValues.clickRate])*3;
         fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
 end
 
@@ -128,8 +130,7 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000))>3; error('Diff in detected and requested click durations'); end
     
     aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);  
-    largeGapThresh = 1./max([block.paramsValues.clickRate])*3;
-    largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>largeGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>largeGapThresh)]);
+    largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>trialGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>trialGapThresh)]);
 
     
     %% Sanity check (should be match between stim starts from block and from timeline)
@@ -142,7 +143,7 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
         audError = 1;
         [compareIndex] = prc.nearestPoint(stimStartBlock(~nonAudTrials), audstimStartTimeline(~nonAudTrials));
         if ~any(compareIndex-(1:numel(compareIndex))) && length(largeAudGaps)/2 == length(nonAudTrials)
-            fprintf('WARNING: Detected that zero aud trials still generated signals in Timeline. Will removed these \n')
+            fprintf('WARNING: Detected that AmpAud = 0 trials still generated signals in Timeline. Will remove these \n')
             
             largeAudGaps([find(nonAudTrials)*2-1 find(nonAudTrials)*2]) = [];
             audstimStartTimeline = aStimOnOffTV(largeAudGaps,1);
@@ -152,7 +153,7 @@ if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
                 audError = 0; 
                 keepIdx = cell2mat(arrayfun(@(x) largeAudGaps(x):largeAudGaps(x+1), 1:2:length(largeAudGaps), 'uni', 0));
                 aStimOnOffTV = aStimOnOffTV(keepIdx,:);
-                largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>largeGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>largeGapThresh)]);
+                largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>trialGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>trialGapThresh)]);
             end
         end
     end
@@ -182,8 +183,8 @@ if any(contains(fineTune, 'flashes'))
     photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
     photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
     
-    largeGapThresh = 1./max([block.paramsValues.clickRate])*3;
-    largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>largeGapThresh); find(diff([photoDiodeFlipTimes; 10e10])>largeGapThresh)]));
+    trialGapThresh = 1./max([block.paramsValues.clickRate])*3;
+    largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>trialGapThresh); find(diff([photoDiodeFlipTimes; 10e10])>trialGapThresh)]));
     zeroContrastTrials = arrayfun(@(x) max(abs(x.visContrast)),block.paramsValues)'==0;
     zeroContrastTrials = zeroContrastTrials(1:size(trialStEnTimes,1));
     largeGapsByTrial = arrayfun(@(x,y) largeVisGaps(largeVisGaps>x & largeVisGaps<y), trialStEnTimes(:,1), trialStEnTimes(:,2), 'uni', 0);
