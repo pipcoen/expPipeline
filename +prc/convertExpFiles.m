@@ -45,7 +45,7 @@ if all(existDirectories) && strcmp(hostname, 'zip'); prc.syncfolder(prc.pathFind
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
 expList = prc.scanForNewFiles(0,0,1);
-if all(existDirectories==[0,1]) || (all(existDirectories) && ~strcmp(hostname, 'zip'))
+if isequal(existDirectories(:),[0;1]) || (all(existDirectories) && ~strcmp(hostname, 'zip'))
     newPathList = {expList.sharedData}';
     [expList.processedData] = newPathList{:};
 end
