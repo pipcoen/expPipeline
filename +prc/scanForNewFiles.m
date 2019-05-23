@@ -131,7 +131,6 @@ for i = 1:length(processList)
     
     if contains(expList(end).rigName, {'zym1'; 'zym2'}) && exist(tempLoc.galvoLog, 'file'); expList(end).expType = 'inactivation'; end
     
-    %     if strcmp(expList(end).rigName, 'lilrig-stim') && ~isempty(dir([fileparts(tempLoc.origFolder) '\*hys*'])); expList(end).expType = 'widefield'; end
     if strcmp(expList(end).rigName, 'zatteo') && ~isempty(dir([tempLoc.origFolder '\*fus.mat*'])); expList(end).expType = 'fusi'; end
     if isfield(b, 'duration'); expList(end).expDuration = b.duration; else, expList(end).expDuration = 0; end
     expList(end).blockFunction = str2func(['prc.expDef.' expList(end).expDef]);
@@ -205,7 +204,7 @@ for i = 1:length(duplicates)
 end
 
 %% Saving new version of expList in the shared and local directory
-expList = nestedSortStruct(expList, {'subject', 'expDate'});
+expList = prc.nestedSortStruct(expList, {'subject', 'expDate'});
 if availableDirectories(1) && syncFiles; save(prc.pathFinder('dropboxlist'), 'expList'); save(strrep(prc.pathFinder('dropboxlist'),'dData','dDataLite'), 'expList'); end
 if availableDirectories(1) && syncFiles; save(prc.pathFinder('sharedlist'), 'expList'); end
 end

@@ -21,34 +21,30 @@ else, driveName = 'D:';
 end
 
 expInfo = '\\zubjects.cortexlab.net\Subjects\';
-processedFolder = [driveName '\Dropbox (Neuropixels)\MouseData\ProcessedData\'];
-sharedFolder = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
-origBackup = [driveName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
-mouseRecord = [driveName '\Dropbox (Neuropixels)\MouseData\MouseRecord.xlsx'];
+rawBackup = [driveName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
 
 if contains(lower(pathType), {'directorycheck';'processedcheck';'explist'})
     if contains(hostname, {'homerig'; 'ziptop'}), directoryCheck = 'local';
     elseif strcmp(hostname, {'zip'}), directoryCheck = 'all';
+        processedFolder = [driveName '\Dropbox (Neuropixels)\MouseData\ProcessedData\'];
     else; directoryCheck = 'server';
+        processedFolder = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
     end
 end
 %%
 switch lower(pathType)
-    case 'origblock'; pathOut = [expInfo subjectPath expRef '_Block.mat'];
-    case 'origparams'; pathOut = [expInfo subjectPath expRef '_Parameters.mat'];
-    case 'origblockfolder'; pathOut = [expInfo subjectPath(1:end-1)];
-    case 'origtimeline'; pathOut = [expInfo subjectPath expRef '_Timeline.mat'];
-    case 'backupblock'; pathOut = [origBackup subjectPath expRef '_Block.mat'];
-    case 'backupparams'; pathOut = [origBackup subjectPath expRef '_parameters.mat'];
-    case 'backupfolder'; pathOut = [origBackup subjectPath];
-    case 'galvolog'; pathOut = [origBackup subjectPath expRef '_galvoLog.mat'];
+    case 'rawblock'; pathOut = [expInfo subjectPath expRef '_Block.mat'];
+    case 'rawparams'; pathOut = [expInfo subjectPath expRef '_Parameters.mat'];
+    case 'rawblockfolder'; pathOut = [expInfo subjectPath(1:end-1)];
+    case 'rawtimeline'; pathOut = [expInfo subjectPath expRef '_Timeline.mat'];
+    case 'rawprobedata'; pathOut = [expInfo subject '\' expDate '\ephys'];
+    case 'backupblock'; pathOut = [rawBackup subjectPath expRef '_Block.mat'];
+    case 'backupparams'; pathOut = [rawBackup subjectPath expRef '_parameters.mat'];
+    case 'backupfolder'; pathOut = [rawBackup subjectPath];
+    case 'galvolog'; pathOut = [rawBackup subjectPath expRef '_galvoLog.mat'];
     case 'processeddata'; pathOut = [processedFolder processedFileName];
     case 'shareddata'; pathOut = [sharedFolder processedFileName];
-    case 'origprobedata'; pathOut = [expInfo subject '\' expDate '\ephys'];
     case 'kilosortoutput'; pathOut = [expInfo subject '\' expDate '\ephys\kilosort'];
     case 'explist'; pathOut = [processedFolder 'expList.mat'];
-    case 'sharedfolder'; pathOut = sharedFolder;
     case 'expinfo'; pathOut = expInfo;
-    case 'rawbackup'; pathOut = origBackup;
-    case 'mouserecord'; pathOut = mouseRecord;
 end
