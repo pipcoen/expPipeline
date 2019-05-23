@@ -45,7 +45,7 @@ if all(existDirectories) && strcmp(hostname, 'zip'); prc.syncfolder(prc.pathFind
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
 expList = prc.scanForNewFiles(0,0,1);
-if isequal(existDirectories(:),[0;1]) || (all(existDirectories) && ~strcmp(hostname, 'zip'))
+if isequal(existDirectories(:),[0;1]) || (all(existDirectories) && ~strcmp(hostname, 'ziip'))
     newPathList = {expList.sharedData}';
     [expList.processedData] = newPathList{:};
 end
@@ -172,7 +172,7 @@ x.oldBlock.galvoLog = x.galvoLog;
 x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;
 
 if contains(x.expType, {'ephys'; 'fusi'})
-    x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
+    x.timeline = load(x.origTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
 else, x.alignment = 'none';
 end
@@ -216,7 +216,7 @@ function x = convfUSiFile(x)
     for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.aligned.(fields2copy{i}); end
     whoD = unique([who('-file', x.processedData); 'fus']); 
     save(x.processedData, 'fus', 'whoD', '-append'); 
-    copyfile(x.processedData, strrep(x.rawTimeline, 'Timeline', 'ProcBlock'));
+    copyfile(x.processedData, strrep(x.origTimeline, 'Timeline', 'ProcBlock'));
 end
 
 %%

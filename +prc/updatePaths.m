@@ -4,11 +4,17 @@ if ~exist('expList', 'var')
 end
 if ~exist('saveList', 'var'); saveList = 1; end
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
+if strcmp(hostname, 'zip'); localBackUp = 1; else; localBackUp = 0; end
 for i = 1:length(expList)
-    expList(i).rawBlock = prc.pathFinder('rawBlock', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).rawTimeline = prc.pathFinder('rawTimeline', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).rawFolder = prc.pathFinder('origblockfolder', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).rawParams = prc.pathFinder('rawParameters', expList(i).subject, expList(i).expDate, expList(i).expNum);
+    if localBackUp
+        expList(i).rawBlock = prc.pathFinder('rawBlock', expList(i).subject, expList(i).expDate, expList(i).expNum);
+        expList(i).rawParams = prc.pathFinder('rawParams', expList(i).subject, expList(i).expDate, expList(i).expNum);
+    else
+        expList(i).rawBlock = prc.pathFinder('origBlock', expList(i).subject, expList(i).expDate, expList(i).expNum);
+        expList(i).rawParams = prc.pathFinder('origParams', expList(i).subject, expList(i).expDate, expList(i).expNum);
+    end
+    expList(i).origTimeline = prc.pathFinder('origTimeline', expList(i).subject, expList(i).expDate, expList(i).expNum);
+    expList(i).origFolder = prc.pathFinder('origBlockfolder', expList(i).subject, expList(i).expDate, expList(i).expNum);
     expList(i).processedData = prc.pathFinder('processedData', expList(i).subject, expList(i).expDate, expList(i).expNum);
     expList(i).sharedData = prc.pathFinder('sharedData', expList(i).subject, expList(i).expDate, expList(i).expNum);
     expList(i).suite2POutput = prc.pathFinder('suite2POutput', expList(i).subject, expList(i).expDate, expList(i).expNum);

@@ -19,7 +19,7 @@ function syncfolder(p1, p2, syncdirect, includeTimeline, includeVideo)
 %   syncdirect = -2, p2 are synced to p1, and the file in p1 but not in p2
 %   will be deleted
 %
-%  syncdirect is 0 by default.
+%  syncdirect is 0 by default./
 %
 %
 % Copyright: zhang@zhiqiang.org, 2010
