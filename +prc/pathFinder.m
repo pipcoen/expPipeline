@@ -33,11 +33,11 @@ if contains(lower(pathType), {'directorycheck';'processedcheck';'explist'})
 end
 %%
 switch lower(pathType)
-    case 'rawblock'; pathOut = [expInfo subjectPath expRef '_Block.mat'];
-    case 'rawparams'; pathOut = [expInfo subjectPath expRef '_Parameters.mat'];
-    case 'rawblockfolder'; pathOut = [expInfo subjectPath(1:end-1)];
-    case 'rawtimeline'; pathOut = [expInfo subjectPath expRef '_Timeline.mat'];
-    case 'rawprobedata'; pathOut = [expInfo subject '\' expDate '\ephys'];
+    case 'serverblock'; pathOut = [expInfo subjectPath expRef '_Block.mat'];
+    case 'serverparams'; pathOut = [expInfo subjectPath expRef '_Parameters.mat'];
+    case 'serverblockfolder'; pathOut = [expInfo subjectPath(1:end-1)];
+    case 'servertimeline'; pathOut = [expInfo subjectPath expRef '_Timeline.mat'];
+    case 'serverprobedata'; pathOut = [expInfo subject '\' expDate '\ephys'];
     case 'backupblock'; pathOut = [rawBackup subjectPath expRef '_Block.mat'];
     case 'backupparams'; pathOut = [rawBackup subjectPath expRef '_parameters.mat'];
     case 'backupfolder'; pathOut = [rawBackup subjectPath];

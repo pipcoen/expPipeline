@@ -75,9 +75,12 @@ for i = 1:cycles
     processList = processList(~contains(processList, {'Lightsheet';'ephys';'Backup'},'IgnoreCase',true));
 end
 processList = processList(~cellfun(@isempty, regexp(processList, '20.*arameters.mat')));
+cellfun(prc.copyBeahviorFromServer(@fileparts, processList), 'uni', 0);
+
 if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return;
 elseif ~rebuildList, processList = processList(~contains(processList,{expList.origFolder}'));
 end
+cellfun(@(x) prc.pathFinder)
 
 if length(unique(cellfun(@fileparts, processList, 'uni', 0))) ~= length(processList); error('Every detected folder should be unique'); end
 %% Loop to created struture for new files and add them to the expList
@@ -88,14 +91,14 @@ for i = 1:length(processList)
     expNum = splitStr{end-1};
     expDate = splitStr{end-2};
     subject = splitStr{end-3};
+    mouseIdx = strcmp(subject, includedMice(:,1));
     
     timeSinceParamFileCreation = dir(prc.pathFinder('origparams', subject, expDate, expNum));
     timeSinceParamFileCreation = -([timeSinceParamFileCreation.datenum]-now)*24*60;
-    if ~exist(prc.pathFinder('serverBlock', subject, expDate, expNum), 'file') && timeSinceParamFileCreation < 80; continue; end
+    if ~exist(prc.pathFinder('origblock', subject, expDate, expNum), 'file') && timeSinceParamFileCreation < 80; continue; end
     
     fprintf('Adding recording %s %s %s\n', expDate, subject, expNum);
     addedFiles = 1;
-    
     %Poplate fields for addition to expList
     expList(end+(length(fields(expList))>0*1),1).subject = subject;
     expList(end).expDate = expDate;
@@ -162,8 +165,6 @@ if checkExpRigs
 end
 
 %% Add cleanup fucntion HERE %%
-cellfun(@(x) prc.copyBeahviorFromServer(fileparts(x)), processList);
-
 %% This section section deals with cases of files on non-training rigs when multiple files are detected for a mouse on same day, rig, and expDef
 processList = cellfun(@fileparts, {expList.origFolder}', 'uni', 0);
 processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expList.expDef}', 'uni', 0);
