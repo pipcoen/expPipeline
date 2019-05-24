@@ -13,14 +13,10 @@ if ~iscell(requestedDates); requestedDates = {requestedDates}; end
 if iscell(requestedDates{1}); requestedDates = requestedDates{1}; end
 
 expList = load(prc.pathFinder('expList')); expList = expList.expList;
-existDirectories = prc.pathFinder('directoryCheck');
-if all(existDirectories==[0,1])
-    newPathList = {expList.sharedData}';
-    [expList.processedData] = newPathList{:};
-end
 
 % get list of references and dates for subject
 selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'~=1);
+selectedFiles = prc.updatePaths(selectedFiles);
 excludedFiles = ~strcmp({selectedFiles.expDef}', expDef);
 selectedFiles(excludedFiles)  = [];
 if isempty(selectedFiles); warning(['No processed files matching ' subject]); varargout = {}; return; end

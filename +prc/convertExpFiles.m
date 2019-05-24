@@ -58,14 +58,6 @@ if strcmp(hostname, 'zip')
 end
 files2Run = processListIdx(processListIdx>0)';
 
-ePhys2Check = find((listNotExcluded & all(existProcessed, 2)) & strcmp({expList.expType}', 'ephys'))';
-additionalChecks = 0*ePhys2Check;
-for i = ePhys2Check
-    whoD = load(processedFiles{i,1}, 'whoD'); whoD = whoD.whoD;
-    if ~contains('eph', whoD); additionalChecks(ePhys2Check==i) = i; end
-end
-files2Run = unique(sort([files2Run additionalChecks(additionalChecks~=0)]));
-
 expDefs2Run = unique({expList(files2Run).expDef}');
 expDefs2Remove = expDefs2Run(cellfun(@(x) isempty(which(['prc.expDef.' x])), expDefs2Run));
 if ~isempty(expDefs2Remove)
