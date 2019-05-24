@@ -1,8 +1,8 @@
-function syncfolder(p1, p2, syncdirect, includeTimeline, includeVideo)
-%prc.syncfolder sync two folds
+function syncfolder(p1, p2, syncdirect)
+%SYNCFOLDER sync two folds
 %
-%  prc.syncfolder(p1, p2, syncdirect), sync between p1 and p2. p1 and p2 are
-%  two directories. The exact behavior depends on the third parameterexpList
+%  syncfolder(p1, p2, syncdirect), sync between p1 and p2. p1 and p2 are
+%  two directories. The exact behavior depends on the third parameter
 %  'syncdirect'
 %
 %   syncdirect = 0, p1 and p2 are synced two-ways, i.e. the newest file
@@ -25,9 +25,7 @@ function syncfolder(p1, p2, syncdirect, includeTimeline, includeVideo)
 % Copyright: zhang@zhiqiang.org, 2010
 
 % the sync direct is two-way by default
-if ~exist('syncdirect', 'var'), syncdirect = 0; end
-if ~exist('includeTimeline', 'var'), includeTimeline = 0; end
-if ~exist('includeVideo', 'var'), includeVideo = 0; end
+if ~exist('syncdirect', 'var'), syncdirect = 0; end;
 if ischar(syncdirect), syncdirect = str2double(syncdirect); end
 tmpRecycle = recycle;
 recycle on;
@@ -52,14 +50,6 @@ if isdir(p2) && p2(end)~='\', p2 = [p2, '\']; end
 files1 = sortstruct(dir(p1), 'name');
 files2 = sortstruct(dir(p2), 'name');
 
-if ~includeTimeline
-    files1 = files1(~contains({files1.name}', {'..';'Timeline'; '.npy'; 'eye'; 'fus.mat'}));
-    files2 = files2(~contains({files2.name}', {'..';'Timeline'; '.npy'; 'eye'; 'fus.mat'}));
-end
-if ~includeVideo
-    files1 = files1(~contains({files1.name}', {'.mj2'}));
-    files2 = files2(~contains({files2.name}', {'.mj2'}));
-end
 
 %% compare the files and subdirectories one by one
 nf1 = 1; nf2 = 1;
@@ -79,19 +69,19 @@ while nf1 <= numel(files1) || nf2 <= numel(files2)
     % the same files or directories in p1 and p2
     if nf1 <= numel(files1) && nf2 <= numel(files2) && ...
             strcmpi(files1(nf1).name, files2(nf2).name)
-        % the same directories, recursively prc.syncfolder
+        % the same directories, recursively syncfolder
         if files1(nf1).isdir
             prc.syncfolder([p1, files1(nf1).name], [p2, files2(nf2).name], syncdirect)
         else % the same files, copy the newer file to old file
             if files1(nf1).datenum > files2(nf2).datenum + 1.0/24/60
                 if syncdirect >= 0
-                    disp(['''' p1, files1(nf1).name ''' --> ''' ...
+                    display(['''' p1, files1(nf1).name ''' --> ''' ...
                         p2, files2(nf2).name '''']);                    
                     copyfile([p1, files1(nf1).name], [p2, files2(nf2).name], 'f');
                 end
             elseif files1(nf1).datenum < files2(nf2).datenum - 1.0/24/60
                 if syncdirect <= 0
-                    disp(['''' p1, files1(nf1).name ''' <-- ''' ...
+                    display(['''' p1, files1(nf1).name ''' <-- ''' ...
                         p2, files2(nf2).name '''']);                            
                     copyfile([p2, files2(nf2).name], [p1, files1(nf1).name], 'f');            
                 end
@@ -104,21 +94,21 @@ while nf1 <= numel(files1) || nf2 <= numel(files2)
             (nf2 > numel(files2) || strcmpc(files1(nf1).name, files2(nf2).name) < 0)
         if files1(nf1).isdir % is a dir
             if syncdirect >= 0 
-                disp(['''' p1, files1(nf1).name ''' --> ''' ...
+                display(['''' p1, files1(nf1).name ''' --> ''' ...
                         p2, '''']);                     
                 mkdir([p2, files1(nf1).name]);
                 copyfile([p1, files1(nf1).name], [p2, files1(nf1).name], 'f');                
             elseif syncdirect <= -2 % this subdirectory will be deleted
                 rmdir([p1, files1(nf1).name], 's');
-                disp(['''' p1, files1(nf1).name '\'' is deleted']);
+                display(['''' p1, files1(nf1).name '\'' is deleted']);
             end
         else % is a file
             if syncdirect >= 0
-                disp(['''' p1, files1(nf1).name ''' --> ''' ...
+                display(['''' p1, files1(nf1).name ''' --> ''' ...
                         p2,  '''']);                                
                 copyfile([p1, files1(nf1).name], p2, 'f');                
             elseif syncdirect <= -2 % this file will be deleted
-                disp(['''' p1, files1(nf1).name ''' is deleted']);
+                display(['''' p1, files1(nf1).name ''' is deleted']);
                 delete([p1, files1(nf1).name]);
             end
         end
@@ -130,21 +120,21 @@ while nf1 <= numel(files1) || nf2 <= numel(files2)
         
         if files2(nf2).isdir % is a dir
             if syncdirect <= 0
-                disp(['''' p1, ''' <-- ''' ...
+                display(['''' p1, ''' <-- ''' ...
                         p2, files2(nf2).name '''']);                   
                 mkdir([p1, files2(nf2).name]);
                 copyfile([p2, files2(nf2).name], [p1, files2(nf2).name], 'f');                  
             elseif syncdirect >= 2 % this subdirectory will be deleted
-                disp(['''' p2, files2(nf2).name '\'' is deleted']);                                
+                display(['''' p2, files2(nf2).name '\'' is deleted']);                                
                 rmdir([p2, files2(nf2).name], 's');
             end
         else % is a file
             if syncdirect <= 0
-                disp(['''' p1 ''' <-- ''' ...
+                display(['''' p1 ''' <-- ''' ...
                         p2, files2(nf2).name '''']);   
                 copyfile([p2, files2(nf2).name], p1, 'f');                 
             elseif syncdirect >= 2 % this file will be deleted
-                disp(['''' p2, files2(nf2).name ''' is deleted']);                                
+                display(['''' p2, files2(nf2).name ''' is deleted']);                                
                 delete([p2, files2(nf2).name]);
             end
         end
