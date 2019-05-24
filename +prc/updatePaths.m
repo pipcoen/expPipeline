@@ -1,27 +1,17 @@
-function expList = updatePaths(expList, saveList)
+function expList = updatePaths(expList)
 if ~exist('expList', 'var')
     expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
 end
-if ~exist('saveList', 'var'); saveList = 1; end
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
-if strcmp(hostname, 'zip'); localBackUp = 1; else; localBackUp = 0; end
 for i = 1:length(expList)
-    if localBackUp
-        expList(i).rawBlock = prc.pathFinder('rawBlock', expList(i).subject, expList(i).expDate, expList(i).expNum);
-        expList(i).rawParams = prc.pathFinder('rawParams', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    else
-        expList(i).rawBlock = prc.pathFinder('origBlock', expList(i).subject, expList(i).expDate, expList(i).expNum);
-        expList(i).rawParams = prc.pathFinder('origParams', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    end
-    expList(i).origTimeline = prc.pathFinder('origTimeline', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).origFolder = prc.pathFinder('origBlockfolder', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).processedData = prc.pathFinder('processedData', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).sharedData = prc.pathFinder('sharedData', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).suite2POutput = prc.pathFinder('suite2POutput', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).rawProbeData = prc.pathFinder('rawProbeData', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).kilosortOutput = prc.pathFinder('kilosortOutput', expList(i).subject, expList(i).expDate, expList(i).expNum);
-    expList(i).galvoLog = prc.pathFinder('galvoLog', expList(i).subject, expList(i).expDate, expList(i).expNum);
-end
-if saveList
-    save(prc.pathFinder('dropboxlist'), 'expList'); save(strrep(prc.pathFinder('dropboxlist'),'dData','dDataLite'), 'expList');
+    expList(i).rawBlock = prc.pathFinder('backupBlock', expList(i));
+    expList(i).rawParams = prc.pathFinder('backupParams', expList(i));
+    expList(i).rawBlock = prc.pathFinder('serverBlock', expList(i));
+    expList(i).rawParams = prc.pathFinder('serverParams', expList(i));
+    expList(i).rawProbeData = prc.pathFinder('serverProbeData', expList(i));
+    expList(i).rawTimeline = prc.pathFinder('serverTimeline', expList(i));
+    expList(i).galvoLog = prc.pathFinder('galvoLog', expList(i));
+    expList(i).serverFolder = prc.pathFinder('serverFolder', expList(i));
+    expList(i).processedData = prc.pathFinder('processedData', expList(i));
+    expList(i).kilosortOutput = prc.pathFinder('kilosortOutput', expList(i));
 end

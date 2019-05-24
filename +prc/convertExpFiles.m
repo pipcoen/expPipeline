@@ -39,39 +39,30 @@ if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
 if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 
-%Checks whether both the DropBox and zserver directories exists. If they both do, sync the folders so data is everywere
-existDirectories = prc.pathFinder('directoryCheck');
-if all(existDirectories) && strcmp(hostname, 'zip'); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
-
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
-expList = prc.scanForNewFiles(0,0,1);
-if isequal(existDirectories(:),[0;1]) || (all(existDirectories) && ~strcmp(hostname, 'ziip'))
-    newPathList = {expList.sharedData}';
-    [expList.processedData] = newPathList{:};
-end
+expList = prc.scanForNewFiles(0,[0 1],[0 0]);
+expList = prc.updatePaths(expList);
 
-processedFiles = [{expList.processedData}', {expList.sharedData}'];    %List of all [Dropbox, zserver] processed file paths
+processedFiles = {expList.processedData}';    %List of all [Dropbox, zserver] processed file paths
 existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0;      %Logical of whether processed files exist for those directories
-listNotExcluded = [expList.excluded]'~=1;                                %Index of files which haven't been excluded (in prc.scanForNewFiles)
+listNotExcluded = [expList.excluded]'~=1;                              %Index of files which haven't been excluded (in prc.scanForNewFiles)
 
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
 %probably processed and then excluded at a later date)
-if ~redoTag
-    processListIdx = find(listNotExcluded & ~all(existProcessed, 2));
-else, processListIdx = find(listNotExcluded | any(existProcessed, 2));
-end
-deleteList = find(~listNotExcluded & any(existProcessed, 2));
-for i = deleteList'
-    cellfun(@delete, processedFiles(i,existProcessed(i,:)));
+processListIdx = find(listNotExcluded);
+deleteList = find(~listNotExcluded & existProcessed);
+cellfun(@delete, processedFiles(deleteList));
+if strcmp(hostname, 'zip')
+    arrayfun(@(x) delete(prc.pathFinder('serverData', expList(x))), deleteList);
 end
 files2Run = processListIdx(processListIdx>0)';
 
 ePhys2Check = find((listNotExcluded & all(existProcessed, 2)) & strcmp({expList.expType}', 'ephys'))';
 additionalChecks = 0*ePhys2Check;
 for i = ePhys2Check
-   whoD = load(processedFiles{i,1}, 'whoD'); whoD = whoD.whoD;
-   if ~contains('eph', whoD); additionalChecks(ePhys2Check==i) = i; end
+    whoD = load(processedFiles{i,1}, 'whoD'); whoD = whoD.whoD;
+    if ~contains('eph', whoD); additionalChecks(ePhys2Check==i) = i; end
 end
 files2Run = unique(sort([files2Run additionalChecks(additionalChecks~=0)]));
 
@@ -87,8 +78,8 @@ end
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
 srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
-    if ~contains(expList(i).subject, selectedSubjects); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name  
-    if ~contains(expList(i).expDate, selectedDates); continue; end  %If a date has been selected, skip days that don't match that date  
+    if ~contains(expList(i).subject, selectedSubjects); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name
+    if ~contains(expList(i).expDate, selectedDates); continue; end  %If a date has been selected, skip days that don't match that date
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;
     x.existProcessed = existProcessed(i,:);
@@ -107,9 +98,9 @@ for i = files2Run(files2Run>srtIdx)
     warning('on', 'MATLAB:load:variableNotFound');
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
     
-%     Loop to run conv on any ephys files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
-%     function for the particular experiment definition file exists. If it does, process the block.
-    if (~contains({'eph'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'}) 
+    %     Loop to run conv on any ephys files that are missing the blk variable, or if instructBlk is set to 1. First, check whether the processing
+    %     function for the particular experiment definition file exists. If it does, process the block.
+    if (~contains({'eph'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'})
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convEphysFile(x);
         whoD = unique(who('-file', x.processedData));
@@ -123,7 +114,7 @@ for i = files2Run(files2Run>srtIdx)
                 conv2PData(x);
             case 'widefield'; continue; %convWidefieldData(x);
         end
-    end 
+    end
     
     if (~contains({'fus'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'fusi') && contains(dataType, {'all'; 'fus'})
         fprintf('Converting fusi recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
@@ -138,11 +129,7 @@ for i = files2Run(files2Run>srtIdx)
         whoD = unique(who('-file', x.processedData));
     end
 end
-
-%Run the prc.updateParamChangeSpreadsheet on all mice that have new files. This keeps track of when parameters have changed for the mice.
-if all(existDirectories); prc.syncfolder(prc.pathFinder('processedFolder'), prc.pathFinder('sharedFolder'), 2); end
-% changedMice = uniquecell({expList(files2Run).subject}');
-% cellfun(@prc.updateParamChangeSpreadsheet, changedMice(contains(changedMice, 'PC')));
+prc.scanForNewFiles([],[],[1 0]);
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
@@ -172,7 +159,7 @@ x.oldBlock.galvoLog = x.galvoLog;
 x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;
 
 if contains(x.expType, {'ephys'; 'fusi'})
-    x.timeline = load(x.origTimeline); x.timeline = x.timeline.Timeline;
+    x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
 else, x.alignment = 'none';
 end
@@ -190,7 +177,8 @@ x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
 x.standardizedParams.totalTrials = length(x.standardizedBlock.events.endTrialTimes);
 x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTime-x.standardizedBlock.experimentInitTime)/60);
 
-x = x.blockFunction(x);
+blockFunction = str2func(['prc.expDef.' x.expDef]);
+x = blockFunction(x);
 blk = x.newBlock;
 prm = x.newParams;
 raw = x.newRaw;
@@ -208,15 +196,15 @@ end
 
 %%
 function x = convfUSiFile(x)
-    x = convBlockFile(x);
-    fus = struct;
-    fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'; 'expDef'};
-    for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.(fields2copy{i}); end
-    fields2copy = fields(x.aligned);
-    for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.aligned.(fields2copy{i}); end
-    whoD = unique([who('-file', x.processedData); 'fus']); 
-    save(x.processedData, 'fus', 'whoD', '-append'); 
-    copyfile(x.processedData, strrep(x.origTimeline, 'Timeline', 'ProcBlock'));
+x = convBlockFile(x);
+fus = struct;
+fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'; 'expDef'};
+for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.(fields2copy{i}); end
+fields2copy = fields(x.aligned);
+for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.aligned.(fields2copy{i}); end
+whoD = unique([who('-file', x.processedData); 'fus']);
+save(x.processedData, 'fus', 'whoD', '-append');
+copyfile(x.processedData, strrep(x.rawTimeline, 'Timeline', 'ProcBlock'));
 end
 
 %%
