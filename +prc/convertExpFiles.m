@@ -50,13 +50,12 @@ listNotExcluded = [expList.excluded]'~=1;                              %Index of
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
 %probably processed and then excluded at a later date)
-processListIdx = find(listNotExcluded);
+files2Run = find(listNotExcluded & ~existProcessed)';
 deleteList = find(~listNotExcluded & existProcessed);
 cellfun(@delete, processedFiles(deleteList));
 if strcmp(hostname, 'zip')
     arrayfun(@(x) delete(prc.pathFinder('serverData', expList(x))), deleteList);
 end
-files2Run = processListIdx(processListIdx>0)';
 
 expDefs2Run = unique({expList(files2Run).expDef}');
 expDefs2Remove = expDefs2Run(cellfun(@(x) isempty(which(['prc.expDef.' x])), expDefs2Run));
@@ -108,7 +107,7 @@ for i = files2Run(files2Run>srtIdx)
         end
     end
     
-    if (~contains({'fus'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'fusi') && contains(dataType, {'all'; 'fus'})
+    if (~contains({'fus'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType(1:3), 'fus') && contains(dataType, {'all'; 'fus'})
         fprintf('Converting fusi recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convfUSiFile(x);
         whoD = unique(who('-file', x.processedData));

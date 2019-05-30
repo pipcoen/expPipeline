@@ -168,8 +168,8 @@ if chkExpRigs
     [expList(foundEphys).expType] = deal('ephys');
     
     potentialFusi = find(contains({expList.rigName}', 'zatteo') & ~contains({expList.expType}', 'fusi'));
-    foundFusi = potentialFusi(arrayfun(@(x) exist(x.rawFusiData, 'file'), tLoc(potentialFusi))>0);
-    [expList(foundFusi).expType] = deal('fusi');
+    foundFusi = potentialFusi(arrayfun(@(x) exist([fileparts(x.serverFolder) '\*hys*'])), tLoc(potentialFusi)));
+    [expList(foundEphys).expType] = deal('fusi');
 end
 
 %% Add cleanup fucntion HERE %%

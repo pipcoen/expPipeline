@@ -46,6 +46,7 @@ switch lower(pathType{i})
     case 'serverfolder'; pathOut{i,1} = [expInfo subjectPath(1:end-1)];
     case 'servertimeline'; pathOut{i,1} = [expInfo subjectPath expRef '_Timeline.mat'];
     case 'serverprobedata'; pathOut{i,1} = [expInfo subject '\' expDate '\ephys'];
+    case 'serverfusi'; pathOut{i,1} = [expInfo subjectPath expRef '_fus.mat'];
     case 'backupblock'; pathOut{i,1} = [rawBackup subjectPath expRef '_Block.mat'];
     case 'backupparams'; pathOut{i,1} = [rawBackup subjectPath expRef '_parameters.mat'];
     case 'backupfolder'; pathOut{i,1} = [rawBackup subjectPath];
