@@ -50,7 +50,7 @@ listNotExcluded = [expList.excluded]'~=1;                              %Index of
 fusiIdx = find(contains({expList.expType}', 'fusi'));
 kruminBackup = cellfun(@(x) strrep(x, 'Timeline', 'ProcBlock'), {expList.rawTimeline}', 'uni', 0); 
 copyKruminBackup = fusiIdx(~cellfun(@(x) exist(x,'file'), kruminBackup(fusiIdx))>0 & existProcessed(fusiIdx));
-arrayfun(@(x) copyfile(processedFiles{x}, kruminBackup{x}), copyKruminBackup);
+arrayfun(@(x) copyfile(processedFiles{x}, kruminBackup(x)), copyKruminBackup);
 
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
