@@ -281,15 +281,14 @@ title(get(guiData.psthLines(1),'Parent'), ...
 % Plot raster
 % (single unit mode)
 [~,~,rowGroup] = unique(guiData.currTrialGroups{guiData.currAlign}(:,guiData.currGroup),'sorted');
-[~, rasterSortIdx] = sort(currGroup);
-currRaster = currRaster(rasterSortIdx,:);
-rowGroup = rowGroup(rasterSortIdx);
 
 [rasterY,rasterX] = find(currRaster);
 set(guiData.rasterDots,'XData',guiData.t(rasterX),'YData',rasterY);
 xlim(get(guiData.rasterDots,'Parent'),[guiData.tBins(1),guiData.tBins(end)]);
 ylim(get(guiData.rasterDots,'Parent'),[0,size(guiData.tPeriEvent,1)]);
 % (set dot color by group)
+% [~, rasterSrtIdx] = sort(currGroup);
+% currRaster = currRaster(rasterSrtIdx,:);
 psthColors = get(guiData.psthLines,'color');
 if iscell(psthColors); psthColors = cell2mat(psthColors); end
 rasterDotColor = psthColors(rowGroup(rasterY),:);

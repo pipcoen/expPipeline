@@ -14,7 +14,7 @@ if ~exist('eventTimes', 'var')
             if ~exist('tWin', 'var'); tWin = [-1 -0.1 0 1]; end
     end
 elseif size(eventTimes,2) == 1 && size(eventTimes,1) == length(blk.sessionIdx); eventTimes = [eventTimes blk.sessionIdx];
-elseif size(eventTimes,2) == 1 && length(unique(sessionIDs)) == 1; eventTimes = [eventTimes eventTimes*0+1];
+elseif size(eventTimes,2) == 1 && length(unique(sessionIDs)) == 1; eventTimes = [eventTimes eventTimes*0+sessionIDs];
 else, error('Could not figure out session info for event times');
 end
 
