@@ -81,7 +81,8 @@ for i = 1:cycles
     processList = processList(~contains(processList, {'Lightsheet';'ephys';'Backup'},'IgnoreCase',true));
 end
 processList = processList(~cellfun(@isempty, regexp(processList, '20.*arameters.mat')));
-if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return;
+if ~rebuildList && isempty(processList); fprintf('No new files found\n');
+    return;
 elseif ~rebuildList, tLoc = prc.updatePaths(expList);
     processList = processList(~contains(processList,{tLoc.serverFolder}'));
 end

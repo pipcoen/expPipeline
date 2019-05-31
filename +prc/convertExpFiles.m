@@ -55,13 +55,22 @@ arrayfun(@(x) copyfile(processedFiles{x}, kruminBackup{x}), copyKruminBackup);
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
 %probably processed and then excluded at a later date)
-files2Run = find(listNotExcluded & ~existProcessed)';
 deleteList = find(~listNotExcluded & existProcessed);
 cellfun(@delete, processedFiles(deleteList));
 if strcmp(hostname, 'zip')
     arrayfun(@(x) delete(prc.pathFinder('serverData', expList(x))), deleteList);
+    missBackup = find(~cellfun(@(x) exist(x,'file'), {expList.rawBlock}')>0 & existProcessed);
+    if ~isempty(missBackup)
+        missFolders = cellfun(@fileparts, {expList(missBackup).rawBlock}', 'uni', 0);
+        cellfun(@(x) mkdir(x), missFolders(cellfun(@(x) ~exist(x, 'dir'), missFolders)));
+        arrayfun(@(x,y) copyfile(prc.pathFinder('serverBlock', expList(x)), y{1}), missBackup, {expList(missBackup).rawBlock}');
+        arrayfun(@(x,y) copyfile(prc.pathFinder('serverParams', expList(x)), y{1}), missBackup, {expList(missBackup).rawParams}');
+    end
 end
 
+if redoTag; files2Run = find(listNotExcluded)';
+else, files2Run = find(listNotExcluded & ~existProcessed)';
+end
 expDefs2Run = unique({expList(files2Run).expDef}');
 expDefs2Remove = expDefs2Run(cellfun(@(x) isempty(which(['prc.expDef.' x])), expDefs2Run));
 if ~isempty(expDefs2Remove)
@@ -70,12 +79,12 @@ if ~isempty(expDefs2Remove)
     files2Run(contains({expList(files2Run).expDef}', [expDefs2Remove; 'Temporal'])) = [];
 end
 
+files2Run = files2Run(cellfun(@(x) contains(x, selectedSubjects), {expList(files2Run).subject}));
+files2Run = files2Run(cellfun(@(x) contains(x, selectedDates), {expList(files2Run).expDate}));
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
 srtIdx = 0;
 for i = files2Run(files2Run>srtIdx)
-    if ~contains(expList(i).subject, selectedSubjects); continue; end  %If a mouse has been selected, skip mice that don't match that mouse name
-    if ~contains(expList(i).expDate, selectedDates); continue; end  %If a date has been selected, skip days that don't match that date
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;
     x.existProcessed = existProcessed(i,:);
