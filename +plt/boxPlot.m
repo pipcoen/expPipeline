@@ -8,7 +8,8 @@ daspect([1 1 1]); axis xy;
 if addText
     arrayfun(@(x,y,z) text(x,y, num2str(round(z*100)/100), 'horizontalalignment', 'center'), xPnts, yPnts, plotData)
 end
-if boxPlot.nSessions == 1; title(sprintf('%s: %d Tri, %s', boxPlot.subject, boxPlot.trialNumber, boxPlot.extraInf))
+if boxPlot.nSessions == 1 && length(boxPlot.subject) < 10
+    title(sprintf('%s: %d Tri, %s', boxPlot.subject, boxPlot.trialNumber, boxPlot.extraInf))
 else, title(sprintf('%s: %d Tri, %d Sess', boxPlot.subject, boxPlot.trialNumber, boxPlot.nSessions));
 end
 set(gca, 'xTick', 1:size(plotData,2), 'xTickLabel', boxPlot.xyValues{1}, 'fontsize', 14)

@@ -32,11 +32,7 @@ if ~exist('extraChecks', 'var') || isempty(extraChecks); extraChecks = [0 1]; en
 rechkExcludeTxts = extraChecks(1);
 chkExpRigs = extraChecks(2);
 if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
-if ~exist('syncInfo', 'var') || isempty(syncInfo); syncInfo = [0 2]; end
 if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
-if zipComp; fprintf('Running on Zip so will sync local folder and server... \n');
-    prc.syncfolder(fileparts(prc.pathFinder('expList')), '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\', syncInfo(2)); end
-if syncInfo(1); fprintf('Sync only mode... returning \n'); return; end
 
 expInfo = prc.pathFinder('expInfo');
 includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...
@@ -110,14 +106,8 @@ for i = 1:length(processList)
     addedFiles = 1;
     %Poplate fields for addition to expList
     
-    tempLoc = prc.updatePaths(expList(end));
-    if zipComp && exist(prc.pathFinder('serverBlock', expList(end)), 'file') && ~exist(tempLoc.rawBlock, 'file')
-        if ~exist(prc.pathFinder('backupFolder', expList(end)), 'dir'); mkdir(prc.pathFinder('backupFolder', expList(end))); end
-        copyfile(prc.pathFinder('serverBlock', expList(end)), tempLoc.rawBlock); 
-        copyfile(prc.pathFinder('serverParams', expList(end)), tempLoc.rawParams); 
-    end
-    
-    if exist(tempLoc.rawBlock, 'file'); load(tempLoc.rawBlock, 'block'); b = block;
+    tempLoc = prc.updatePaths(expList(end));  
+    if exist(prc.pathFinder('serverblock',expList(end)), 'file'); load(prc.pathFinder('serverblock',expList(end)), 'block'); b = block;
     else, clear b; load(processList{i});
         if exist(tempLoc.rawTimeline, 'file'); load(tempLoc.rawTimeline);
         else, expList(end).excluded = 1; continue; end
@@ -213,5 +203,4 @@ end
 %% Saving new version of expList in the shared and local directory
 expList = prc.nestedSortStruct(expList, {'subject', 'expDate'});
 save(prc.pathFinder('expList'), 'expList');
-if zipComp; prc.syncfolder(fileparts(prc.pathFinder('expList')), '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\', syncInfo(2)); end
 end

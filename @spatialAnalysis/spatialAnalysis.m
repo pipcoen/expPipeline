@@ -134,7 +134,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             axesOpt.totalNumOfAxes = length(obj.subjects);
             axesOpt.btlrMargins = [80 100 80 40];
             axesOpt.gapBetweenAxes = [100 60];
-            axesOpt.numOfRows = 2;
+            axesOpt.numOfRows = ceil(length(obj.subjects)/5);
             axesOpt.figureHWRatio = 1.1;
             for i  = 1:length(obj.subjects)
                 normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm',1);
@@ -244,7 +244,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             if combineMice==1; mouseList = {cell2mat(mouseList')}; end   
             if combineMice==-2 && length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
             if combineMice==-2
-                mouseList = arrayfun(@(x) [mouseList{1} '_' num2str(x)], 1:length(obj.blocks), 'uni',0);
+                mouseList = arrayfun(@(x) [mouseList{1} ':' num2str(x{1})], {obj.blocks.expDate}', 'uni',0);
                 obj.subjects = mouseList;
                 obj.expDate = {obj.blocks.expDate}';
                 [obj.blocks.subject] = deal(mouseList{:});

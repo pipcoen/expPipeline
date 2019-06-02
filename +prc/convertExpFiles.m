@@ -38,10 +38,26 @@ if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
 if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
+if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
-expList = prc.scanForNewFiles(0,[0 1],[0 0]);
+expList = prc.scanForNewFiles(0,[0 1]);
 expList = prc.updatePaths(expList);
+
+if zipComp
+    fprintf('Running on Zip so will sync local folder and server... \n');
+    prc.syncfolder(fileparts(prc.pathFinder('expList')), '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\', 0);
+end
+expList = expList(cellfun(@(x) contains(x, selectedSubjects), {expList.subject}));
+expList = expList(cellfun(@(x) contains(x, selectedDates), {expList.expDate}));
+
+expDefs2Run = unique({expList.expDef}');
+expDefs2Remove = expDefs2Run(cellfun(@(x) isempty(which(['prc.expDef.' x])), expDefs2Run));
+if ~isempty(expDefs2Remove)
+    fprintf('Warning: the following expDefs will be skipped: \n');
+    fprintf('-%s \n', expDefs2Remove{:});
+    expList = expList(~contains({expList.expDef}', [expDefs2Remove; 'Temporal']));
+end
 
 processedFiles = {expList.processedData}';    %List of all [Dropbox, zserver] processed file paths
 existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0;      %Logical of whether processed files exist for those directories
@@ -55,11 +71,12 @@ arrayfun(@(x) copyfile(processedFiles{x}, kruminBackup{x}), copyKruminBackup);
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
 %probably processed and then excluded at a later date)
-deleteList = find(~listNotExcluded & existProcessed);
-cellfun(@delete, processedFiles(deleteList));
-if strcmp(hostname, 'zip')
+if zipComp
+    deleteList = find(~listNotExcluded & existProcessed);
+    cellfun(@delete, processedFiles(deleteList));
     arrayfun(@(x) delete(prc.pathFinder('serverData', expList(x))), deleteList);
-    missBackup = find(~cellfun(@(x) exist(x,'file'), {expList.rawBlock}')>0 & existProcessed);
+    
+    missBackup = find(~cellfun(@(x) exist(x,'file'), {expList.rawBlock}')>0 & listNotExcluded);
     if ~isempty(missBackup)
         missFolders = cellfun(@fileparts, {expList(missBackup).rawBlock}', 'uni', 0);
         cellfun(@(x) mkdir(x), missFolders(cellfun(@(x) ~exist(x, 'dir'), missFolders)));
@@ -71,16 +88,7 @@ end
 if redoTag; files2Run = find(listNotExcluded)';
 else, files2Run = find(listNotExcluded & ~existProcessed)';
 end
-expDefs2Run = unique({expList(files2Run).expDef}');
-expDefs2Remove = expDefs2Run(cellfun(@(x) isempty(which(['prc.expDef.' x])), expDefs2Run));
-if ~isempty(expDefs2Remove)
-    fprintf('Warning: the following expDefs will be skipped: \n');
-    fprintf('-%s \n', expDefs2Remove{:});
-    files2Run(contains({expList(files2Run).expDef}', [expDefs2Remove; 'Temporal'])) = [];
-end
 
-files2Run = files2Run(cellfun(@(x) contains(x, selectedSubjects), {expList(files2Run).subject}));
-files2Run = files2Run(cellfun(@(x) contains(x, selectedDates), {expList(files2Run).expDate}));
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
 srtIdx = 0;
@@ -134,7 +142,7 @@ for i = files2Run(files2Run>srtIdx)
         whoD = unique(who('-file', x.processedData));
     end
 end
-prc.scanForNewFiles([],[],[1 0]);
+if zipComp; prc.syncfolder(fileparts(prc.pathFinder('expList')), '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\', 0); end
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
