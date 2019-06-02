@@ -1,4 +1,4 @@
-function expList = scanForNewFiles(rebuildList, extraChecks, syncInfo)
+function expList = scanForNewFiles(rebuildList, extraChecks)
 %% A funciton to check for new files for specified mice, copy them to a local directory, and update a related experimental list object
 
 % Inputs(default values)
@@ -32,7 +32,6 @@ if ~exist('extraChecks', 'var') || isempty(extraChecks); extraChecks = [0 1]; en
 rechkExcludeTxts = extraChecks(1);
 chkExpRigs = extraChecks(2);
 if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
-if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 
 expInfo = prc.pathFinder('expInfo');
 includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...

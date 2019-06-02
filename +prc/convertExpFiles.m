@@ -46,7 +46,7 @@ expList = prc.updatePaths(expList);
 
 if zipComp
     fprintf('Running on Zip so will sync local folder and server... \n');
-    prc.syncfolder(fileparts(prc.pathFinder('expList')), '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\', 0);
+    prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 0);
 end
 expList = expList(cellfun(@(x) contains(x, selectedSubjects), {expList.subject}));
 expList = expList(cellfun(@(x) contains(x, selectedDates), {expList.expDate}));
@@ -74,7 +74,7 @@ arrayfun(@(x) copyfile(processedFiles{x}, kruminBackup{x}), copyKruminBackup);
 if zipComp
     deleteList = find(~listNotExcluded & existProcessed);
     cellfun(@delete, processedFiles(deleteList));
-    arrayfun(@(x) delete(prc.pathFinder('serverData', expList(x))), deleteList);
+    arrayfun(@(x) delete(prc.pathFinder('serverProcessedData', expList(x))), deleteList);
     
     missBackup = find(~cellfun(@(x) exist(x,'file'), {expList.rawBlock}')>0 & listNotExcluded);
     if ~isempty(missBackup)
@@ -142,7 +142,7 @@ for i = files2Run(files2Run>srtIdx)
         whoD = unique(who('-file', x.processedData));
     end
 end
-if zipComp; prc.syncfolder(fileparts(prc.pathFinder('expList')), '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\', 0); end
+    prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 0);
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
@@ -272,7 +272,7 @@ if exist(x.out2, 'dir') && isempty(fLst)
     fprintf('NOTE: Correct 2P data for %s %s Skipping...\n', x.expDate,x.subject);
     return;
 end
-t = load(prc.pathFinder('rawtime', x.subject, x.expDate, x.expNum)); t = t.Timeline;
+t = load(prc.pathFinder('rawtime', x)); t = t.Timeline;
 idx = find(strcmp(x.expNum, x.idxC));
 for i = 1:length(fLst)
     fprintf('Processing plane %d of %d...\n', i,length(fLst));

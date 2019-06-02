@@ -22,18 +22,17 @@ end
 
 expInfo = '\\zubjects.cortexlab.net\Subjects\';
 rawBackup = [driveName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
+serverProcessedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
+    processedDirectory = [driveName '\Dropbox (Neuropixels)\MouseData\ProcessedData\'];
+if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'backupBlock'; end
+if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'backupParams'; end
 
 if contains(hostName, {'homerig'; 'ziptop'})
     directoryCheck = 'local';
-    if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'backupBlock'; end
-    if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'backupParams'; end
 elseif strcmp(hostName, {'zip'})
     directoryCheck = 'all';
-    processedFolder = [driveName '\Dropbox (Neuropixels)\MouseData\ProcessedData\'];
-    if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'backupBlock'; end
-    if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'backupParams'; end
 else; directoryCheck = 'server';
-    processedFolder = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
+    processedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
     if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'serverBlock'; end
     if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'serverParams'; end
 end
@@ -43,18 +42,23 @@ for i = 1:length(pathType)
 switch lower(pathType{i})
     case 'serverblock'; pathOut{i,1} = [expInfo subjectPath expRef '_Block.mat'];
     case 'serverparams'; pathOut{i,1} = [expInfo subjectPath expRef '_Parameters.mat'];
-    case 'serverfolder'; pathOut{i,1} = [expInfo subjectPath(1:end-1)];
+    case 'serverfolder'; pathOut{i,1} = [expInfo subjectPath];
     case 'servertimeline'; pathOut{i,1} = [expInfo subjectPath expRef '_Timeline.mat'];
     case 'serverprobedata'; pathOut{i,1} = [expInfo subject '\' expDate '\ephys'];
+    case 'serverprocesseddata'; pathOut{i,1} = [serverProcessedDirectory processedFileName];
+    case 'serverprocessedfolder'; pathOut{i,1} = [serverProcessedDirectory subject];
+    case 'serverprocesseddirectory'; pathOut{i,1} = serverProcessedDirectory;
     case 'serverfusi'; pathOut{i,1} = [expInfo subjectPath expRef '_fus.mat'];
     case 'backupblock'; pathOut{i,1} = [rawBackup subjectPath expRef '_Block.mat'];
     case 'backupparams'; pathOut{i,1} = [rawBackup subjectPath expRef '_parameters.mat'];
     case 'backupfolder'; pathOut{i,1} = [rawBackup subjectPath];
+    case 'backupdirectory'; pathOut{i,1} = rawBackup;
+    case 'processeddata'; pathOut{i,1} = [processedDirectory processedFileName];
+    case 'processedfolder'; pathOut{i,1} = [processedDirectory subject];
+    case 'processeddirectory'; pathOut{i,1} = processedDirectory;
     case 'galvolog'; pathOut{i,1} = [rawBackup subjectPath expRef '_galvoLog.mat'];
-    case 'processeddata'; pathOut{i,1} = [processedFolder processedFileName];
-    case 'serverdata'; pathOut{i,1} = [serverFolder processedFileName];
     case 'kilosortoutput'; pathOut{i,1} = [expInfo subject '\' expDate '\ephys\kilosort'];
-    case 'explist'; pathOut{i,1} = [processedFolder 'expList.mat'];
+    case 'explist'; pathOut{i,1} = [processedDirectory 'expList.mat'];
     case 'expinfo'; pathOut{i,1} = expInfo;
 end
 if length(pathOut) == 1; pathOut = pathOut{1}; end
