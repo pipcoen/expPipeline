@@ -1,24 +1,26 @@
 function [clusterSigLevel, clusterTTestData] = findResponsiveCells(blk,eventTimes,tWin)
 %Assigning default values
 sessionIDs = double(unique(blk.ephClusterSession));
-if ~exist('eventTimes', 'var')
+if ~exist('eventTimes', 'var') || isempty(eventTimes)
     switch blk.expDef
         case 'multiSpaceWorldPassive'
             eventTimes = [nanmean([blk.ephVisStimPeriodOnOff(:,1) blk.ephAudStimPeriodOnOff(:,1)],2); blk.ephRewardTimes];
             eventTimes = [eventTimes repmat(blk.sessionIdx,2,1)];
             eventTimes = eventTimes(~isnan(eventTimes(:,1)),:);
-            if ~exist('tWin', 'var'); tWin = [-0.5 -0.1 0 0.5]; end
         case 'multiSpaceWorld'
             eventTimes = [nanmean([blk.ephVisStimPeriodOnOff(:,1) blk.ephAudStimPeriodOnOff(:,1)],2) blk.sessionIdx];
             eventTimes = eventTimes(~isnan(eventTimes(:,1)),:);
-            if ~exist('tWin', 'var'); tWin = [-1 -0.1 0 1]; end
     end
 elseif size(eventTimes,2) == 1 && size(eventTimes,1) == length(blk.sessionIdx); eventTimes = [eventTimes blk.sessionIdx];
 elseif size(eventTimes,2) == 1 && length(unique(sessionIDs)) == 1; eventTimes = [eventTimes eventTimes*0+sessionIDs];
 else, error('Could not figure out session info for event times');
 end
 
-if ~exist('tWin', 'var'); tWin = [-0.5 -0.1 0 0.5];
+if ~exist('tWin', 'var') || isempty(tWin)
+    switch blk.expDef
+        case 'multiSpaceWorldPassive'; tWin = [-0.5 -0.1 0.05 0.25];
+        case 'multiSpaceWorld'; tWin = [-0.5 -0.1 0.05 0.25];
+    end
 elseif numel(tWin)~=4; error('tWin should be 1x4 vector');
 elseif ~all([(tWin(1:2)<=0) (tWin(3:4)>=0)]); error('pre/post windows should be negative/positive (or zero)');
 end

@@ -69,7 +69,8 @@ if exist('flipperFlipTimesTimeline','var') && length(sync) >= 4
     flipperFlipTimesFPGA = flipTimes(flipperStEnIdx(currExpIdx,1):flipperStEnIdx(currExpIdx,2));
     
     % Check that number of flipper flips in timeline matches ephys
-    if length(flipperFlipTimesFPGA) ~= length(flipperFlipTimesTimeline)
+    numFlipsDiff = abs(diff([length(flipperFlipTimesFPGA) length(flipperFlipTimesTimeline)]));
+    if numFlipsDiff>0 && numFlipsDiff<20 
         fprintf([x.subject ' ' x.expDate ': WARNING = Flipper flip times different in timeline/ephys \n']);
         if diff([length(flipperFlipTimesFPGA) length(flipperFlipTimesTimeline)])<20 && length(flipperFlipTimesFPGA) > 500
             fprintf([x.subject ' ' x.expDate ': Trying to account for missing flips.../ephys \n']);
@@ -92,7 +93,7 @@ if exist('flipperFlipTimesTimeline','var') && length(sync) >= 4
                 spikeTimesTimeline = interp1(flipperFlipTimesFPGA,flipperFlipTimesTimeline,spikeTimes,'linear','extrap');
             end
         end
-    else, spikeTimesTimeline = interp1(flipperFlipTimesFPGA,flipperFlipTimesTimeline,spikeTimes,'linear','extrap');
+    elseif numFlipsDiff==0, spikeTimesTimeline = interp1(flipperFlipTimesFPGA,flipperFlipTimesTimeline,spikeTimes,'linear','extrap');
     end
     
     % Get the spike/lfp times in timeline time (accounts for clock drifts)

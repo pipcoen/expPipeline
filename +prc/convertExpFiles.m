@@ -40,14 +40,13 @@ if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 
+if zipComp; fprintf('Running on Zip so will sync local folder and server... \n');
+    prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 0);
+end
+
 %Scan for new files. Then, if the only available directory is zserver, change the save destination to be zserver
 expList = prc.scanForNewFiles(0,[0 1]);
 expList = prc.updatePaths(expList);
-
-if zipComp
-    fprintf('Running on Zip so will sync local folder and server... \n');
-    prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 0);
-end
 expList = expList(cellfun(@(x) contains(x, selectedSubjects), {expList.subject}));
 expList = expList(cellfun(@(x) contains(x, selectedDates), {expList.expDate}));
 
@@ -59,34 +58,37 @@ if ~isempty(expDefs2Remove)
     expList = expList(~contains({expList.expDef}', [expDefs2Remove; 'Temporal']));
 end
 
-processedFiles = {expList.processedData}';    %List of all [Dropbox, zserver] processed file paths
-existProcessed = cellfun(@(x) exist(x,'file'), processedFiles)>0;      %Logical of whether processed files exist for those directories
-listNotExcluded = [expList.excluded]'~=1;                              %Index of files which haven't been excluded (in prc.scanForNewFiles)
-
-fusiIdx = find(contains({expList.expType}', 'fusi'));
-kruminBackup = cellfun(@(x) strrep(x, 'Timeline', 'ProcBlock'), {expList.rawTimeline}', 'uni', 0); 
-copyKruminBackup = fusiIdx(~cellfun(@(x) exist(x,'file'), kruminBackup(fusiIdx))>0 & existProcessed(fusiIdx));
-arrayfun(@(x) copyfile(processedFiles{x}, kruminBackup{x}), copyKruminBackup);
-
+existProcessed = cellfun(@(x) exist(x,'file'), {expList.processedData}')>0;      %Logical of whether processed files exist for those directories
 %Create processList and deleteLise. If there are instructions to redo the analysis in the inputs, process list will be all the unexcluded paths,
 %otherwise it will only include the paths of files that don't already exist. deleteList is for files that are excluded, but do exist (these were
 %probably processed and then excluded at a later date)
 if zipComp
-    deleteList = find(~listNotExcluded & existProcessed);
-    cellfun(@delete, processedFiles(deleteList));
-    arrayfun(@(x) delete(prc.pathFinder('serverProcessedData', expList(x))), deleteList);
-    
-    missBackup = find(~cellfun(@(x) exist(x,'file'), {expList.rawBlock}')>0 & listNotExcluded);
+    deleteList = find([expList.excluded]'==1 & existProcessed);
+    cellfun(@delete, {expList(deleteList).processedData});
+    cellfun(@delete, {expList(deleteList).serverProcessedData});
+    cellfun(@(x) delete(strrep(x, 'Timeline', 'ProcBlock')), {expList(deleteList).rawTimeline});
+    existProcessed = existProcessed([expList.excluded]'~=1);
+    expList = expList([expList.excluded]'~=1);
+
+    missBackup = find(~cellfun(@(x) exist(x,'file'), {expList.rawBlock}')>0);
     if ~isempty(missBackup)
         missFolders = cellfun(@fileparts, {expList(missBackup).rawBlock}', 'uni', 0);
         cellfun(@(x) mkdir(x), missFolders(cellfun(@(x) ~exist(x, 'dir'), missFolders)));
         arrayfun(@(x,y) copyfile(prc.pathFinder('serverBlock', expList(x)), y{1}), missBackup, {expList(missBackup).rawBlock}');
         arrayfun(@(x,y) copyfile(prc.pathFinder('serverParams', expList(x)), y{1}), missBackup, {expList(missBackup).rawParams}');
     end
+else
+    existProcessed = existProcessed([expList.excluded]'~=1);
+    expList = expList([expList.excluded]'~=1);
 end
 
-if redoTag; files2Run = find(listNotExcluded)';
-else, files2Run = find(listNotExcluded & ~existProcessed)';
+fusiIdx = find(contains({expList.expType}', 'fusi'));
+kruminBackup = cellfun(@(x) strrep(x, 'Timeline', 'ProcBlock'), {expList.rawTimeline}', 'uni', 0); 
+copyKruminBackup = fusiIdx(~cellfun(@(x) exist(x,'file'), kruminBackup(fusiIdx))>0 & existProcessed(fusiIdx));
+arrayfun(@(x) copyfile(expList(x).processedData, kruminBackup{x}), copyKruminBackup);
+
+if redoTag==1; files2Run = find(existProcessed*0+1)';
+else, files2Run = find(~existProcessed | contains({expList.expType}', {'fusi';'ephys'}))';
 end
 
 %% Loop to process the files
