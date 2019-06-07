@@ -33,8 +33,8 @@ elseif strcmp(hostName, {'zip'})
     directoryCheck = 'all';
 else; directoryCheck = 'server';
     processedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
-    if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'serverBlock'; end
-    if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'serverParams'; end
+    if contains('rawBlock', pathType); pathType{contains(pathType, 'backupBlock')} = 'serverBlock'; end
+    if contains('rawParams', pathType); pathType{contains(pathType, 'backupParams')} = 'serverParams'; end
 end
 %%
 pathOut = pathType;
