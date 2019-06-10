@@ -35,7 +35,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         
         
         function viewGLMFit(obj, modelString, cvFolds)
-            if ~exist('modelString', 'var'); modelString = 'SqrtLogisticSplitNest'; end
+            if ~exist('modelString', 'var'); modelString = 'SimpLog'; end
             if ~exist('cvFolds', 'var'); cvFolds = 0; end
             figure;
             axesOpt.totalNumOfAxes = length(obj.subjects);

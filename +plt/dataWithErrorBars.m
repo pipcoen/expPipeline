@@ -1,5 +1,5 @@
 function dataWithErrorBars(blk, errorOn, splitValues)
-if ~exist('splitValues', 'var') || isempty(splitValues); splitValues = blk.audValues; end
+if ~exist('splitValues', 'var') || isempty(splitValues); splitValues = blk.audValues(~isinf(blk.audValues)); end
 if ~exist('errorOn', 'var'); errorOn = 1; end
 
 colorChoices = plt.selectRedBlueColors(splitValues);
