@@ -93,7 +93,7 @@ end
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the midded. Useful if MATLAB crashes
-srtIdx = 0;
+srtIdx = 1929;
 for i = files2Run(files2Run>srtIdx)
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;

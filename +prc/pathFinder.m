@@ -29,7 +29,7 @@ if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 
 
 if contains(hostName, {'homerig'; 'ziptop'})
     directoryCheck = 'local';
-elseif strcmp(hostName, {'ziip'})
+elseif strcmp(hostName, {'zip'})
     directoryCheck = 'all';
 else; directoryCheck = 'server';
     processedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
