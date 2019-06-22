@@ -215,8 +215,7 @@ x = convBlockFile(x);
 fus = struct;
 fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'; 'expDef'};
 for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.(fields2copy{i}); end
-fields2copy = fields(x.aligned);
-for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.aligned.(fields2copy{i}); end
+fus = prc.catStructs(fus, prc.filtStruct(x.aligned, x.validTrials));
 whoD = unique([who('-file', x.processedData); 'fus']);
 save(x.processedData, 'fus', 'whoD', '-append');
 copyfile(x.processedData, strrep(x.rawTimeline, 'Timeline', 'ProcBlock'));
