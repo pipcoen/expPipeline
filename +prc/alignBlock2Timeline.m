@@ -38,7 +38,7 @@ switch alignType
         blockWheelPosition = interp1(block.inputs.wheelTimes+baseDelay, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
         blockWheelPosition = smooth(blockWheelPosition(:),smoothWindow);
         
-        blockWidth = 60*sampleRate;
+        blockWidth = 30*sampleRate;
         sampleCentres = sampleRate*5:sampleRate*5:length(timelineTime);
         blockWheelVelocity = diff(blockWheelPosition);
         timelinehWeelVelocity = diff(timelinehWeelPosition);
@@ -47,7 +47,7 @@ switch alignType
         
         testIdx = cellfun(@(x) sum(abs(blockWheelVelocity(x))), samplePoints)>(5*blockWidth/sampleRate);
         if sum(testIdx) < 50; error('Not enough movment to synchronize using wheel');
-        elseif mean(testIdx) < 0.2; warning('Little movement to timeline alignment with wheel will be unreliable');
+        elseif mean(testIdx) < 0.2; warning('Little movement so timeline alignment with wheel will be unreliable');
         end
         samplePoints = samplePoints(testIdx);
         delayValues = cellfun(@(x) finddelay(blockWheelVelocity(x), timelinehWeelVelocity(x), 1000), samplePoints)./sampleRate;

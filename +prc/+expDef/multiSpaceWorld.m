@@ -35,7 +35,6 @@ function x = multiSpaceWorld(x)
 %.uniqueConditionsIdx--nxm matrix of the index for each uniqueCondition (used in the "conditions" field)
 
 
-% ADDED only if there was inactivation during the session
 %.galvoType------------nx1 vector indicating galvo moveement, which can be stationary (1) or moving between two sites (2) while the laser is on
 %.galvoPosition--------nx2 vector of galvo coordinates used on each trial ([LM axis, AP axis]
 %.laserType------------nx1 vector indicating laser type, which can be off (0), unilateral (1), or bilateral (2)
@@ -102,7 +101,6 @@ p = x.standardizedParams;              %Parameter values at start of entire sess
 vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
 
 %% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
-%Note: we cannot perform this stage before the stage above as it will mess with the calculation of totalRepeats
 if sum(vIdx) > 150
     %We remove the first 10 and last 10 correct trials for each session we use -1 because we only want to remove these extra trials from totalRepeats.
     vIdx = double(vIdx);
@@ -112,17 +110,11 @@ if sum(vIdx) > 150
     vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 5, 'last')):end) = -1;
     
     %Remove trials in which the laser "trasitionTimes" are more than 90% of the time until the TTL pulse that activates the laser. Otherwise, cannot
-    %be confident that the laser was ready to receive the pulse.#
+    %be confident that the laser was ready to receive the pulse.
     if p.laserSession
-    trasitionTimes = e.laserInitialisationTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx));
-    timeToTTL = (e.galvoTTLTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx)))*0.9;
-    vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
-    
-%     if  p.laserPower>0 && p.laserOnsetDelays(1) ~= p.laserOnsetDelays(2)
-%         x.timeline = load(x.rawTimeline); x.timeline=x.timeline.Timeline;
-%         timelineInfo = prc.extractTimelineInfo(x);
-%         vIdx(timelineInfo.badTrials) = -1;
-%     end
+        trasitionTimes = e.laserInitialisationTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx));
+        timeToTTL = (e.galvoTTLTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx)))*0.9;
+        vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
     end
     vIdx = vIdx>0;
 end

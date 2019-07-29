@@ -61,7 +61,7 @@ switch lower(dataTag{1})
             case 'all'; dateRange = {'DJ007','PC029','PC033','PC032'}';
             case 'DJ007'; dateRange = {'rng', '2018-11-28', '2018-12-02'}; %Power was only 1.5mW
             case 'PC029'; dateRange = {'rng', '2018-10-18', '2018-10-19'};
-            case 'PC032'; dateRange = {'rng', '2019-04-03', '2019-04-10'};
+            case 'PC032'; dateRange = {'rng', '2019-04-03', '2019-04-14'};
             case 'PC033'; dateRange = {'rng', '2019-03-27', '2019-03-31'};
             case 'PC030'; dateRange = {'rng', '2019-05-07', '2019-05-13'};
             case 'PC043'; dateRange = {'rng', '2019-05-07', '2019-05-16'};

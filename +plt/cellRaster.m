@@ -109,7 +109,7 @@ clusterDepths = blk.ephClusterDepths(clustIdx);
 spikeCluster = spikeCluster-min(spikeCluster)+1;
 
 guiData.currEventTimes = cellfun(@(x) x(x(:,2)==guiData.currSession,1), guiData.eventTimes, 'uni', 0);
-guiData.currTrialGroups = cellfun(@(x,y) x(y(:,2)==guiData.currSession,:), guiData.trialGroups, guiData.eventTimes, 'uni', 0);
+guiData.probeDepthGui = cellfun(@(x,y) x(y(:,2)==guiData.currSession,:), guiData.trialGroups, guiData.eventTimes, 'uni', 0);
 
 switch guiData.sortRule(1:3)
     case 'dep'

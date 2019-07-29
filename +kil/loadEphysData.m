@@ -151,19 +151,24 @@ newSpikeIdx(goodTemplatesList+1) = 1:length(goodTemplatesList);
 spikeTemplates = newSpikeIdx(spikeTemplates+1);
 
 %%
-fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'};
+fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'expDets'; 'kilosortOutput'};
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
-eph.spikeSite = [];
+for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
+if length(x.expDets)>1 && contains('ephys', {x.expDets.folder}); error('Multiple penetrations, but ephys folder?'); end
+if length(x.expDets)==1; penetrationIdx = 0;
+elseif length(x.expDets)>1; penetrationIdx = str2double(kilosortOutput(strfind(kilosortOutput, 'site')+4:end)); 
+end
+
+eph.spikeSite = uint16(spikeTimesTimeline*0+penetrationIdx);
 eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);
 eph.spikeCluster = uint16(spikeTemplates);
-eph.clusterSite = [];
+eph.clusterSite = uint16(templateDepths*0+penetrationIdx);
 eph.clusterDepths = templateDepths;
 eph.clusterAmps = templateAmps;
 eph.clusterDuration = templateDuration;
 eph.clusterWaveforms = waveforms;
 eph.clusterTemplates = {templates};
-eph.clusterSigLevel = [];
 eph.channelMap = {readNPY([kilosortOutput '\channel_positions.npy'])};
 eph = prc.catStructs(eph, prc.filtStruct(x.aligned, x.validTrials));
 %%

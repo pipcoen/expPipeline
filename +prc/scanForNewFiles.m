@@ -34,9 +34,9 @@ chkExpRigs = extraChecks(2);
 if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
 
 expInfo = prc.pathFinder('expInfo');
-includedMice = {'PC010'; 'PC011'; 'PC012'; 'PC013'; 'PC015'; 'PC022'; 'PC025'; 'PC027'; 'PC029'; 'PC030'; 'PC031'; 'PC032'; 'PC033'; 'PC034';...
-    'PC036'; 'PC037'; 'PC038'; 'PC040'; 'PC041'; 'PC042'; 'PC043'; 'PC044'; 'PC045'; 'PC046'; 'PC047'; 'PC048'; 'PC049'; 'PC050'; 'PC051'; 'PC052'; ...
-    'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR010'};
+includedMice = [cellfun(@(x) ['PC0' x], ...
+    split({'10,11,12,13,15,22,25,27,29,30,31,32,33,34,36,37,38,41,43,45,46,48,49,50,51,52'},','), 'uni', 0); ...
+        {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'}];
 
 startedDates = {...
     'CR010' '2019-01-29'};
@@ -56,15 +56,21 @@ if any(startedIdx); includedMice(startedIdx > 0,2) = num2cell(datenum(startedDat
 if any(retiredIdx); includedMice(retiredIdx > 0,3) = num2cell(datenum(retiredDates(retiredIdx(retiredIdx>0), 2), 'yyyy-mm-dd')); end
 
 %% Check for all files generated in the past 3 weeks for included mice.
-recentDates = cellfun(@(x,y) num2cell([repmat([expInfo y '\'],[15,1]) datestr(datenum(x)-14:datenum(x), 'yyyy-mm-dd')],2),includedMice(:,3), includedMice(:,1), 'uni', 0);
-
 if rebuildList ~= 1
     cycles = 2;
+    recentDates = cell(size(includedMice,1),1);
+    for i = 1:size(includedMice,1)
+        dateRange = num2cell(datestr(datenum(includedMice{i,3})-14:datenum(includedMice{i,3}), 'yyyy-mm-dd'),2);
+        recentDates{i,1} = cellfun(@(x) fileparts(fileparts(prc.pathFinder('serverfolder',includedMice{i,1},x,'1'))),dateRange, 'uni', 0);
+    end
     processList = vertcat(recentDates{:});
     expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
 else
     cycles = 3;
-    processList = cellfun(@(x) [expInfo x], includedMice(:,1), 'uni', 0);
+    processList = [];
+    for i = 1:length(expInfo)
+        processList = [processList;cellfun(@(x) [expInfo{i} x], includedMice(:,1), 'uni', 0)];
+    end
     expList = struct;
 end
 
@@ -139,8 +145,10 @@ for i = 1:length(processList)
 end
 % If new files were identified, add them to expList
 if ~addedFiles; fprintf('No new files found\n'); end
+if ~isfield(expList, 'expDets'); expList(1).expDets = []; end
 [expList(cellfun(@isempty, {expList.rigName}')).rigName] = deal('');
 [expList(cellfun(@isempty, {expList.expType}')).expType] = deal('');
+[expList(cellfun(@isempty, {expList.expDets}')).expDets] = deal('');
 
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
 tLoc = prc.updatePaths(expList);
@@ -154,7 +162,7 @@ end
 
 if chkExpRigs
     potentialEphys = find(contains({expList.rigName}', 'lilrig-stim') & ~contains({expList.expType}', 'ephys'));
-    foundEphys = potentialEphys(arrayfun(@(x) ~isempty(dir([fileparts(x.serverFolder) '\*hys*'])), tLoc(potentialEphys)));
+    foundEphys = potentialEphys(arrayfun(@(x) ~isempty(dir([fileparts(x.serverFolder(1:end-1)) '\*hys*'])), tLoc(potentialEphys)));
     [expList(foundEphys).expType] = deal('ephys');
     
     potentialFusi = find(contains({expList.rigName}', 'zatteo') & ~contains({expList.expType}', 'fusi'));
@@ -162,10 +170,21 @@ if chkExpRigs
     [expList(foundFusi).expType] = deal('fusi');
 end
 
+ephsRec = table2struct(readtable(prc.pathFinder('ephysrecord')));
+tDat  = {ephsRec.expDate}'; tDat = cellfun(@(x) datestr(x, 'yyyy-mm-dd'), tDat, 'uni', 0);
+[ephsRec.expDate] = deal(tDat{:});
+[~,uniIdx,uniLabel] = unique(cell2table([{ephsRec.subject}' {ephsRec.expDate}', {ephsRec.expNum}']),'stable', 'rows');
+for i = 1:length(uniIdx)
+    expDets = ephsRec(uniLabel == i);
+    expIdx = contains({expList.expDate}, {expDets.expDate}) & contains({expList.subject}, {expDets.subject});
+    if contains('all', {expDets.expNum})
+        [expList(expIdx).expDets] = deal(rmfield(expDets, {'subject', 'expDate', 'expNum', 'estDepth'}));
+    end
+end
 %% Add cleanup fucntion HERE %%
 
 %% This section section deals with cases of files on non-training rigs when multiple files are detected for a mouse on same day, rig, and expDef
-processList = cellfun(@fileparts, {tLoc.serverFolder}', 'uni', 0);
+processList = cellfun(@(x) fileparts(x(1:end-1)), {tLoc.serverFolder}', 'uni', 0);
 processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expList.expDef}', 'uni', 0);
 [~, uniqueFileIdx] = unique(processList);
 duplicates = unique(processList(setdiff(1:length(processList),uniqueFileIdx)));
@@ -182,7 +201,7 @@ end
 
 
 %% This section section deals with short files when multiple files are detected for a mouse on same day and experiment type
-processList = cellfun(@fileparts, {tLoc.serverFolder}', 'uni', 0);
+processList = cellfun(@(x) fileparts(x(1:end-1)), {tLoc.serverFolder}', 'uni', 0);
 processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expList.expDef}', 'uni', 0);
 [~, uniqueFileIdx] = unique(processList);
 duplicates = unique(processList(setdiff(1:length(processList),uniqueFileIdx)));
