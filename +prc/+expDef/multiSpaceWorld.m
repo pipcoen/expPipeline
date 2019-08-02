@@ -148,28 +148,30 @@ end
 %We also remove times when the first newTrialTime is greater than that the first stimPeriodStart, an error that can occur on the first trial.
 %responseTime are the times taken between the stimulus starting and the response being made (including open loop period). Must use
 %"1:length(stimPeriodStart)" because if a trial is interupped there can be more stimPeriodStart values than feedback values.
+eIdx = 1:length(e.endTrialTimes);
+vIdx = vIdx(eIdx);
 stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)';
-stimPeriodStart = stimPeriodStart(vIdx);
-feedbackTimes = e.feedbackTimes(vIdx)';
-feedbackValues = e.feedbackValues(vIdx)';
+stimPeriodStart = stimPeriodStart(eIdx);
+feedbackTimes = e.feedbackTimes(eIdx)';
+feedbackValues = e.feedbackValues(eIdx)';
 timeOuts = feedbackValues==0;
 responseTime = feedbackTimes-stimPeriodStart;
 
 if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end    %Make sure there is a value for each condition
 if length(p.visContrast)==1; p.visContrast = repmat(p.visContrast,1,length(p.numRepeats)); end       %Make sure there is a value for each condition
-audAmplitude = [v(vIdx).audAmplitude]';               %Convert amplitudes to matrix. Assumes one value for each trial.
-visContrast = [v(vIdx).visContrast]';                 %Convert amplitudes to matrix. Assumes one value for each trial.
-correctResponse = [v(vIdx).correctResponse]';         %Convert correctResponse on each trial to matrix. Assumes one value for each trial.
-audInitialAzimuth = [v(vIdx).audInitialAzimuth]';     %Convert audInitialAzimuth on each trial to matrix. Assumes one value for each trial.
+audAmplitude = [v(eIdx).audAmplitude]';               %Convert amplitudes to matrix. Assumes one value for each trial.
+visContrast = [v(eIdx).visContrast]';                 %Convert amplitudes to matrix. Assumes one value for each trial.
+correctResponse = [v(eIdx).correctResponse]';         %Convert correctResponse on each trial to matrix. Assumes one value for each trial.
+audInitialAzimuth = [v(eIdx).audInitialAzimuth]';     %Convert audInitialAzimuth on each trial to matrix. Assumes one value for each trial.
 audInitialAzimuth(audAmplitude==0) = inf;             %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
 p.audInitialAzimuth(p.audAmplitude == 0) = inf;       %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
-visInitialAzimuth = [v(vIdx).visInitialAzimuth]';     %Convert visInitialAzimuth on each trial to matrix. Assumes one value for each trial.
+visInitialAzimuth = [v(eIdx).visInitialAzimuth]';     %Convert visInitialAzimuth on each trial to matrix. Assumes one value for each trial.
 visInitialAzimuth(visContrast==0) = inf;              %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
 p.visInitialAzimuth(p.visContrast == 0) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
 
 %Get trial start/end times for valid trials
-trialStartTimes = e.newTrialTimes(vIdx)';
-trialEndTimes = e.endTrialTimes(vIdx)';
+trialStartTimes = e.newTrialTimes(eIdx)';
+trialEndTimes = e.endTrialTimes(eIdx)';
 trialTimes = [trialStartTimes trialEndTimes];
 
 %Process the raw data to be stored separately (because it is large). These are the times at which the visual and auditory stimuli turned on/off and
@@ -187,7 +189,7 @@ r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audA
 
 %Get closed loop start times, relative to the stimulus start times (likely to all be the same for a constant delay)
 closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)';
-closedLoopStart = closedLoopStart(vIdx) - stimPeriodStart;
+closedLoopStart = closedLoopStart(eIdx) - stimPeriodStart;
 
 %Calculate an approximate time to the first wheel movement. This is different from the response time in that it is based on wheel movement, rather
 %than the time when the threshold was reached. WheelMove is an interpolation of the wheel movement (to get it's nearest position at every ms).
@@ -246,6 +248,7 @@ visDiff = uniqueDiff(conditionRowIdx, 2);
 %Create vectors that indicate the separated values for contrast and audio azimuth on left and right (used for modeling)
 
 %Populate n with all fields;
+n.validTrials = vIdx(:);
 n.trialStartEnd = [trialStartTimes trialEndTimes];
 n.stimPeriodStart = stimPeriodStart;
 n.closedLoopStart = closedLoopStart;
@@ -255,9 +258,9 @@ n.responseTime = responseTime;
 n.timeToWheelMove = timeToWheelMove;
 n.responseMade = ((responseMade>0)+1).*(responseMade~=0);
 n.trialType = trialType;
-n.sequentialTimeOuts = sequentialTimeOuts(vIdx);
-n.timeOutsBeforeResponse = timeOutsBeforeResponse(vIdx);
-n.repeatsAfterResponse = repeatsAfterResponse(vIdx);
+n.sequentialTimeOuts = sequentialTimeOuts(eIdx);
+n.timeOutsBeforeResponse = timeOutsBeforeResponse(eIdx);
+n.repeatsAfterResponse = repeatsAfterResponse(eIdx);
 n.audAmplitude = audAmplitude;
 n.audInitialAzimuth = audInitialAzimuth;
 n.audDiff = audDiff;
@@ -279,19 +282,19 @@ if p.laserSession
     %trials are when the laserTypeValue for that trial was 2). Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
     %-ve index indicating the left himisphere). That's why we need to get the galvo posiiton on each trial by using the abs of this index and then
     %multiplying the ML coordinate by the sign of the original index.
-    n.laserType = e.laserTypeValues(vIdx)';
-    n.laserPower = (e.laserPowerValues(vIdx)');
-    n.galvoType = e.galvoTypeValues(vIdx)';
+    n.laserType = e.laserTypeValues(eIdx)';
+    n.laserPower = (e.laserPowerValues(eIdx)');
+    n.galvoType = e.galvoTypeValues(eIdx)';
     
     p.galvoCoords = e.galvoCoordsValues(:,1:2);
-    galvoPosValues = e.galvoPosValues(vIdx)';
+    galvoPosValues = e.galvoPosValues(eIdx)';
     galvoPosition = p.galvoCoords(abs(galvoPosValues),:);
-    galvoPosition(e.laserTypeValues(vIdx)'~=2,1) = galvoPosition(e.laserTypeValues(vIdx)'~=2,1).*sign(galvoPosValues(e.laserTypeValues(vIdx)'~=2));
+    galvoPosition(e.laserTypeValues(eIdx)'~=2,1) = galvoPosition(e.laserTypeValues(eIdx)'~=2,1).*sign(galvoPosValues(e.laserTypeValues(eIdx)'~=2));
     n.galvoPosition = galvoPosition;
    
     if exist('timelineInfo', 'var')
-        n.laserOnsetDelay = timelineInfo.laserOnsetDelay(vIdx);
-        n.laserOnOff = [timelineInfo.laserOnTime(vIdx), timelineInfo.laserOnTime(vIdx)+[v(vIdx).laserDuration]']-trialStartTimes;
+        n.laserOnsetDelay = timelineInfo.laserOnsetDelay(eIdx);
+        n.laserOnOff = [timelineInfo.laserOnTime(eIdx), timelineInfo.laserOnTime(eIdx)+[v(eIdx).laserDuration]']-trialStartTimes;
     end
 end
 
@@ -313,10 +316,8 @@ p.mulPerformance = round(mean(n.feedback(n.trialType==3 & laserOff & n.responseM
 p.validResponses = sum(n.responseMade~=0);
 p.validTrials = sum(vIdx);
 
-x.validTrials = vIdx;
 x.newParams = p;
 x.newBlock = n;
-x.validTrials = vIdx;
 p.orignal = x.oldParams;
 
 %Remove fields of the raw data where the trial lasts longer than 5s. The data from there trials aren't likely to be useful (since the mouse stayed
@@ -325,7 +326,7 @@ for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(x.newBlock.responseT
 x.newRaw = r;
 
 %% Check that all expected fields exist
-expectedBlockFields ={'audAmplitude';'audDiff';'audInitialAzimuth';'audValues';'closedLoopStart';'conditionLabelRow';'correctResponse';'expDate';...
+expectedBlockFields ={'validTrials';'audAmplitude';'audDiff';'audInitialAzimuth';'audValues';'closedLoopStart';'conditionLabelRow';'correctResponse';'expDate';...
     'expNum';'expType';'expDef';'feedback';'grids';'repeatsAfterResponse';'responseMade';'responseTime';'rigName';'sequentialTimeOuts';'stimPeriodStart';...
     'subject';'timeOutsBeforeResponse';'timeToWheelMove';'trialStartEnd';'trialType';'uniqueConditionLabels';'uniqueConditions';'uniqueDiff';...
     'visContrast';'visDiff';'visInitialAzimuth';'visValues';'laserType';'laserPower';'galvoType';'galvoPosition';'laserOnOff';'laserOnsetDelay'};

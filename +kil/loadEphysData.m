@@ -1,7 +1,8 @@
-function [eph] = loadEphysData(x, kilosortOutput)
+function [eph] = loadEphysData(x, kilosortOutput, runWithoutSorting)
 if ~exist('kilosortOutput', 'var'); kilosortOutput = x.kilosortOutput; end
 %% Load timeline and associated inputs
 if ~exist(x.rawTimeline, 'file'); error('No timeline file exists for requested ephys session'); end
+if ~exist('runWithoutSorting', 'var'); runWithoutSorting = 0; end
 fprintf('Loading timeline... \n');
 timeline = load(x.rawTimeline); timeline = timeline.Timeline;
 
@@ -25,16 +26,15 @@ flipperFlipTimesTimeline = timeline.rawDAQTimestamps(flipperFlips)';
 
 %% Load task/behavior
 fprintf('Loading block file... \n');
-block  = load(x.processedData, 'blk'); block  = block.blk;
-
 %% Load ephys data (single long recording)
 fprintf('Loading ephys... \n');
 % These are the digital channels going into the FPGA
-acqLiveSyncIdx = 2;
-flipperSyncIdx = 4;
+if strcmpi(x.rigName, 'lilrig-stim'); acqLiveSyncIdx = 2; flipperSyncIdx = 4;
+elseif strcmpi(x.rigName, 'zatteo'); acqLiveSyncIdx = 1; flipperSyncIdx = 2;
+end
+
 %%
 % Load clusters and sync/photodiode
-clusterGroups = tdfread([kilosortOutput '\cluster_group.tsv']);
 sync = load([kilosortOutput '\sync.mat']); sync = sync.sync;
 
 %%
@@ -54,18 +54,22 @@ channelPositions = readNPY([kilosortOutput '\channel_positions.npy']);
 channelMap = readNPY([kilosortOutput '\channel_map.npy']); %#ok<NASGU>
 winv = readNPY([kilosortOutput '\whitening_mat_inv.npy']);
 templateAmplitudes = readNPY([kilosortOutput '\amplitudes.npy']);
+if exist([kilosortOutput '\lfpPowerSpectra.mat'], 'file'); powerSpectra = load([kilosortOutput '\lfpPowerSpectra.mat']);
+else, powerSpectra = [];
+end
 
 % Default channel map/positions are from end: make from surface
 channelPositions(:,2) = max(channelPositions(:,2)) - channelPositions(:,2);
 
 
-if exist('flipperFlipTimesTimeline','var') && length(sync) >= 4
+if exist('flipperFlipTimesTimeline','var')
     % Get flipper experiment differences by long delays
     flipThresh = 1; % time between flips to define experiment gap (s)
     flipTimes = sync(flipperSyncIdx).timestamps;
     flipperStEnIdx = [[1;find(diff(flipTimes) > flipThresh)+1], [find(diff(flipTimes) > flipThresh); length(flipTimes)]];
     experimentDurations = diff(flipTimes(flipperStEnIdx),[],2);
     [~, currExpIdx] = min(abs(experimentDurations-timeline.rawDAQTimestamps(end)));
+%     currExpIdx = 4;
     flipperFlipTimesFPGA = flipTimes(flipperStEnIdx(currExpIdx,1):flipperStEnIdx(currExpIdx,2));
     
     % Check that number of flipper flips in timeline matches ephys
@@ -125,9 +129,13 @@ end
 % Eliminate spikes that were classified as not "good"
 fprintf('Removing noise and MUA templates... \n');
 
+goodTemplatesIdx = 1:size(templates,1); 
+goodTemplatesList = 0:size(templates,1)-1; 
+if ~runWithoutSorting
+clusterGroups = tdfread([kilosortOutput '\cluster_group.tsv']);
 goodTemplatesList = clusterGroups.cluster_id(contains(num2cell(clusterGroups.group,2), 'good '));
 goodTemplatesIdx = ismember(0:size(templates,1)-1,goodTemplatesList);
-
+end
 
 % Throw out all non-good template data
 % templates = templates(goodTemplatesIdx,:,:);
@@ -155,21 +163,22 @@ fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'expDets'; 'kilosortOut
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
 if length(x.expDets)>1 && contains('ephys', {x.expDets.folder}); error('Multiple penetrations, but ephys folder?'); end
-if length(x.expDets)==1; penetrationIdx = 0;
-elseif length(x.expDets)>1; penetrationIdx = str2double(kilosortOutput(strfind(kilosortOutput, 'site')+4:end)); 
+if length(x.expDets)==1; penetrationIdx = x.expDets.penetrationIdx;
+elseif length(x.expDets)>1; penetrationIdx = x.expDets(str2double(kilosortOutput(strfind(kilosortOutput, 'site')+4:end))).penetrationIdx; 
+elseif isempty(x.expDets); fprintf('WARNING: no expDets'); penetrationIdx = 0;
 end
 
-eph.spikeSite = uint16(spikeTimesTimeline*0+penetrationIdx);
+eph.spikePenetrationIdx = uint16(spikeTimesTimeline*0+penetrationIdx);
 eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);
 eph.spikeCluster = uint16(spikeTemplates);
-eph.clusterSite = uint16(templateDepths*0+penetrationIdx);
+eph.clusterPenetrationIdx = uint16(templateDepths*0+penetrationIdx);
 eph.clusterDepths = templateDepths;
 eph.clusterAmps = templateAmps;
 eph.clusterDuration = templateDuration;
 eph.clusterWaveforms = waveforms;
 eph.clusterTemplates = {templates};
 eph.channelMap = {readNPY([kilosortOutput '\channel_positions.npy'])};
-eph = prc.catStructs(eph, prc.filtStruct(x.aligned, x.validTrials));
+eph.lfpPowerSpectra = powerSpectra;
 %%
 fprintf('Finished loading experiment... \n');

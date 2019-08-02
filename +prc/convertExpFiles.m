@@ -75,14 +75,14 @@ copyKruminBackup = fusiIdx(~cellfun(@(x) exist(x,'file'), kruminBackup(fusiIdx))
 arrayfun(@(x) copyfile(expList(x).processedData, kruminBackup{x}), copyKruminBackup);
 
 %If redoTag is 1, then process all files of selected animals and dates, otherwise only process ones that don't exist, or are of the experiment type
-%"fusi" or "ephys" (since these have extra processing stages)
+%"fusi" or "ephys" (since these have extra processing stages).
 if redoTag==1; files2Run = find(existProcessed*0+1)';
 else, files2Run = find(~existProcessed | contains({expList.expType}', {'fusi';'ephys'}))';
 end
 
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the middle. Useful if MATLAB crashes
-srtIdx = 0;
+srtIdx = 2075;
 for i = files2Run(files2Run>srtIdx)
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;
@@ -105,7 +105,7 @@ for i = files2Run(files2Run>srtIdx)
     %Loop to convert ephys files
     if (~contains({'eph'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'})
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
-        convEphysFile(x);
+        convEphysFile(x, redoTag);
         whoD = unique(who('-file', x.processedData));
     end
     
@@ -197,13 +197,8 @@ raw = x.newRaw;
 
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
 if ~exist(fileparts(strrep(x.processedData,'dData','dDataLite')), 'dir'); mkdir(fileparts(strrep(x.processedData,'dData','dDataLite'))); end
-if ~x.existProcessed(1)
-    whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw');
-    save(strrep(x.processedData,'dData','dDataLite'), 'blk', 'prm');
-else
-    whoD = unique([who('-file', x.processedData); 'blk'; 'prm'; 'raw']); save(x.processedData, 'blk', 'prm', 'whoD', 'raw', '-append');  %#ok
-    save(strrep(x.processedData,'dData','dDataLite'), 'blk', 'prm');
-end
+whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw');
+save(strrep(x.processedData,'dData','dDataLite'), 'blk', 'prm');
 end
 
 %%
@@ -212,14 +207,14 @@ x = convBlockFile(x);
 fus = struct;
 fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'; 'expDef'};
 for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.(fields2copy{i}); end
-fus = prc.catStructs(fus, prc.filtStruct(x.aligned, x.validTrials));
+fus = prc.catStructs(fus, x.aligned);
 whoD = unique([who('-file', x.processedData); 'fus']);
 save(x.processedData, 'fus', 'whoD', '-append');
 copyfile(x.processedData, strrep(x.rawTimeline, 'Timeline', 'ProcBlock'));
 end
 
 %%
-function convEphysFile(x)
+function convEphysFile(x, redoTag)
 siteList = dir([fileparts(x.kilosortOutput) '\*site*']);
 if isempty(siteList); siteList = {x.kilosortOutput}; else; siteList = cellfun(@(y) [x.kilosortOutput '\' y], {siteList.name}', 'uni', 0); end
 sites2Process = cellfun(@(x) ~exist([x '/spike_templates.npy'], 'file'), siteList);
@@ -227,27 +222,31 @@ if ~exist(x.kilosortOutput, 'dir') || any(sites2Process)
     kil.preProcessPhase3(x.subject, x.expDate, sites2Process);
     cellfun(@kil.liklihoodNoise, siteList);
 elseif any(cellfun(@(x) ~exist([x '\cluster_pNoise.tsv'], 'file'), siteList))
-    cellfun(@kil.liklihoodNoise, siteList);
+    cellfun(@kil.liklihoodNoise, siteLicst);
 end
+sites2Process = cellfun(@(x) ~exist([x '/lfpPowerSpectra.mat'], 'file'), siteList);
+if any(sites2Process); kil.loadAndSpectrogramLFP(x.subject, x.expDate, sites2Process); end
 
 clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
 clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
 %%
 if length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id))
     fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
-    x = convBlockFile(x);
     eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y), siteList, 'uni', 0));
-    combineList = {'spikeSite'; 'clusterSite'; 'spikeTimes';'spikeAmps';'clusterDepths';'clusterDuration';'clusterWaveforms';'clusterAmps'};
-    for i = 1:length(combineList); eph(1).(combineList{i}) = cat(1,eph.(combineList{i})); end
-    numClusters = [0;cellfun(@length, {eph.clusterDepths}')];
-    eph(1).spikeCluster = cell2mat(arrayfun(@(x) eph(x).spikeCluster+sum(numClusters(1:x)), 1:length(eph), 'uni', 0)');
     eph(1).clusterTemplates = [eph.clusterTemplates]';
     eph(1).channelMap = [eph.channelMap]';
+    fields2combine = fields(eph); 
+    fields2combine = fields2combine(contains(fields2combine, {'spike'; 'cluster'}) & ~contains(fields2combine, {'clusterTemplates'}));
+    for i = 1:length(fields2combine); eph(1).(fields2combine{i}) = cat(1,eph.(fields2combine{i})); end
     eph = eph(1);
     
+    if redoTag ~=2; x = convBlockFile(x);
+    else, x.aligned = load(x.processedData, 'eph');
+        ephFields = fields(x.aligned.eph);
+        x.aligned = rmfield(x.aligned.eph, ephFields(1:find(contains(ephFields, 'rewardTimes'))-1));
+    end
+    eph = prc.catStructs(eph, x.aligned);
     whoD = unique([who('-file', x.processedData); 'eph']); save(x.processedData, 'eph', 'whoD', '-append');
-    blk = prc.combineBlocks(prc.getFilesFromDates(x.subject, x.expDate, 'bloprmeph', x.expDef));
-    eph.clusterSigLevel = kil.findResponsiveCells(blk);
     save(x.processedData, 'eph', 'whoD', '-append');
 else
     fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);

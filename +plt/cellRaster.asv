@@ -213,15 +213,19 @@ currRasterSpikeTimes(currRasterSpikeTimes < min(guiData.tPeriEvent(:)) | ...
     currRasterSpikeTimes > max(guiData.tPeriEvent(:))) = [];
 
 tDat = guiData.tPeriEvent';
+tic;
 if ~any(diff(tDat(:))<0)
     currRaster = [histcounts(currRasterSpikeTimes,tDat(:)),0];
-    currRaster = reshape(currRaster, size(guiData.tPeriEvent'))';
-    currRaster(:,end) = [];
-else
-    currRaster = cell2mat(arrayfun(@(x) ...
-        histcounts(currRasterSpikeTimes,guiData.tPeriEvent(x,:)), ...
-        [1:size(guiData.tPeriEvent,1)]','uni',false));
+    currRaster = reshape(currRaster(:), size(guiData.tPeriEvent'));
 end
+toc;
+tic;
+currRaster = cell2mat(arrayfun(@(x) ...
+    histcounts(currRasterSpikeTimes,guiData.tPeriEvent(x,:)), ...
+    [1:size(guiData.tPeriEvent,1)]','uni',false));
+toc;
+
+currRaster = histcounts2(
 
 % Set color scheme
 currGroup = guiData.currTrialGroups{guiData.currAlign}(:,guiData.currGroup);

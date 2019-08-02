@@ -74,7 +74,7 @@ switch lower(pathType{i})
     case 'expinfo'; pathOut{i,1} = expInfo;
     case 'ephysrecord'; pathOut{i,1} = [processedDirectory 'ePhysRecord.xlsx'];
     case 'allenatlas'; pathOut{i,1} = [driveName '\Dropbox (Neuropixels)\MouseData\Atlas\allenCCF\'];
-    case 'probepathdata'; pathOut{i,1} = [processedDirectory 'ProbePaths\' subject '\probe_points.mat'];
+    case 'probepathdata'; pathOut{i,1} = [processedDirectory 'XHistology\' subject '\probe_points.mat'];
 end
 if length(pathOut) == 1; pathOut = pathOut{1}; end
 end

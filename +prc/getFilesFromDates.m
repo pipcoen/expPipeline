@@ -59,7 +59,15 @@ if contains(lower(dataType), {'blk'; 'blo'; 'all'})
         eph = [selectedData{:}]'; eph = [eph(:).eph]';
         eph = prc.chkThenRemoveFields(eph, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
         fields2copy = fields(eph);
-        for i = 1:length(fields2copy); [blk.(['eph' upper(fields2copy{i}(1)) fields2copy{i}(2:end)])] = eph.(fields2copy{i}); end
+        for i = 1:length(fields2copy); [blk.(['eph_' fields2copy{i}])] = eph.(fields2copy{i}); end
+    end
+    
+    if contains(lower(dataType), {'fus'; 'all'})
+        selectedData = cellfun(@(x) load(x, 'fus'), selectedFiles, 'uni', 0);
+        fus = [selectedData{:}]'; fus = [fus(:).fus]';
+        fus = prc.chkThenRemoveFields(fus, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
+        fields2copy = fields(fus);
+        for i = 1:length(fields2copy); [blk.(['fus_' fields2copy{i}])] = fus.(fields2copy{i}); end
     end
     
     if contains(lower(dataType), {'prm'; 'par'; 'all'})

@@ -36,10 +36,10 @@ if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
 expInfo = prc.pathFinder('expInfo');
 includedMice = [cellfun(@(x) ['PC0' x], ...
     split({'10,11,12,13,15,22,25,27,29,30,31,32,33,34,36,37,38,41,43,45,46,48,49,50,51,52'},','), 'uni', 0); ...
-        {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'}];
+        {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR015'}];
 
 startedDates = {...
-    'CR010' '2019-01-29'};
+    'CR015' '2019-07-30'};
 retiredDates = {...
     'PC005' '2017-07-28'; ...
     'PC006' '2017-07-28'; ...
@@ -118,7 +118,9 @@ for i = 1:length(processList)
         else, expList(end).excluded = 1; continue; end
         if isfield(parameters, 'experimentType') && strcmp(parameters.experimentType, 'mpep')
             b.expDef = parameters.Protocol.xfile;
-            b.rigName = 'lilrig-stim';
+            if ~isempty(dir([tempLoc.serverFolder '\*fus.mat*'])); b.rigName = 'zatteo';
+            else, b.rigName = 'lilrig-stim';
+            end
             b.duration = Timeline.lastTimestamp;
         else, expList(end).excluded = 1; continue;
         end

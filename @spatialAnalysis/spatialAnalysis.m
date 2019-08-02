@@ -241,7 +241,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.expDate = expDate;
             
             mouseList = unique({obj.blocks.subject})';
-            if combineMice==1; mouseList = {cell2mat(mouseList')}; end   
+            if combineMice>0; mouseList = {cell2mat(mouseList')}; end   
             if combineMice==-2 && length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
             if combineMice==-2
                 mouseList = arrayfun(@(x) [mouseList{1} ':' num2str(x{1})], {obj.blocks.expDate}', 'uni',0);
@@ -259,7 +259,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 mouseConditions = {obj.blocks(mouseIdx).uniqueConditions}';
                 mouseConditions = cellfun(@(x) [x(:,1)>0 x(:,2:end)], mouseConditions, 'uni', 0); %ignoring different aud amplitudes for now
                 [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) num2str([x(:)', y]), mouseConditions, {mouseParams.laserSession}','uni',0));
-                if length(conditionSets)>1 && combineMice>=0
+                if length(conditionSets)>1 && combineMice==1
                     fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', mouseList{i});
                     retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
                 end
@@ -267,9 +267,9 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.blocks = obj.blocks(retainIdx);
             
             obj.subjects = unique({obj.blocks.subject})';
-            if combineMice==1; obj.expDate = cell2mat([obj.expDate{ismember(subjects, obj.subjects)}]); obj.subjects = {cell2mat(obj.subjects')}; end          
+            if combineMice>0; obj.expDate = cell2mat([obj.expDate{ismember(subjects, obj.subjects)}]); obj.subjects = {cell2mat(obj.subjects')}; end          
             [~, subjectIdx] = ismember({obj.blocks.subject}', obj.subjects);
-            if combineMice==1; subjectIdx = subjectIdx*0+1; end
+            if combineMice>0; subjectIdx = subjectIdx*0+1; end
 
             idx = 1:length(obj.subjects);
             obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectIdx==x)), idx, 'uni', 0)';
@@ -294,8 +294,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             if ~exist('tag', 'var'); error('Must specificy tag'); end
             if ~exist('removeTimeouts', 'var'); removeTimeouts = 1; end
             if removeTimeouts; timeOutFilter =  block.responseMade~=0; else, timeOutFilter =  block.responseMade*0+1; end
-            laserOff = prc.filtStruct(block, (block.laserType==0 | isnan(block.laserType)) & timeOutFilter);
-            laserOn = prc.filtStruct(block, (block.laserType~=0 & ~isnan(block.laserType)) & timeOutFilter);            
+            laserOff = prc.filtStruct(block, (block.laserType==0 | isnan(block.laserType)) & timeOutFilter & block.validTrials);
+            laserOn = prc.filtStruct(block, (block.laserType~=0 & ~isnan(block.laserType)) & timeOutFilter & block.validTrials);            
             switch lower(tag(1:3))
                 case 'nor'; filteredBlock = laserOff;
                 case 'las'; filteredBlock = laserOn;

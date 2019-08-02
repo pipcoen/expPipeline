@@ -1,7 +1,8 @@
-function preProcessPhase3(animal,day,sites2Process)
+function preProcessPhase3(animal,day,sites2Process,dataCopied)
 % AP_preprocess_phase3(animal,day,testData)
-dataPaths = {['\\zubjects.cortexlab.net\Subjects\' animal '\' day '\ephys']};
-savePaths = {['\\zubjects.cortexlab.net\Subjects\' animal '\' day '\ephys\kilosort']};
+if ~exist('dataCopied', 'var'); dataCopied = 0; end
+dataPaths = {prc.pathFinder('serverprobedata', animal, day, 1)};
+savePaths = {[prc.pathFinder('serverprobedata', animal, day, 1) '\kilosort']};
 
 % Check for multiple sites (based on the data path containing only folders)
 dataPathDir = dir(dataPaths{1});
@@ -115,7 +116,7 @@ for currSite = find(sites2Process')
     kilosortPath = 'D:\Temp\kilosort'; 
     apTempFilename = [animal '_' day  '_' 'ephys_apband.dat'];
     localPhyPath = 'D:\Temp\phy';
-    if exist(kilosortPath, 'dir') 
+    if exist(kilosortPath, 'dir') && ~dataCopied
         fileList = dir(kilosortPath);
         fileList = fileList(~ismember({fileList.name}, {'.', '..',apTempFilename}));
         arrayfun(@(x) delete([fileList(x).folder '/' fileList(x).name]), 1:length(fileList));
@@ -128,7 +129,7 @@ for currSite = find(sites2Process')
     % Copy data locally
     disp('Copying data to local drive...')
     apTempFilename = [kilosortPath filesep animal '_' day  '_' 'ephys_apband.dat'];
-    if ~exist(apTempFilename, 'file')
+    if ~exist(apTempFilename, 'file') && ~dataCopied
         if exist(kilosortPath, 'dir'); rmdir(kilosortPath,'s'); end; mkdir(kilosortPath);
         copyfile(apDataFileName,apTempFilename); 
     end

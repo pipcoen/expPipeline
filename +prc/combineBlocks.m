@@ -1,68 +1,55 @@
 function combinedBlocks = combineBlocks(blocks)
 %% Function to combine and filter block files.
 nTrials = sum(arrayfun(@(x) size(x.trialStartEnd(:,1),1), blocks));
-blnkMat = cellfun(@(x) x(:,1)*0, {blocks.trialStartEnd}', 'uni', 0);
-nSpikes = 0;
-nClusters = 0;
-[~, subjectReference] = ismember({blocks.subject}', unique({blocks.subject}'));
-
-if length(blocks) == 1 
-    if ~isfield(blocks, 'sessionIdx'); combinedBlocks = struct('sessionIdx',  ones(nTrials, 1), 'subjectIdx', ones(nTrials, 1));
-    else; combinedBlocks = struct('sessionIdx',  blocks.sessionIdx, 'subjectIdx', blocks.subjectIdx);
-    end
-else
-    combinedBlocks.sessionIdx = cell2mat(arrayfun(@(x) blnkMat{x}+x, 1:length(blocks), 'uni', 0)');
-    combinedBlocks.subjectIdx = cell2mat(arrayfun(@(x) blnkMat{x}+subjectReference(x), 1:length(blocks), 'uni', 0)');
-end
-
-
+nEPhys = [0 0];
+[~, combinedBlocks.subExpPenLink] = ismember({blocks.subject}', unique({blocks.subject}'));
+combinedBlocks.subExpPenLink = num2cell([combinedBlocks.subExpPenLink (1:length(blocks))']);
 if length(unique(arrayfun(@(x) num2str(x.uniqueConditions(:)'),blocks,'uni',0))) > 1
-    unableToMerge = 1;
-    warning('Can only semi-concatenate blocks of same parameter sets. Some fields will be empty')
-else, unableToMerge = 0;
+    noMerge = 1;
+    fprintf('WARNING: Can only semi-concatenate blocks. Some fields will be turned into cells \n')
+else, noMerge = 0;
 end
-
+blnkMat = cellfun(@(x) x(:,1)*0, {blocks.trialStartEnd}', 'uni', 0);
+combinedBlocks.trialExperimentIdx = cell2mat(arrayfun(@(x) blnkMat{x}+x, 1:length(blocks), 'uni', 0)');
 combinedParms = vertcat(blocks(:).params);
 fieldNames = fields(blocks);
-combinedBlocks.nSessions = length(unique(combinedBlocks.sessionIdx));
 
-if isfield(blocks, 'ephSpikeSite')
-    nSpikes = sum(arrayfun(@(x) size(x.ephSpikeSite(:,1),1), blocks));
-    nClusters = sum(arrayfun(@(x) size(x.ephClusterAmps(:,1),1), blocks));
-    blnkMat = cellfun(@(x) x(:,1)*0, {blocks.ephSpikeSite}', 'uni', 0);
-    combinedBlocks.ephSpikeSession = uint8(cell2mat(arrayfun(@(x) blnkMat{x}+x, 1:length(blocks), 'uni', 0)'));
-    combinedBlocks.ephSpikeSubject = cell2mat(arrayfun(@(x) blnkMat{x}+subjectReference(x), 1:length(blocks), 'uni', 0)');   
-    
-    blnkMat = cellfun(@(x) x(:,1)*0, {blocks.ephClusterAmps}', 'uni', 0);
-    combinedBlocks.ephClusterSession = uint8(cell2mat(arrayfun(@(x) blnkMat{x}+x, 1:length(blocks), 'uni', 0)'));
-    combinedBlocks.ephClusterSubject = cell2mat(arrayfun(@(x) blnkMat{x}+subjectReference(x), 1:length(blocks), 'uni', 0)');   
-
-    numClustersPerSession = [0;cellfun(@length, {blocks.ephClusterAmps}')];
-    tDat = arrayfun(@(x) blocks(x).ephSpikeCluster+sum(numClustersPerSession(1:x)), 1:length(blocks), 'uni', 0)';
-    [blocks.ephSpikeCluster] = tDat{:};
-    combinedBlocks.ephChannelMap = {blocks.ephChannelMap}';
-    combinedBlocks.ephClusterTemplates = {blocks.ephClusterTemplates}';
+if contains('eph_spikeTimes',fieldNames)
+    nEPhys = sum([cellfun(@length, {blocks.eph_spikeTimes}') cellfun(@length, {blocks.eph_clusterDepths}')]);
+    combinedBlocks.subExpPenLink = [combinedBlocks.subExpPenLink, cellfun(@unique, {blocks.eph_clusterPenetrationIdx}', 'uni', 0)];
 end
 
 for fieldName = fieldNames'
     currField = fieldName{1};
-    if contains(currField, [fields(combinedBlocks);'sessionNum';'nSessions']); continue; end
-    if contains(currField, {'expType'; 'rigName';'subject'}); tDat = {blocks(:).(currField)}';
-    else, tDat = vertcat(blocks(:).(currField));
-    end
-
+    if contains(currField, [fields(combinedBlocks);'experimentNum']); continue; end
+    mergeCriticalList = {'visVal'; 'audVal';'uniq';'Label';'grid'};
+    alwaysCellsList = {'expT'; 'rigN';'subject';'expD';'expN';'channelMap';'clusterTemp';'lfpPower'};
+    if contains(currField, alwaysCellsList); combinedBlocks.(currField) = {blocks(:).(currField)}'; continue; end
+    if contains(currField, mergeCriticalList) && noMerge; combinedBlocks.(currField) = {blocks(:).(currField)}'; continue; end
+    if contains(currField, {'visVal'; 'audVal'}) && ~noMerge; combinedBlocks.(currField) = blocks(1).(currField); continue; end
+    
+    tDat = vertcat(blocks(:).(currField));
     if iscell(tDat) && all(cellfun(@ischar, tDat)) && length(unique(tDat))==1
         combinedBlocks.(currField) = unique(tDat);
-    elseif iscell(tDat) || size(tDat,1) == nTrials || size(tDat,1) == nSpikes ||  size(tDat,1) == nClusters
-       combinedBlocks.(currField) = tDat;
-    elseif ~isstruct(tDat) && size(unique(tDat, 'rows'),1) ==1 
+    elseif iscell(tDat) || ismember(size(tDat,1), [nTrials nEPhys])
+        combinedBlocks.(currField) = tDat;
+    elseif ~isstruct(tDat) && size(unique(tDat, 'rows'),1) ==1
         combinedBlocks.(currField) = blocks(1).(currField);
-    elseif ~unableToMerge
-        if strcmp(currField, 'expDate') 
-            combinedBlocks.(currField) = tDat;
-        else, combinedBlocks.(currField) = blocks(1).(currField);
-        end
+    elseif ~noMerge
+        combinedBlocks.(currField) = blocks(1).(currField);
     else, combinedBlocks.(currField) = [];
     end
 end
+combinedBlocks = rmfield(combinedBlocks, 'params');
+%%
+allfields = fields(combinedBlocks);
+firstFields = {'subject';'expDate';'expNum';'rigName';'expType';'expDef';'subExpPenLink'; 'trialExperimentIdx'; 'validTrials';'trialStartEnd';'stimPeriodStart';...
+'closedLoopStart';'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'trialType';'sequentialTimeOuts';...
+'timeOutsBeforeResponse';'repeatsAfterResponse';'audAmplitude';'audInitialAzimuth';'audDiff';'audValues';'visContrast';'visInitialAzimuth';...
+'visDiff';'visValues';'uniqueConditions';'uniqueDiff';'uniqueConditionLabels';'conditionLabelRow';'laserType';'laserPower';'galvoType';...
+'laserOnsetDelay';'galvoPosition';'laserOnOff';'grids'};
+firstFields = firstFields(contains(firstFields,allfields));
+nextFields = sort(allfields(~contains(allfields, '_') & ~cellfun(@(x) any(strcmp(x, firstFields)), allfields)));
+extraFields = allfields(~cellfun(@(x) any(strcmp(x, firstFields)), allfields) & ~cellfun(@(x) any(strcmp(x, nextFields)), allfields));
+combinedBlocks = orderfields(combinedBlocks, [firstFields;nextFields;extraFields]);
 combinedBlocks.params = combinedParms;

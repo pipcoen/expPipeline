@@ -19,7 +19,6 @@ end
 %% Note: this looping is faster because it means smaller subsets are indexed when searching.
 clusterSigLevel = nan*ones(length(blk.eph_clusterAmps),1);
 clusterTTestData = cell(length(blk.eph_clusterAmps),1);
-
 for i = cell2mat(blk.subExpPenLink(:,3))
     tDat = prc.filtStruct(blk, i, 'penetration');
     if ~exist('tWin', 'var') || isempty(tWin)
@@ -32,18 +31,17 @@ for i = cell2mat(blk.subExpPenLink(:,3))
     end
     
     selEvents = sort(eventTimes(eventTimes(:,2)==blk.subExpPenLink{:,2},1));
-    clusters = 1:length(blk.eph_clusterAmps);
-    
+   
     if ~isempty(selEvents)
         eventWindows = selEvents+tWin;
-        spikeCounts = histcounts2(blk.eph_spikeTimes, blk.eph_spikeCluster, sort(eventWindows(:)), 1:(clusters(end)+1));
-        spikeCountsPre = spikeCounts(1:4:end,clusters)./range(tWin(1:2));
-        spikeCountsPost = spikeCounts(3:4:end,clusters)./range(tWin(3:4));
+        spikeCounts = histcounts2(blk.eph_spikeTimes, blk.eph_spikeCluster, sort(eventWindows(:)), 1:max(sessClusters)+1);
+        spikeCountsPre = spikeCounts(1:4:end,sessClusters)./range(tWin(1:2));
+        spikeCountsPost = spikeCounts(3:4:end,sessClusters)./range(tWin(3:4));
         ttestData = spikeCountsPost - spikeCountsPre;
         
         [~, pVal] = ttest(ttestData);
-        clusterTTestData(blk.eph_clusterPenetrationIdx==i) = num2cell(ttestData,1)';
-        clusterSigLevel(blk.eph_clusterPenetrationIdx==i) = pVal';
+        clusterTTestData(sessClusters) = num2cell(ttestData,1)';
+        clusterSigLevel(sessClusters) = pVal';
     end
 end
 end

@@ -121,9 +121,9 @@ if contains('reward', fineTune) && ~contains('rewardEcho',inputNames); warning('
 
 if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
     timelineClickTrace = [0;diff(detrend(timeline.rawDAQData(:,strcmp(inputNames, 'audioOut'))))];
-    [~, thresh] = kmeans(timelineClickTrace,3);
-    timelineClickOn = timelineTime(strfind((timelineClickTrace>max(thresh)*0.5)', [0 1]));
-    timelineClickOff = timelineTime(strfind((timelineClickTrace<min(thresh)*0.5)', [0 1]));
+    [~, thresh] = kmeans(timelineClickTrace,5);
+    timelineClickOn = timelineTime(strfind((timelineClickTrace>max(thresh)*0.25)', [0 1]));
+    timelineClickOff = timelineTime(strfind((timelineClickTrace<min(thresh)*0.25)', [0 1]));
     detectedDuration = round(mean(timelineClickOff-timelineClickOn)*1000);
     
     if length(timelineClickOn)~=length(timelineClickOff); error('There should always be an equal number on/off signals for clicks'); end

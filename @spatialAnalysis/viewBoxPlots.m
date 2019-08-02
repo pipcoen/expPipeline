@@ -21,8 +21,8 @@ for i  = subjects2Run
     normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm');
     boxPlot.subject = obj.subjects{i};
     boxPlot.trialNumber = length(normBlock.responseMade);
-    boxPlot.nSessions = obj.blocks{i}.nSessions;
-    if boxPlot.nSessions == 1; boxPlot.extraInf = [obj.blocks{i}.params.expDate ' on ' obj.blocks{i}.params.rigName]; end
+    boxPlot.nExperiments = obj.blocks{i}.nExperiments;
+    if boxPlot.nExperiments == 1; boxPlot.extraInf = [obj.blocks{i}.params.expDate ' on ' obj.blocks{i}.params.rigName]; end
     boxPlot.xyValues = {normBlock.visValues*100; normBlock.audValues};
     boxPlot.xyLabel = {'AuditoryAzimuth'; 'VisualContrast'};
     switch lower(plotType(1:3))
