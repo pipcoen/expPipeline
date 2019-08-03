@@ -14,7 +14,7 @@ if strcmpi(filterTag, 'penetration')
     penetrations2keep = criterion;
 end
 if exist('experiments2keep', 'var')
-    filtered = prc.filtStruct(filtered, experiments2keep);
+    if length(experiments2keep) > 1; filtered = prc.filtStruct(filtered, experiments2keep); end
     filtered = prc.filtStruct(filtered, ismember(filtered.trialExperimentIdx, cell2mat(filtered.subExpPenLink(:,2)))>0);
     if isfield(filtered, 'eph_clusterPenetrationIdx')
         filtered = prc.filtStruct(filtered, ismember(filtered.eph_clusterPenetrationIdx, penetrations2keep)>0);
