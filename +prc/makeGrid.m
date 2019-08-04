@@ -7,7 +7,7 @@ if ~exist('operation', 'var'); operation = @sum; end
 if ~exist('type', 'var') || isempty(type); type = 'condition'; end
 if ~exist('split', 'var') || isempty(split); split = 0; end
 
-experiments = unique(blocks.experimentIdx);
+experiments = unique(blocks.trialExperimentIdx);
 conditions = blocks.conditionLabelRow(:,1);
 gridIdx = num2cell(blocks.grids.conditions);
 gridXY = {blocks.audValues; blocks.visValues};
@@ -30,7 +30,7 @@ end
 
 switch split
     case 0; gridData = cell2mat(cellfun(@(x) operation(data(all(conditions==x,2))), gridIdx, 'uni', 0));
-    case 1; gridData = cell2mat(cellfun(@(x,y) operation(data(all(conditions==x,2) & blocks.experimentIdx==y)), fullGrid, repSessions, 'uni', 0));
+    case 1; gridData = cell2mat(cellfun(@(x,y) operation(data(all(conditions==x,2) & blocks.trialExperimentIdx==y)), fullGrid, repSessions, 'uni', 0));
     case 2; gridData = cellfun(@(x) data(all(conditions==x,2),:), gridIdx, 'uni', 0);
     case 3; gridData = cellfun(@(x) prc.filtStruct(data, all(conditions==x,2)), gridIdx, 'uni', 0);
 end
