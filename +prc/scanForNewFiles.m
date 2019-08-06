@@ -150,7 +150,7 @@ if ~addedFiles; fprintf('No new files found\n'); end
 if ~isfield(expList, 'expDets'); expList(1).expDets = []; end
 [expList(cellfun(@isempty, {expList.rigName}')).rigName] = deal('');
 [expList(cellfun(@isempty, {expList.expType}')).expType] = deal('');
-[expList(cellfun(@isempty, {expList.expDets}')).expDets] = deal('');
+% [expList(cellfun(@isempty, {expList.expDets}')).expDets] = deal('');
 
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
 tLoc = prc.updatePaths(expList);
@@ -170,18 +170,6 @@ if chkExpRigs
     potentialFusi = find(contains({expList.rigName}', 'zatteo') & ~contains({expList.expType}', 'fusi'));
     foundFusi = potentialFusi(arrayfun(@(x) exist(x.rawFusiData, 'file'), tLoc(potentialFusi))>0);
     [expList(foundFusi).expType] = deal('fusi');
-end
-
-ephsRec = table2struct(readtable(prc.pathFinder('ephysrecord')));
-tDat  = {ephsRec.expDate}'; tDat = cellfun(@(x) datestr(x, 'yyyy-mm-dd'), tDat, 'uni', 0);
-[ephsRec.expDate] = deal(tDat{:});
-[~,uniIdx,uniLabel] = unique(cell2table([{ephsRec.subject}' {ephsRec.expDate}', {ephsRec.expNum}']),'stable', 'rows');
-for i = 1:length(uniIdx)
-    expDets = ephsRec(uniLabel == i);
-    expIdx = contains({expList.expDate}, {expDets.expDate}) & contains({expList.subject}, {expDets.subject});
-    if contains('all', {expDets.expNum})
-        [expList(expIdx).expDets] = deal(rmfield(expDets, {'subject', 'expDate', 'expNum', 'estDepth'}));
-    end
 end
 %% Add cleanup fucntion HERE %%
 

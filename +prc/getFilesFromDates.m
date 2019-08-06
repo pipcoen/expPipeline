@@ -18,6 +18,7 @@ expList = load(prc.pathFinder('expList')); expList = expList.expList;
 selectedFiles = expList(strcmp({expList.subject}', subject) & [expList.excluded]'~=1);
 selectedFiles = prc.updatePaths(selectedFiles);
 excludedFiles = ~strcmp({selectedFiles.expDef}', expDef);
+if strcmp(expDef, 'all');  excludedFiles = excludedFiles*0>1; end
 selectedFiles(excludedFiles)  = [];
 if isempty(selectedFiles); warning(['No processed files matching ' subject]); varargout = {}; return; end
 expDates = datenum(cell2mat({selectedFiles.expDate}'));
@@ -44,37 +45,33 @@ end
 outputCount = 1;% find paths to existing block files
 selectedFiles = {selectedFiles(ismember(expDates, selectedDates)).processedData}';
 if isempty(selectedFiles); warning(['No processed files matching ' subject ' for requested dates']); return; end
-if contains(lower(dataType), {'blk'; 'blo'; 'all'})
-    selectedBlocks = cellfun(@(x) load(x, 'blk'), selectedFiles, 'uni', 0);
-    blk = [selectedBlocks{:}]'; blk = [blk(:).blk]';
-    
-    if contains(lower(dataType), {'raw'; 'all'})
-        selectedData = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
-        raw = [selectedData{:}]'; raw = [raw(:).raw]';
-        blk = prc.catStructs(blk,raw);
-    end
-    
-    if contains(lower(dataType), {'eph'; 'all'})
-        selectedData = cellfun(@(x) load(x, 'eph'), selectedFiles, 'uni', 0);
-        eph = [selectedData{:}]'; eph = [eph(:).eph]';
-        eph = prc.chkThenRemoveFields(eph, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
-        fields2copy = fields(eph);
-        for i = 1:length(fields2copy); [blk.(['eph_' fields2copy{i}])] = eph.(fields2copy{i}); end
-    end
-    
-    if contains(lower(dataType), {'fus'; 'all'})
-        selectedData = cellfun(@(x) load(x, 'fus'), selectedFiles, 'uni', 0);
-        fus = [selectedData{:}]'; fus = [fus(:).fus]';
-        fus = prc.chkThenRemoveFields(fus, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
-        fields2copy = fields(fus);
-        for i = 1:length(fields2copy); [blk.(['fus_' fields2copy{i}])] = fus.(fields2copy{i}); end
-    end
-    
-    if contains(lower(dataType), {'prm'; 'par'; 'all'})
-        selectedData = cellfun(@(x) load(x, 'prm'), selectedFiles, 'uni', 0);
-        prm = [selectedData{:}]'; prm = {prm(:).prm}';
-        [blk.params] = deal(prm{:});
-    end
-    varargout{outputCount} = blk;
+selectedBlocks = cellfun(@(x) load(x, 'blk'), selectedFiles, 'uni', 0);
+blk = [selectedBlocks{:}]'; blk = [blk(:).blk]';
+selectedData = cellfun(@(x) load(x, 'prm'), selectedFiles, 'uni', 0);
+prm = [selectedData{:}]'; prm = {prm(:).prm}';
+[blk.params] = deal(prm{:});
+
+if contains(lower(dataType), {'raw'; 'all'})
+    selectedData = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
+    raw = [selectedData{:}]'; raw = [raw(:).raw]';
+    blk = prc.catStructs(blk,raw);
 end
+
+if contains(lower(dataType), {'eph'; 'all'})
+    selectedData = cellfun(@(x) load(x, 'eph'), selectedFiles, 'uni', 0);
+    eph = [selectedData{:}]'; eph = [eph(:).eph]';
+    eph = prc.chkThenRemoveFields(eph, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
+    fields2copy = fields(eph);
+    for i = 1:length(fields2copy); [blk.(['eph_' fields2copy{i}])] = eph.(fields2copy{i}); end
+end
+
+if contains(lower(dataType), {'fus'; 'all'})
+    selectedData = cellfun(@(x) load(x, 'fus'), selectedFiles, 'uni', 0);
+    fus = [selectedData{:}]'; fus = [fus(:).fus]';
+    fus = prc.chkThenRemoveFields(fus, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
+    fields2copy = fields(fus);
+    for i = 1:length(fields2copy); [blk.(['fus_' fields2copy{i}])] = fus.(fields2copy{i}); end
+end
+
+varargout{outputCount} = blk;
 end

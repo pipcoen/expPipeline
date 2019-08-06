@@ -31,12 +31,12 @@ for i = cell2mat(blk.subExpPenLink(:,3))
     elseif ~all([(tWin(1:2)<=0) (tWin(3:4)>=0)]); error('pre/post windows should be negative/positive (or zero)');
     end
     
-    selEvents = sort(eventTimes(eventTimes(:,2)==blk.subExpPenLink{:,2},1));
-    clusters = 1:length(blk.eph_clusterAmps);
+    selEvents = sort(eventTimes(eventTimes(:,2)==tDat.subExpPenLink{:,2},1));
+    clusters = 1:length(tDat.eph_clusterAmps);
     
     if ~isempty(selEvents)
         eventWindows = selEvents+tWin;
-        spikeCounts = histcounts2(blk.eph_spikeTimes, blk.eph_spikeCluster, sort(eventWindows(:)), 1:(clusters(end)+1));
+        spikeCounts = histcounts2(tDat.eph_spikeTimes, tDat.eph_spikeCluster, sort(eventWindows(:)), 1:(clusters(end)+1));
         spikeCountsPre = spikeCounts(1:4:end,clusters)./range(tWin(1:2));
         spikeCountsPost = spikeCounts(3:4:end,clusters)./range(tWin(3:4));
         ttestData = spikeCountsPost - spikeCountsPre;

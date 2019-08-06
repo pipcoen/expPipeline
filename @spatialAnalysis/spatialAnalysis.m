@@ -259,7 +259,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 mouseConditions = {obj.blocks(mouseIdx).uniqueConditions}';
                 mouseConditions = cellfun(@(x) [x(:,1)>0 x(:,2:end)], mouseConditions, 'uni', 0); %ignoring different aud amplitudes for now
                 [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) num2str([x(:)', y]), mouseConditions, {mouseParams.laserSession}','uni',0));
-                if length(conditionSets)>1 && combineMice==1
+                if length(conditionSets)>1 && any(combineMice==[1 0])
                     fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', mouseList{i});
                     retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
                 end
