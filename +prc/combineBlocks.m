@@ -23,7 +23,7 @@ for fieldName = fieldNames'
     currField = fieldName{1};
     if contains(currField, [fields(combinedBlocks);'experimentNum']); continue; end
     mergeCriticalList = {'visVal'; 'audVal';'uniq';'Label';'grid'};
-    alwaysCellsList = {'expT'; 'rigN';'subject';'expD';'expN';'channelMap';'clusterTemp';'lfpPower','alignment'};
+    alwaysCellsList = {'expT'; 'rigN';'subject';'expD';'expN';'channelMap';'clusterTemp';'lfpPower';'alignment'};
     if contains(currField, alwaysCellsList); combinedBlocks.(currField) = {blocks(:).(currField)}'; continue; end
     if contains(currField, mergeCriticalList) && noMerge; combinedBlocks.(currField) = {blocks(:).(currField)}'; continue; end
     if contains(currField, {'visVal'; 'audVal'}) && ~noMerge; combinedBlocks.(currField) = blocks(1).(currField); continue; end

@@ -20,7 +20,7 @@ end
 clusterSigLevel = nan*ones(length(blk.eph_clusterAmps),1);
 clusterTTestData = cell(length(blk.eph_clusterAmps),1);
 
-for i = cell2mat(blk.subExpPenLink(:,3))
+for i = cell2mat(blk.subExpPenLink(:,3))'
     tDat = prc.filtStruct(blk, i, 'penetration');
     if ~exist('tWin', 'var') || isempty(tWin)
         switch blk.expDef{1}
