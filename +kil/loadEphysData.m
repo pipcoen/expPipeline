@@ -162,6 +162,7 @@ spikeTemplates = newSpikeIdx(spikeTemplates+1);
 fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'expDets'; 'kilosortOutput'};
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
 for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
+x = kil.getExpDets(x);
 if length(x.expDets)>1 && contains('ephys', {x.expDets.folder}); error('Multiple penetrations, but ephys folder?'); end
 if length(x.expDets)==1; penetrationIdx = x.expDets.penetrationIdx;
 elseif length(x.expDets)>1; penetrationIdx = x.expDets(str2double(kilosortOutput(strfind(kilosortOutput, 'site')+4:end))).penetrationIdx; 

@@ -50,6 +50,7 @@ guiData.trialGroups = cellfun(@(x) padarray(x,[0,1-all(x(:,1) == 1)],1,'pre'),tr
 
 % Package gui data
 cellrasterGui = figure('color','w');
+datacursormode off;
 guiData.penetrationIdxs = unique(guiData.blk.eph_spikePenetrationIdx);
 guiData.currPenetration = guiData.penetrationIdxs(1);
 guiData.eventTimes = eventTimes;
@@ -77,8 +78,8 @@ axis tight
 
 guiData.currAlign = 1;
 guiData.currGroup = 1;
-guiData.title = annotation('textbox', [0.25, 0.98, 0.5, 0], 'string', 'My Text', 'EdgeColor', 'none',...
-    'HorizontalAlignment', 'center', 'FontSize', 14, 'FontWeight', 'bold');
+[~, guiData.title] = plt.suplabel('test', 't');
+
 
 guidata(cellrasterGui, guiData);
 cyclePenetration(cellrasterGui);
@@ -409,3 +410,23 @@ guiData.currUnit = clicked_unit;
 guidata(cellrasterGui,guiData);
 updatePlot(cellrasterGui);
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

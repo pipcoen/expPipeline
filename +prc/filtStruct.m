@@ -19,7 +19,13 @@ if exist('experiments2keep', 'var')
     if isfield(filtered, 'eph_clusterPenetrationIdx')
         filtered = prc.filtStruct(filtered, ismember(filtered.eph_clusterPenetrationIdx, penetrations2keep)>0);
         filtered = prc.filtStruct(filtered, ismember(filtered.eph_spikePenetrationIdx, penetrations2keep)>0);
-        filtered.subExpPenLink(:,3) = cellfun(@(x) x(ismember(x, penetrations2keep)),filtered.subExpPenLink(:,3), 'uni', 0);
+        
+        penetrationIdxPerSession = cellfun(@(x) (ismember(x, penetrations2keep)),filtered.subExpPenLink(:,3), 'uni', 0);
+        filtered.subExpPenLink(:,3) = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.subExpPenLink(:,3), 'uni', 0);        
+        filtered.eph_clusterTemplates = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_clusterTemplates, 'uni', 0);   
+        filtered.eph_channelMap = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_channelMap, 'uni', 0); 
+        filtered.eph_expDets = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_expDets, 'uni', 0); 
+        
     end
 end
 

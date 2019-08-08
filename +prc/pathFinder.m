@@ -72,7 +72,7 @@ switch lower(pathType{i})
     case 'kilosortoutput'; pathOut{i,1} = [expInfo subject '\' expDate '\ephys\kilosort'];
     case 'explist'; pathOut{i,1} = [processedDirectory 'expList.mat'];
     case 'expinfo'; pathOut{i,1} = expInfo;
-    case 'ephysrecord'; pathOut{i,1} = [processedDirectory 'ePhysRecord.xlsx'];
+    case 'ephysrecord'; pathOut{i,1} = [processedDirectory 'ePhysRecord.mat'];
     case 'allenatlas'; pathOut{i,1} = [driveName '\Dropbox (Neuropixels)\MouseData\Atlas\allenCCF\'];
     case 'probepathdata'; pathOut{i,1} = [processedDirectory 'XHistology\' subject '\probe_points.mat'];
 end

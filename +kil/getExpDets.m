@@ -1,13 +1,12 @@
 function expList = getExpDets(expList)
 %%
-ephsRec = table2struct(readtable(prc.pathFinder('ephysrecord')));
-tDat  = {ephsRec.expDate}'; tDat = cellfun(@(x) datestr(x, 'yyyy-mm-dd'), tDat, 'uni', 0);
-[ephsRec.expDate] = deal(tDat{:});
-[~,uniIdx,uniLabel] = unique(cell2table([{ephsRec.subject}' {ephsRec.expDate}', {ephsRec.expNum}']),'stable', 'rows');
+ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
+uniqueTags = cellfun(@(x,y,z) [x y x], {ephysRecord.subject}', {ephysRecord.expDate}', {ephysRecord.expNum}', 'uni', 0);
+[~,uniIdx,uniLabel] = unique(uniqueTags, 'stable');
 for i = 1:length(uniIdx)
-    expDets = ephsRec(uniLabel == i);
+    expDets = ephysRecord(uniLabel == i);
     expIdx = contains({expList.expDate}, {expDets.expDate}) & contains({expList.subject}, {expDets.subject});
-    if contains('all', {expDets.expNum})
+    if contains('all', {expDets.expNum}) && any(expIdx)
         [expList(expIdx).expDets] = deal(rmfield(expDets, {'subject', 'expDate', 'expNum', 'estDepth'}));
     end
 end
