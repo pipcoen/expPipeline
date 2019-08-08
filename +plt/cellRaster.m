@@ -119,7 +119,7 @@ ylim([-50, max(guiData.channelPositions(:,2))+50]);
 normSpikeNum = mat2gray(log(accumarray(guiData.spikeCluster,1)+1));
 if length(normSpikeNum)<length(blk.eph_clusterDepths); normSpikeNum(end+1:length(blk.eph_clusterDepths)) = min(normSpikeNum); end
 higlights = blk.clusters2Highlight;
-highlightDots = plot(normSpikeNum(higlights),blk.eph_clusterDepths(higlights),'o','MarkerSize',5);
+highlightDots = plot(normSpikeNum(higlights),blk.eph_clusterDepths(higlights),'.b','MarkerSize',25);
 unitDots = plot(normSpikeNum,blk.eph_clusterDepths,'.k','MarkerSize',15,'ButtonDownFcn',@unitClick);
 
 currUnitDots = plot(0,0,'.r','MarkerSize',20);
