@@ -159,16 +159,15 @@ newSpikeIdx(goodTemplatesList+1) = 1:length(goodTemplatesList);
 spikeTemplates = newSpikeIdx(spikeTemplates+1);
 
 %%
-fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'expDets'; 'kilosortOutput'};
-for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
-for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
 x = kil.getExpDets(x);
+fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'};
 if length(x.expDets)>1 && contains('ephys', {x.expDets.folder}); error('Multiple penetrations, but ephys folder?'); end
-if length(x.expDets)==1; penetrationIdx = x.expDets.penetrationIdx;
-elseif length(x.expDets)>1; penetrationIdx = x.expDets(str2double(kilosortOutput(strfind(kilosortOutput, 'site')+4:end))).penetrationIdx; 
-elseif isempty(x.expDets); fprintf('WARNING: no expDets'); penetrationIdx = 0;
+if length(x.expDets)>1; x.expDets = x.expDets(str2double(kilosortOutput(strfind(kilosortOutput, 'site')+4:end))); end
+if isempty(x.expDets); fprintf('WARNING: no expDets'); penetrationIdx = 0;
+else, penetrationIdx = x.expDets.penetrationIdx;
 end
 
+for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
 eph.spikePenetrationIdx = uint16(spikeTimesTimeline*0+penetrationIdx);
 eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);

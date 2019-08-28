@@ -24,8 +24,7 @@ if exist('experiments2keep', 'var')
         filtered.subExpPenLink(:,3) = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.subExpPenLink(:,3), 'uni', 0);        
         filtered.eph_clusterTemplates = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_clusterTemplates, 'uni', 0);   
         filtered.eph_channelMap = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_channelMap, 'uni', 0); 
-        filtered.eph_expDets = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_expDets, 'uni', 0); 
-        
+        filtered.eph_lfpPowerSpectra = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_lfpPowerSpectra, 'uni', 0); 
     end
 end
 

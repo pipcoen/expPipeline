@@ -5,15 +5,14 @@ allenPath = prc.pathFinder('allenAtlas');
 cmap = load([fileparts(which('allenCCFbregma')) '\allen_ccf_colormap_2017.mat']);
 expList = load(prc.pathFinder('expList')); expList = expList.expList;
 %%
+ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
+selectedRecords = ephysRecord(contains({ephysRecord.subject}', subjects));
 expList = expList(contains({expList.subject}', subjects) & [expList.excluded]' ~=1 & contains({expList.expType}', 'eph'));
-expList = prc.updatePaths(expList);
 expList = kil.getExpDets(expList);
-ephysRecord = load(prc.pathFinder('ephysrecord'));
 
 guiData = struct;
 guiData.expList = expList;
-guiData.ephysRec = ephysRecord.ephysRecord;
-guiData.penetrations = unique(cell2mat(cellfun(@(x) reshape([x.penetrationIdx],[],1), {expList.expDets}', 'uni', 0)));
+guiData.penetrations =[selectedRecords.penetrationIdx];
 guiData.tv = readNPY([allenPath 'template_volume_10um.npy']); % grey-scale "background signal intensity"
 guiData.av = readNPY([allenPath 'annotation_volume_10um_by_index.npy']); % the number at each pixel labels the area, see note below
 guiData.st = loadStructureTree([allenPath 'structure_tree_safe_2017.csv']); % a table of what all the labels mean
@@ -43,7 +42,7 @@ xlim([zoomLev,apMax-zoomLev]);
 ylim([zoomLev,mlMax-zoomLev]);
 zlim([zoomLev,dvMax-zoomLev])
 probeGuideLine = plot3(rand(1), rand(1), rand(1), '--k', 'linewidth', 1.5);
-histologyPoints = plot3(rand(1), rand(1), rand(1), '.b','MarkerSize',20);
+histologyPoints = plot3(rand(1), rand(1), rand(1), '.b','MarkerSize',35);
 recordingProbe = arrayfun(@(x) plot3(rand(1), rand(1), rand(1), '-m', 'linewidth', 8), 1:guiData.nPnts);
 
 % Make 3D rotation the default state (toggle on/off with 'r')
@@ -75,7 +74,9 @@ set(regionsAxes,'XTick','','YLim',[0,3840],'YColor','k','YDir','reverse');
 unitAxes = subplot(plotR,plotC,5:plotC:plotR*plotC);
 hold(unitAxes,'on');
 set(unitAxes,'YDir','reverse', 'yAxisLocation', 'right', 'xcolor', 'w','XTick','','YLim',[0,3840],'YColor','w', 'color', 'none','YTick','');
-cellDensityLine = plot(unitAxes,1,1,'-r', 'linewidth', 3);
+guideCellScatter = plot(unitAxes,0,0,'.r','MarkerSize',10);
+cellScatter = plot(unitAxes,0,0,'.k','MarkerSize',15);
+
 
 cDat = num2cell(guiData.refColorMap(guiData.nPnts),2);
 linIdx = round(linspace(0, 3840, guiData.nPnts+1));
@@ -87,9 +88,9 @@ ylabel('Depth (\mum)')
 % CorrAxis
 corrAxis = subplot(plotR,plotC,6:plotC:plotR*plotC);
 hold(corrAxis,'on');
-set(corrAxis,'XTick','','YLim',[0,3840],'xlim',[1,200], 'YTick', '');
+set(corrAxis,'XTick','','YLim',[0,3840],'xlim',[1,200], 'YTick', '','YDir','reverse');
 lfpSpectrumPlot = imagesc(0);
-% set(CorrAxis,'YDir','reverse', 'yAxisLocation', 'right', 'xcolor', 'w','XTick','','YLim',[0,3840],'YColor','w', 'color', 'none','YTick','');
+guiData.currPlotIdx = 1;
 
 linkaxes([unitAxes,regionsAxes],'y');
 
@@ -100,15 +101,19 @@ set(unitAxes,'Position',[0.7,0.1,0.03,0.8]);
 set(corrAxis,'Position',[0.8,0.1,0.12,0.8]);
 
 % Probe information
+[~, order2Process] = sortrows([isnan([selectedRecords.scalingFactor]') [selectedRecords.probePainted]'], 'descend');
+guiData.penetrations = guiData.penetrations(order2Process);
 guiData.currPenetration = guiData.penetrations(1);
-guiData.currProbeDepth = [];
 guiData.currProbeVector = [];
 guiData.currEntryPoint = [];
+guiData.probeStepSize = 20;
+guiData.currScalingFactor = 1;
 
 %set up all handles
 guiData.handles.regionsAxes = regionsAxes;
 guiData.handles.unitAxes = unitAxes;
-guiData.handles.cellDensityLine = cellDensityLine;
+guiData.handles.cellScatter = cellScatter;
+guiData.handles.guideCellScatter = guideCellScatter;
 guiData.handles.brainSliceAxes = brainSliceAxes;
 guiData.handles.sliceVolume = 'av'; % The volume shown in the slice
 guiData.handles.probeGuideLine = probeGuideLine;
@@ -118,7 +123,10 @@ guiData.handles.slicePlot = slicePlot; % Slice on 3D atlas
 guiData.handles.probeRegionsPlot = probeRegionsPlot;
 guiData.handles.corrAxis = corrAxis;
 guiData.handles.lfpSpectrumPlot = lfpSpectrumPlot;
+guiData.handles.lfpSpectrumLine = lfpSpectrumPlot;
 guiData.title = annotation('textbox', [0.25, 0.95, 0.5, 0], 'string', 'My Text', 'EdgeColor', 'none',...
+    'HorizontalAlignment', 'center', 'FontSize', 16, 'FontWeight', 'bold');
+guiData.probeDetails = annotation('textbox', [0.25, 0.925, 0.5, 0], 'string', 'My Text', 'EdgeColor', 'none',...
     'HorizontalAlignment', 'center', 'FontSize', 16, 'FontWeight', 'bold');
 guidata(probeDepthGui, guiData);
 %%
@@ -129,30 +137,57 @@ function keyPress(probeDepthGui,eventdata)
 guiData = guidata(probeDepthGui);
 switch eventdata.Key
     case 'uparrow'
-        guiData.currProbeDepth = guiData.currProbeDepth-20;
+        guiData.currTipLocation = guiData.currTipLocation-(guiData.probeStepSize/10).*guiData.currProbeVector';
     case 'downarrow'
-        guiData.currProbeDepth = guiData.currProbeDepth+20;
+        guiData.currTipLocation = guiData.currTipLocation+(guiData.probeStepSize/10).*guiData.currProbeVector';
     case 't'
         if strcmp(guiData.handles.sliceVolume, 'av'); guiData.handles.sliceVolume = 'tv';
         else, guiData.handles.sliceVolume = 'av';
         end
     case 's'
-        kil.updateEphysRecord(guiData.currPenetration, guiData.currProbeVector, guiData.currEntryPoint)
-        guiData.currPenetration = guiData.penetrations(1);
-    case 'n'
+        ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
+        recordIdx = [ephysRecord.penetrationIdx] == guiData.currPenetration;
+        ephysRecord(recordIdx).calcLine = guiData.currProbeVector;
+        ephysRecord(recordIdx).calcTip = guiData.currTipLocation;
+        ephysRecord(recordIdx).scalingFactor = guiData.currScalingFactor;
+        save(prc.pathFinder('ephysrecord'), 'ephysRecord');
+        set(guiData.title, 'String', strrep(get(guiData.title, 'String'), 'UNSAVED', 'SAVED'));
+    case 'c'
+        ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
+        recordIdx = [ephysRecord.penetrationIdx] == guiData.currPenetration;
+        ephysRecord(recordIdx).calcLine = nan;
+        ephysRecord(recordIdx).calcTip = nan;
+        ephysRecord(recordIdx).scalingFactor = nan;
+        save(prc.pathFinder('ephysrecord'), 'ephysRecord');
+        set(guiData.title, 'String', strrep(get(guiData.title, 'String'), 'SAVED', 'UNSAVED'));
+    case 'equal'
         guiData.penetrations = circshift(guiData.penetrations, -1);
         guiData.currPenetration = guiData.penetrations(1);
+    case 'hyphen'
+        guiData.penetrations = circshift(guiData.penetrations, 1);
+        guiData.currPenetration = guiData.penetrations(1);
+    case 'z'
+        guiData.currScalingFactor = guiData.currScalingFactor+0.01;
+    case 'x'
+        guiData.currScalingFactor = guiData.currScalingFactor-0.01;
+    case 'p'
+        guiData.currPlotIdx = ((guiData.currPlotIdx-1)*-1)+2;
+        plotData = guiData.spectrumPlotXYZ(guiData.currPlotIdx,:);
+        if guiData.currPlotIdx == 2; set(guiData.handles.corrAxis,'XLim', [0 3840]);
+        else, set(guiData.handles.corrAxis,'XLim', [0 200]);
+        end
+        set(guiData.handles.lfpSpectrumPlot, 'XData', plotData{1}, 'YData', plotData{2}, 'CData', plotData{3});
 end
 guidata(probeDepthGui, guiData);
 end
 
 function keyRelease(probeDepthGui,eventdata)
 switch eventdata.Key
-    case {'rightarrow','leftarrow','uparrow','downarrow'}
+    case {'rightarrow','leftarrow','uparrow','downarrow','z','x','s'}
         updateProbePosition(probeDepthGui);
     case {'t'}
         updateSlice(probeDepthGui);
-    case {'n'}
+    case {'equal', 'hyphen', 'c'}
         switchPenetration(probeDepthGui);
 end
 end
@@ -231,45 +266,100 @@ end
 function switchPenetration(probeDepthGui)
 guiData = guidata(probeDepthGui);
 expList = guiData.expList;
+ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
+penetrationDetails = ephysRecord([ephysRecord.penetrationIdx]==guiData.currPenetration);
+
+ephysRecordForBrain = ephysRecord(contains({ephysRecord.subject}', penetrationDetails.subject));
 exp4Pen = find(cellfun(@(x) any([x.penetrationIdx]==guiData.currPenetration), {expList.expDets}'));
 blk = prc.combineBlocks(prc.getFilesFromDates(expList(exp4Pen(1)).subject, expList(exp4Pen(1)).expDate, 'eph', expList(exp4Pen(1)).expDef));
 ephInfo = prc.filtStruct(blk, guiData.currPenetration, 'penetration');
 clusterDepths = ephInfo.eph_clusterDepths;
+spikeTimes = ephInfo.eph_spikeTimes;
+spikeCluster = ephInfo.eph_spikeCluster;
 %%
-powerSpectra = medfilt2(log(mean(ephInfo.eph_lfpPowerSpectra{1}.powerSpectra,3)'),[3 3]);
-set(guiData.handles.lfpSpectrumPlot, 'XData', ephInfo.eph_lfpPowerSpectra{1}.freqPoints, 'YData', 1:10:guiData.probeLength, 'CData', powerSpectra);
-%%
-[cellNumbersAlongProbe, binEdges] = histcounts(clusterDepths, 0:100:guiData.probeLength);
-binCenters = mean([binEdges(1:end-1); binEdges(2:end)]);
-queryPoints = 0:10:guiData.probeLength;
-cellNumbersAlongProbe = interp1(binCenters,cellNumbersAlongProbe,queryPoints,'linear', 'extrap');
-set(guiData.handles.cellDensityLine, 'XData', cellNumbersAlongProbe, 'YData', queryPoints);
-set(guiData.handles.unitAxes, 'xlim', [0 max(cellNumbersAlongProbe)+2]);
+powerSpectra = flipud(log(median(ephInfo.eph_lfpPowerSpectra{1}.powerSpectra,3)'));
+channelMean = mean(powerSpectra,2);
+channels2Remove = abs(channelMean-mean(channelMean))>2;
+powerSpectra(channels2Remove,:) = median(powerSpectra(:));
+keptMedians = mat2gray(median(powerSpectra(~channels2Remove,:),2));
+freqPoints = ephInfo.eph_lfpPowerSpectra{1}.freqPoints;
+idx2highlight = sub2ind(size(powerSpectra), find(~channels2Remove),round((max(freqPoints)-1)*keptMedians)+1);
+powerSpectra(idx2highlight) = nan;
 
-penetrationDetails = guiData.ephysRec([guiData.ephysRec.penetrationIdx]==guiData.currPenetration);
-if penetrationDetails.probePainted
-    set(guiData.title, 'String', sprintf('%s: %s Penetration %d--Probe was painted', blk.subject{1},blk.expDate{1},guiData.currPenetration));
-else
+
+guiData.spectrumPlotXYZ{1,1} = freqPoints;
+guiData.spectrumPlotXYZ{1,2} = 1:10:guiData.probeLength;
+guiData.spectrumPlotXYZ{1,3} = powerSpectra;
+
+numCorrGroups = 25;
+groupEdgeDepth = linspace(0,guiData.probeLength,numCorrGroups+1);
+groupDepths = discretize(clusterDepths,groupEdgeDepth);
+groupDepthsCenters = groupEdgeDepth(1:end-1)+(diff(groupEdgeDepth)/2);
+uniqueDepths = 1:length(groupEdgeDepth)-1;
+
+spikeBinning = 0.01; % seconds
+corrEdges = nanmin(spikeTimes):spikeBinning:nanmax(spikeTimes);
+binnedSpikesDepth = zeros(length(uniqueDepths),length(corrEdges)-1);
+for currDepth = 1:length(uniqueDepths)
+    binnedSpikesDepth(currDepth,:) = histcounts(spikeTimes(ismember(spikeCluster,find(groupDepths == uniqueDepths(currDepth)))), corrEdges);
+end
+muaCorr = corrcoef(binnedSpikesDepth');
+muaCorr(eye(numCorrGroups)>0) = nan;
+
+guiData.spectrumPlotXYZ{2,1} = groupDepthsCenters;
+guiData.spectrumPlotXYZ{2,2} = groupDepthsCenters;
+guiData.spectrumPlotXYZ{2,3} = muaCorr;
+
+plotData = guiData.spectrumPlotXYZ(guiData.currPlotIdx,:);
+set(guiData.handles.lfpSpectrumPlot, 'XData', plotData{1}, 'YData', plotData{2}, 'CData', plotData{3});
+%%
+spikeJitter = abs(randn(length(clusterDepths), 1)/2.5)+0.1;
+set(guiData.handles.cellScatter, 'XData', spikeJitter, 'YData', clusterDepths);
+set(guiData.handles.unitAxes, 'xlim', [0 1]);
+
+%%
+if ~penetrationDetails.probePainted
+    refProbeDetails = ephysRecordForBrain([ephysRecordForBrain.probePainted]' & [ephysRecordForBrain.histIdx]'==penetrationDetails.histIdx);
+    exp4Pen = find(cellfun(@(x) any([x.penetrationIdx]==refProbeDetails.penetrationIdx), {expList.expDets}'));
+    blk = prc.combineBlocks(prc.getFilesFromDates(expList(exp4Pen(1)).subject, expList(exp4Pen(1)).expDate, 'eph', expList(exp4Pen(1)).expDef));
+    ephInfo = prc.filtStruct(blk, refProbeDetails.penetrationIdx, 'penetration');
+    clusterDepths = ephInfo.eph_clusterDepths;
+    spikeJitter = abs(randn(length(clusterDepths), 1)/2.5)+0.1;
+    
+    guiData.guideTipLocation = refProbeDetails.calcTip;
+    guiData.guideCellDepths = clusterDepths;
+    guiData.currScalingFactor = refProbeDetails.scalingFactor;
+    set(guiData.handles.guideCellScatter, 'XData', spikeJitter, 'YData', clusterDepths);
     set(guiData.title, 'String', sprintf('%s: %s Penetration %d--Probe was NOT painted', blk.subject{1},blk.expDate{1},guiData.currPenetration));
+else
+    guiData.currScalingFactor = penetrationDetails.scalingFactor;
+    if isnan(guiData.currScalingFactor); guiData.currScalingFactor = 1; end
+    guiData.guideTipLocation = nan;
+    set(guiData.handles.guideCellScatter, 'XData', [], 'YData', []);
+    set(guiData.title, 'String', sprintf('%s: %s Penetration %d--Probe was painted', blk.subject{1},blk.expDate{1},guiData.currPenetration));
 end
 
 histologyData = load(prc.pathFinder('probepathdata', penetrationDetails.subject));
 histologyPoints = histologyData.pointList.pointList{penetrationDetails.histIdx,1};
-guiData.currProbeDepth = penetrationDetails.calcTip;
-if isnan(guiData.currProbeDepth); guiData.currProbeDepth = penetrationDetails.estDepth; end
-
 probeCenter = mean(histologyPoints,1);
 xyz = bsxfun(@minus,histologyPoints,probeCenter);
 [~,~,V] = svd(xyz,0);
 guiData.currProbeVector = V(:,1);
 if guiData.currProbeVector(2) < 0; guiData.currProbeVector = guiData.currProbeVector*-1; end
-
 guidePnts = round(bsxfun(@plus,bsxfun(@times,(-1000:1000)',guiData.currProbeVector'),probeCenter));
 guidePnts = unique(guidePnts, 'rows', 'stable');
-guidePnts(any(bsxfun(@gt, guidePnts, size(guiData.av)),2) | any(guidePnts<=0,2),:) = [];
+guidePnts(any(bsxfun(@gt, guidePnts, fliplr(size(guiData.av))),2) | any(guidePnts<=0,2),:) = [];
 pntsBrainSpace = sub2ind(size(guiData.av),guidePnts(:,3), guidePnts(:,2), guidePnts(:,1));
 pointsInBrain = guidePnts(guiData.av(pntsBrainSpace)>1,:);
 guiData.currEntryPoint = pointsInBrain(pointsInBrain(:,2)==min(pointsInBrain(:,2)),:);
+guiData.currEntryPoint = guiData.currEntryPoint(1,:);
+
+guiData.currTipLocation = penetrationDetails.calcTip;
+if isnan(guiData.currTipLocation)
+    guiData.currTipLocation = guiData.currEntryPoint+(penetrationDetails.estDepth/10).*guiData.currProbeVector';
+    set(guiData.title, 'String', [get(guiData.title, 'String') ': Probe Location UNSAVED...']);
+else, set(guiData.title, 'String', [get(guiData.title, 'String') ': Probe Location SAVED']);
+end
 
 set(guiData.handles.probeGuideLine, 'XData',guidePnts(:,3), 'YData',guidePnts(:,1), 'ZData',guidePnts(:,2))
 set(guiData.handles.histologyPoints, 'XData',histologyPoints(:,3), 'YData',histologyPoints(:,1), 'ZData',histologyPoints(:,2))
@@ -283,8 +373,14 @@ end
 function updateProbePosition(probeDepthGui)
 guiData = guidata(probeDepthGui);
 %%
-currEndPoint = guiData.currEntryPoint+(guiData.currProbeDepth/10).*guiData.currProbeVector';
-currStartPoint = currEndPoint-(guiData.probeLength/10).*guiData.currProbeVector';
+if ~isnan(guiData.guideTipLocation)
+    tipDistance = sqrt(sum((guiData.currTipLocation-guiData.guideTipLocation).^2))*10;
+    tipDistance = tipDistance*sign(guiData.currTipLocation(2)-guiData.guideTipLocation(2));
+    set(guiData.handles.guideCellScatter, 'YData',guiData.guideCellDepths-tipDistance);
+end
+
+currEndPoint = guiData.currTipLocation;
+currStartPoint = currEndPoint-(guiData.probeLength/10).*guiData.currProbeVector'*guiData.currScalingFactor;
 pointsAlongProbe = round(cell2mat(arrayfun(@(x,y) linspace(x,y,round(guiData.probeLength/5))', currStartPoint, currEndPoint, 'uni', 0)));
 
 cDat = num2cell(guiData.refColorMap(length(guiData.handles.recordingProbe)),2);
@@ -297,6 +393,7 @@ pointsAlongProbe(any(bsxfun(@gt, pointsAlongProbe, size(guiData.av)),2) | any(po
 probeAreas = arrayfun(@(x,y,z) guiData.av(x,y,z), pointsAlongProbe(:,3),pointsAlongProbe(:,2),pointsAlongProbe(:,1));
 probeAreaBoundaries = find(diff([1e5; double(probeAreas); 1e5])~=0);
 probeAreaCenters = (probeAreaBoundaries(2:end) + probeAreaBoundaries(1:end-1))/2;
+probeAreaCenters(probeAreaCenters>length(probeAreas)) = length(probeAreas);
 probeAreaLabels = guiData.st.safe_name(probeAreas(round(probeAreaCenters)));
 [~, ~, uniLocations] = unique(probeAreaLabels, 'stable');
 newAreaBoundaries = find(diff([-1; uniLocations;-1])~=0);
@@ -307,37 +404,18 @@ for i = 1:length(newAreaBoundaries)-1
 end
 probeAreaCenters = probeAreaCenters(newAreaBoundaries(1:end-1));
 
+ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
+ephysRecordForBrain = ephysRecord(contains({ephysRecord.subject}', ephysRecord([ephysRecord.penetrationIdx]==guiData.currPenetration).subject));
+averageScalingForBrain = round(nanmean([ephysRecordForBrain.scalingFactor])*100)/100;
+
 % Update the probe areas
 yyaxis(guiData.handles.regionsAxes,'right');
 set(guiData.handles.probeRegionsPlot,'YData',(1:length(probeAreas))*5,'CData',probeAreas);
 set(guiData.handles.regionsAxes,'YTick',probeAreaCenters*5,'YTickLabels',probeAreaLabels);
-
+set(guiData.probeDetails, 'String', sprintf('SF: %0.2f (%s)', guiData.currScalingFactor, num2str(averageScalingForBrain)));
 % Upload guiData
 guidata(probeDepthGui, guiData);
 end
-
-
-
-%%
-% numCorrGroups = 20;
-% groupEdgeDepth = linspace(0,guiData.probeLength,numCorrGroups+1);
-% groupDepths = discretize(clusterDepths,groupEdgeDepth);
-% groupDepthsCenters = groupEdgeDepth(1:end-1)+(diff(groupEdgeDepth)/2);
-% uniqueDepths = 1:length(groupEdgeDepth)-1;
-% 
-% spikeBinning = 0.01; % seconds
-% corrEdges = nanmin(ephInfo.spikeTimes):spikeBinning:nanmax(ephInfo.spikeTimes);
-% binnedSpikesDepth = zeros(length(uniqueDepths),length(corrEdges)-1);
-% for currDepth = 1:length(uniqueDepths)
-%     binnedSpikesDepth(currDepth,:) = histcounts(ephInfo.spikeTimes(ismember(ephInfo.spikeCluster,find(groupDepths == uniqueDepths(currDepth)))), corrEdges);
-% end
-% muaCorr = corrcoef(binnedSpikesDepth');
-% muaCorr(eye(numCorrGroups)>0) = nan;
-% imagesc(guiData.handles.corrAxis, groupDepthsCenters, groupDepthsCenters, muaCorr);
-% set(guiData.handles.corrAxis, 'YDir', 'reverse')
-
-%%
-
 
 
 

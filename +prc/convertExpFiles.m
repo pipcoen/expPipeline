@@ -196,9 +196,7 @@ prm = x.newParams;
 raw = x.newRaw;
 
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
-if ~exist(fileparts(strrep(x.processedData,'dData','dDataLite')), 'dir'); mkdir(fileparts(strrep(x.processedData,'dData','dDataLite'))); end
 whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw');
-save(strrep(x.processedData,'dData','dDataLite'), 'blk', 'prm');
 end
 
 %%
@@ -235,6 +233,7 @@ if length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.clust
     eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y), siteList, 'uni', 0));
     eph(1).clusterTemplates = [eph.clusterTemplates]';
     eph(1).channelMap = [eph.channelMap]';
+    eph(1).lfpPowerSpectra = [eph.lfpPowerSpectra]';
     fields2combine = fields(eph); 
     fields2combine = fields2combine(contains(fields2combine, {'spike'; 'cluster'}) & ~contains(fields2combine, {'clusterTemplates'}));
     for i = 1:length(fields2combine); eph(1).(fields2combine{i}) = cat(1,eph.(fields2combine{i})); end
