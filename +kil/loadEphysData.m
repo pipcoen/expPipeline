@@ -85,7 +85,7 @@ if exist('flipperFlipTimesTimeline','var')
                 flipperFlipTimesFPGA(errPoint-2:errPoint+2) = [];
                 flipperFlipTimesTimeline(errPoint-2:errPoint+2) = [];
             end
-            while length(flipperFlipTimesFPGA) > length(flipperFlipTimesTimeline)
+            while length(flipperFlipTimesFPGA) < length(flipperFlipTimesTimeline)
                 compareVect = [flipperFlipTimesTimeline-(flipperFlipTimesTimeline(1)) flipperFlipTimesFPGA(1:length(flipperFlipTimesTimeline))-flipperFlipTimesFPGA(1)];
                 errPoint = find(abs(diff(diff(compareVect,[],2)))>0.005,1);
                 flipperFlipTimesFPGA(errPoint+2) = [];
@@ -129,16 +129,13 @@ end
 % Eliminate spikes that were classified as not "good"
 fprintf('Removing noise and MUA templates... \n');
 
-goodTemplatesIdx = 1:size(templates,1); 
-goodTemplatesList = 0:size(templates,1)-1; 
-if ~runWithoutSorting
-clusterGroups = tdfread([kilosortOutput '\cluster_group.tsv']);
-goodTemplatesList = clusterGroups.cluster_id(contains(num2cell(clusterGroups.group,2), 'good '));
-goodTemplatesIdx = ismember(0:size(templates,1)-1,goodTemplatesList);
+if runWithoutSorting;  clusterGroups = tdfread([kilosortOutput '\cluster_group.tsv']);
+else, clusterGroups = tdfread([kilosortOutput '\cluster_KSLabel.tsv']); clusterGroups.group = clusterGroups.KSLabel;
 end
+goodTemplatesList = clusterGroups.cluster_id(contains(num2cell(clusterGroups.group,2), 'good'));
+goodTemplatesIdx = ismember(0:size(templates,1)-1,goodTemplatesList);
 
 % Throw out all non-good template data
-% templates = templates(goodTemplatesIdx,:,:);
 templateDepths = templateDepths(goodTemplatesIdx);
 templateAmps = templateAmps(goodTemplatesIdx);
 waveforms = waveforms(goodTemplatesIdx,:);
@@ -160,14 +157,12 @@ spikeTemplates = newSpikeIdx(spikeTemplates+1);
 
 %%
 x = kil.getExpDets(x);
-fields2copy = {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'};
-if length(x.expDets)>1 && contains('ephys', {x.expDets.folder}); error('Multiple penetrations, but ephys folder?'); end
+if length(x.expDets)>1 && contains('ephys', {x.expDets.folder}); error('Multiple penetrations, but only ephys folder?'); end
 if length(x.expDets)>1; x.expDets = x.expDets(str2double(kilosortOutput(strfind(kilosortOutput, 'site')+4:end))); end
 if isempty(x.expDets); fprintf('WARNING: no expDets'); penetrationIdx = 0;
 else, penetrationIdx = x.expDets.penetrationIdx;
 end
 
-for i = 1:length(fields2copy); eph.(fields2copy{i}) = x.(fields2copy{i}); end
 eph.spikePenetrationIdx = uint16(spikeTimesTimeline*0+penetrationIdx);
 eph.spikeTimes = single(spikeTimesTimeline);
 eph.spikeAmps = single(spikeAmps);

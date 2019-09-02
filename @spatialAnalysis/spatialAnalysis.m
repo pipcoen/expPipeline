@@ -75,6 +75,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.hand.figure = [];
         end
         
+        
         function getGLMPerturbations(obj, modelString)
             if ~exist('modelString', 'var'); modelString = 'ReducedLogCNSplitDelta'; end
             

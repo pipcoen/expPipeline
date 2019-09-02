@@ -97,16 +97,16 @@ for i = files2Run(files2Run>srtIdx)
             whoD = who('-file', x.processedData);
             save(x.processedData, 'whoD', '-append');
         end
-    else; whoD = [];
+    else; whoD = {'whoD'}; save(x.processedData, 'whoD');
     end
     warning('on', 'MATLAB:load:variableNotFound');
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
-    
+      
     %Loop to convert ephys files
     if (~contains({'eph'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'})
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convEphysFile(x, redoTag);
-        whoD = unique(who('-file', x.processedData));
+        whoD = who('-file', x.processedData);
     end
     
     %Loop to convert 2p and widefield files
@@ -115,6 +115,7 @@ for i = files2Run(files2Run>srtIdx)
             case 'twophoton'
                 fprintf('Converting 2P file for %s %s idx = %d\n', x.expDate,x.subject,i);
                 conv2PData(x);
+                whoD = who('-file', x.processedData);
             case 'widefield'; continue; %convWidefieldData(x);
         end
     end
@@ -123,11 +124,11 @@ for i = files2Run(files2Run>srtIdx)
     if (~contains({'fus'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType(1:3), 'fus') && contains(dataType, {'all'; 'fus'})
         fprintf('Converting fusi recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convfUSiFile(x);
-        whoD = unique(who('-file', x.processedData));
+        whoD = who('-file', x.processedData);
     end
     
     %If not converted through other processing steps, convert block file.
-    if  (~contains({'blk'}, ['ignore'; whoD]) || redoTag) && contains(dataType, {'all'; 'blk'})
+    if  (~contains({'blk'}, ['ignore'; whoD]) || redoTag == 1) && contains(dataType, {'all'; 'blk'})
         fprintf('Converting block file for %s %s idx = %d\n', x.expDate,x.subject,i);
         convBlockFile(x);
     end
@@ -137,7 +138,7 @@ prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProce
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
-function [x, whoD] = convBlockFile(x)
+function convBlockFile(x)
 %Load original block, params, and galvo log (if it exsits) Remove first trial because there are often timing issues with this trial
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 if exist(x.galvoLog, 'file'); x.galvoLog = load(x.galvoLog); else, x.galvoLog = 0; end
@@ -171,7 +172,7 @@ x.validTrials = x.standardizedBlock.events.repeatNumValues(1:length(x.standardiz
 if contains(x.expType, {'ephys'; 'fusi'})
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
-else, x.alignment = 'none';
+else, x.aligned = [];
 end
 
 %This copies standard fields over to newBlock and standardizedParams
@@ -191,12 +192,14 @@ x.standardizedParams.minutesOnRig = round((x.standardizedBlock.experimentEndedTi
 %Run the block funciton for the expDef that was used for the mouse. This adds all relevant fields to "newBlock" and "newParams"
 blockFunction = str2func(['prc.expDef.' x.expDef]);
 x = blockFunction(x);
+
 blk = x.newBlock;
 prm = x.newParams;
 raw = x.newRaw;
+tim = x.aligned;
 
 if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
-whoD = {'blk'; 'prm'; 'raw'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw');
+whoD = {'blk'; 'prm'; 'raw'; 'tim'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw', 'tim', '-append');
 end
 
 %%
@@ -213,6 +216,14 @@ end
 
 %%
 function convEphysFile(x, redoTag)
+%If not converted through other processing steps, convert block file.
+whoD = who('-file', x.processedData);
+if  ~contains({'blk'}, whoD) || redoTag == 1
+    fprintf('Converting block file for %s %s \n', x.expDate,x.subject);
+    convBlockFile(x);
+    whoD = who('-file', x.processedData);
+end
+
 siteList = dir([fileparts(x.kilosortOutput) '\*site*']);
 if isempty(siteList); siteList = {x.kilosortOutput}; else; siteList = cellfun(@(y) [x.kilosortOutput '\' y], {siteList.name}', 'uni', 0); end
 sites2Process = cellfun(@(x) ~exist([x '/spike_templates.npy'], 'file'), siteList);
@@ -220,7 +231,7 @@ if ~exist(x.kilosortOutput, 'dir') || any(sites2Process)
     kil.preProcessPhase3(x.subject, x.expDate, sites2Process);
     cellfun(@kil.liklihoodNoise, siteList);
 elseif any(cellfun(@(x) ~exist([x '\cluster_pNoise.tsv'], 'file'), siteList))
-    cellfun(@kil.liklihoodNoise, siteLicst);
+    cellfun(@kil.liklihoodNoise, siteList);
 end
 sites2Process = cellfun(@(x) ~exist([x '/lfpPowerSpectra.mat'], 'file'), siteList);
 if any(sites2Process); kil.loadAndSpectrogramLFP(x.subject, x.expDate, sites2Process); end
@@ -228,29 +239,27 @@ if any(sites2Process); kil.loadAndSpectrogramLFP(x.subject, x.expDate, sites2Pro
 clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
 clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
 %%
-if length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id))
-    fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
-    eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y), siteList, 'uni', 0));
+spikeSorted = length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id));
+loadData = isempty(whoD) || ~any(contains({'ephTmp'; 'eph'}, whoD)) || redoTag;
+if spikeSorted && loadData; fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
+elseif ~spikeSorted && loadData; fprintf('WARNING: %s %s needs to be SORTED. Processing temp file now... \n', x.expDate,x.subject);
+else, fprintf('WARNING: %s %s needs to be SORTED. \n', x.expDate,x.subject);
+end
+
+if loadData
+    eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y, spikeSorted), siteList, 'uni', 0));
     eph(1).clusterTemplates = [eph.clusterTemplates]';
     eph(1).channelMap = [eph.channelMap]';
     eph(1).lfpPowerSpectra = [eph.lfpPowerSpectra]';
-    fields2combine = fields(eph); 
+    fields2combine = fields(eph);
     fields2combine = fields2combine(contains(fields2combine, {'spike'; 'cluster'}) & ~contains(fields2combine, {'clusterTemplates'}));
     for i = 1:length(fields2combine); eph(1).(fields2combine{i}) = cat(1,eph.(fields2combine{i})); end
     eph = eph(1);
     
-    if redoTag ~=2; x = convBlockFile(x);
-    else, x.aligned = load(x.processedData, 'eph');
-        ephFields = fields(x.aligned.eph);
-        x.aligned = rmfield(x.aligned.eph, ephFields(1:find(contains(ephFields, 'rewardTimes'))-1));
+    if spikeSorted; whoD = unique([whoD; 'eph']); save(x.processedData, 'eph', 'whoD', '-append');
+    else, ephTmp = eph; whoD = unique([whoD; 'ephTmp']); save(x.processedData, 'ephTmp', 'whoD', '-append');
     end
-    eph = prc.catStructs(eph, x.aligned);
-    whoD = unique([who('-file', x.processedData); 'eph']); save(x.processedData, 'eph', 'whoD', '-append');
-    save(x.processedData, 'eph', 'whoD', '-append');
-else
-    fprintf('%s %s must be spike sorted before processing further \n', x.expDate,x.subject);
 end
-if ~exist(x.processedData, 'file'); convBlockFile(x); end
 end
 
 %%

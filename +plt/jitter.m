@@ -14,6 +14,7 @@ if createOpt || ~isfield(opt, 'pairs2test'); opt.pairs2test = []; end
 if createOpt || ~isfield(opt, 'significanceTest'); opt.significanceTest = @ttest; end
 if createOpt || ~isfield(opt, 'linkedGroups'); opt.linkedGroups = []; end
 if createOpt || ~isfield(opt, 'yLimits'); opt.yLimits = []; end
+if createOpt || ~isfield(opt, 'pairLines'); opt.pairLines = 1; end
 
 data = data(:);
 data = cellfun(@double, data, 'uni', 0);

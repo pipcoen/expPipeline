@@ -58,11 +58,20 @@ if contains(lower(dataType), {'raw'; 'all'})
 end
 
 if contains(lower(dataType), {'eph'; 'all'})
-    selectedData = cellfun(@(x) load(x, 'eph'), selectedFiles, 'uni', 0);
-    eph = [selectedData{:}]'; eph = [eph(:).eph]';
-    eph = prc.chkThenRemoveFields(eph, {'subject'; 'expDate'; 'expNum'; 'expDef'; 'kilosortOutput'});
+    fileContents = cellfun(@(x) who('-file', x),selectedFiles, 'uni', 0);
+    selectedData = cellfun(@(x,y) load(x, y{contains(y, 'eph')}), selectedFiles, fileContents, 'uni', 0);
+    renamedData = cell(length(selectedData),1);
+    for i = 1:length(selectedData); renamedData{i}.eph = selectedData{i}.(cell2mat(fields(selectedData{i}))); end
+    eph = [renamedData{:}]'; eph = [eph(:).eph]';
     fields2copy = fields(eph);
     for i = 1:length(fields2copy); [blk.(['eph_' fields2copy{i}])] = eph.(fields2copy{i}); end
+    
+%     selectedData = cellfun(@(x,y) load(x, y{contains(y, 'tim')}), selectedFiles, fileContents, 'uni', 0);
+%     renamedData = cell(length(selectedData),1);
+%     for i = 1:length(selectedData); renamedData{i}.eph = selectedData{i}.(cell2mat(fields(selectedData{i}))); end
+%     eph = [renamedData{:}]'; eph = [eph(:).eph]';
+%     fields2copy = fields(eph);
+%     for i = 1:length(fields2copy); [blk.(['eph_' fields2copy{i}])] = eph.(fields2copy{i}); end
 end
 
 if contains(lower(dataType), {'fus'; 'all'})

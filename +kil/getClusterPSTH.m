@@ -1,4 +1,4 @@
-function [clusterSigLevel, clusterTTestData] = findResponsiveCells(blk,eventTimes,tWin)
+function [clusterPSTH, timeValues] = getClusterPSTH(blk,eventTimes,tBins)
 %Assigning default values
 experimentIdxs = cell2mat(blk.subExpPenLink(:,2));
 if ~exist('eventTimes', 'var') || isempty(eventTimes)
@@ -17,33 +17,22 @@ elseif size(eventTimes,2) == 1, error('Could not figure out experiment info for 
 end
 
 %% Note: this looping is faster because it means smaller subsets are indexed when searching.
-clusterSigLevel = nan*ones(length(blk.eph_clusterAmps),1);
-clusterTTestData = cell(length(blk.eph_clusterAmps),1);
-
+clusterPSTH = cell(length(blk.eph_clusterAmps),1);
 for i = cell2mat(blk.subExpPenLink(:,3))'
     tDat = prc.filtStruct(blk, i, 'penetration');
-    if ~exist('tWin', 'var') || isempty(tWin)
-        switch blk.expDef{1}
-            case 'multiSpaceWorldPassive'; tWin = [-0.5 -0.01 0.01 0.5];
-            case 'multiSpaceWorld'; tWin = [-0.5 -0.1 0.05 0.25];
-        end
-    elseif numel(tWin)~=4; error('tWin should be 1x4 vector');
-    elseif ~all([(tWin(1:2)<=0) (tWin(3:4)>=0)]); error('pre/post windows should be negative/positive (or zero)');
+    if ~exist('tWin', 'var') || isempty(tBins)
+        tBins = -0.5:0.01:0.5;
     end
+    timeValues = tBins(1:end-1) + diff(tBins)./2;
     
     selEvents = sort(eventTimes(eventTimes(:,2)==tDat.subExpPenLink{:,2},1));
     clusters = 1:length(tDat.eph_clusterAmps);
     
     if ~isempty(selEvents)
-        eventWindows = selEvents+tWin;
-        spikeCounts = histcounts2(tDat.eph_spikeTimes, tDat.eph_spikeCluster, sort(eventWindows(:)), 1:(clusters(end)+1));
-        spikeCountsPre = spikeCounts(1:4:end,clusters)./range(tWin(1:2));
-        spikeCountsPost = spikeCounts(3:4:end,clusters)./range(tWin(3:4));
-        ttestData = spikeCountsPost - spikeCountsPre;
-        
-        [~, pVal] = ttest(ttestData);
-        clusterTTestData(blk.eph_clusterPenetrationIdx==i) = num2cell(ttestData,1)';
-        clusterSigLevel(blk.eph_clusterPenetrationIdx==i) = pVal';
+        eventWindows = selEvents+tBins;
+        spikeCounts = histcounts2(tDat.eph_spikeTimes, tDat.eph_spikeCluster, [sort(eventWindows(:));1e6], 1:(clusters(end)+1));
+        spikeCounts = permute(reshape(spikeCounts, [size(eventWindows') length(clusters)]),[2 1 3]);
+        clusterPSTH(blk.eph_clusterPenetrationIdx==i) = num2cell(spikeCounts(:,1:end-1,:),[1 2]);
     end
 end
 end

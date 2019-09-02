@@ -66,8 +66,8 @@ switch alignType
         block.alignment = 'reward';
     case 'photoDiode'
         photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));
-        [~, thresh] = kmeans(photoDiodeTrace,2);
-        thresh = [min(thresh) + range(thresh)*0.25;  max(thresh) - range(thresh)*0.25];
+        [~, thresh] = kmeans(photoDiodeTrace,5);
+        thresh = [min(thresh) + range(thresh)*0.2;  max(thresh) - range(thresh)*0.2];
         photoDiodeFlipOn = sort([strfind(photoDiodeTrace'>thresh(1), [0 1]), strfind(photoDiodeTrace'>thresh(2), [0 1])]);
         photoDiodeFlipOff = sort([strfind(photoDiodeTrace'<thresh(1), [0 1]), strfind(photoDiodeTrace'<thresh(2), [0 1])]);
         photoDiodeFlips = sort([photoDiodeFlipOn photoDiodeFlipOff]);
@@ -75,17 +75,17 @@ switch alignType
         photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
         photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
         
-        blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>0.5);
-        timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>0.5);
+        blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>0.49);
+        timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>0.49);
         
-        if length(blockRefTimes) ~= length(timelineRefTimes) && length(blockRefTimes) < length(timelineRefTimes)
-            extraPoints = finddelay(diff(blockRefTimes), diff(timelineRefTimes));
-            if  extraPoints > 0; timelineRefTimes(1:extraPoints) = [];
-            elseif  extraPoints < 0; timelineRefTimes(end+extraPoints+1:end) = [];
-            end
+               
+        if length(blockRefTimes) ~= length(timelineRefTimes)
+            [timelineRefTimes, blockRefTimes] = prc.try2alignVectors(timelineRefTimes, blockRefTimes, 0.25);
+        elseif any(abs((blockRefTimes-blockRefTimes(1)) - (timelineRefTimes-timelineRefTimes(1)))>0.5)
+            [timelineRefTimes, blockRefTimes] = prc.try2alignVectors(timelineRefTimes, blockRefTimes, 0.25);
         end
         block.alignment = 'photodiode';
-        if length(blockRefTimes) ~= length(timelineRefTimes) && length(blockRefTimes) < length(timelineRefTimes)
+        if length(blockRefTimes) ~= length(timelineRefTimes)
             error('Photodiode alignment error');
         end
 end
@@ -247,10 +247,10 @@ if any(contains(fineTune, 'movements'))
     movementTimes = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sampleRate*1.5)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx)./sampleRate;
     aligned.movementTimes = movementTimes;
     
-    movementTimes(isnan(movementTimes)) = 1;
-    caculatedChoice = -sign(wheel(round(movementTimes*sampleRate)) - wheel(round(stimOnsetIdx)));
-    aligned.mindChange = single(caculatedChoice~=block.events.responseTypeValues(responseMadeIdx)');
-    aligned.mindChange(isnan(aligned.movementTimes)) = nan;
+%     movementTimes(isnan(movementTimes)) = 1;
+%     caculatedChoice = -sign(wheel(round(movementTimes*sampleRate)) - wheel(round(stimOnsetIdx)));
+%     aligned.mindChange = single(caculatedChoice~=block.events.responseTypeValues(responseMadeIdx)');
+%     aligned.mindChange(isnan(aligned.movementTimes)) = nan;
 end
 
 rawFields = fields(aligned);
@@ -266,7 +266,7 @@ for i = 1:length(rawFields)
         aligned.(currField) = cell2mat(aligned.(currField));
     end
 end
-requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff';'mindChange';'movementTimes';'rewardTimes'};
+requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff';'movementTimes';'rewardTimes'};
 for i = 1:length(requiredFields)
     if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
 end

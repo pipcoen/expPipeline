@@ -10,7 +10,7 @@ if contains(filterTag, {'subject'; 'experiment'})
     penetrations2keep = cell2mat(filtered.subExpPenLink(experiments2keep,3));
 end
 if strcmpi(filterTag, 'penetration')
-    experiments2keep = cellfun(@(x) any(criterion==x), unfiltered.subExpPenLink(:,3));
+    experiments2keep = cellfun(@(x) any(ismember(criterion,x)), unfiltered.subExpPenLink(:,3));
     penetrations2keep = criterion;
 end
 if exist('experiments2keep', 'var')
@@ -26,6 +26,10 @@ if exist('experiments2keep', 'var')
         filtered.eph_channelMap = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_channelMap, 'uni', 0); 
         filtered.eph_lfpPowerSpectra = cellfun(@(x,y) y(x),penetrationIdxPerSession, filtered.eph_lfpPowerSpectra, 'uni', 0); 
     end
+    
+%     filtered.subExpPenLink(:,1) = num2cell(cumsum(diff([0;cell2mat(filtered.subExpPenLink(:,1))])>0));
+%     filtered.subExpPenLink(:,2) = num2cell(cumsum(diff([0;cell2mat(filtered.subExpPenLink(:,2))])>0));
+%     filtered.trialExperimentIdx = cumsum(diff([0;filtered.trialExperimentIdx])>0);
 end
 
 if strcmpi(filterTag, 'regular')

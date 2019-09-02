@@ -1,4 +1,8 @@
-function clusterLocations = getClusterLoactionsInAllenSpace(clusterDepths, clusterPenetrationIdx)
+function clusterLocations = getClusterLoactionsInAllenSpace(clusterDepths, clusterPenetrationIdx, atlas)
+if ~exist('atlas', 'var');kil.loadAtlas;
+else, av = atlas.av; st = atlas.st;
+end
+
 probLength = 3840;
 ephysRecord = load(prc.pathFinder('ephysrecord'), 'ephysRecord'); ephysRecord = ephysRecord.ephysRecord;
 penetrations = unique(clusterPenetrationIdx);
@@ -8,7 +12,6 @@ scaleFactors = cell2mat(arrayfun(@(x) penetrationDetails(x==penetrations).scalin
 probeVectors = cell2mat(arrayfun(@(x) penetrationDetails(x==penetrations).calcLine(:)',clusterPenetrationIdx, 'uni', 0));
 clusterOffsets = repmat(scaleFactors.*(probLength-clusterDepths),1,3);
 clusterLocations.position = round(bsxfun(@minus, tipLocations,(clusterOffsets.*probeVectors)/10));
-kil.loadAtlas;
 clusterLocations.areaIdx = arrayfun(@(x,y,z) av(x,y,z), clusterLocations.position(:,3),clusterLocations.position(:,2),clusterLocations.position(:,1));
 clusterLocations.areaName = st.acronym(clusterLocations.areaIdx);
 parentIdx = st.parent_structure_id(clusterLocations.areaIdx);
