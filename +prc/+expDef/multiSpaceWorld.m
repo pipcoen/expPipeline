@@ -98,9 +98,9 @@ v = x.standardizedBlock.paramsValues;  %Parameter values at start of trial
 e = x.standardizedBlock.events;        %Event structure
 n = x.newBlock;                        %x.newBlock, already populated with subject, expDate, expNum, rigName, and expType
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
-vIdx = x.validTrials;                  %Indices of valid trials (0 for repeats)
+vIdx = e.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;            %Indices of valid trials (0 for repeats)
 
-%% Remove excess trials if there are more than 100 total trials (in this case, the mouse was likely still learning)
+%% Trim trials if there are more than 100 total trials (if not, the mouse was likely still learning)
 if sum(vIdx) > 150
     %We remove the first 10 and last 10 correct trials for each session we use -1 because we only want to remove these extra trials from totalRepeats.
     vIdx = double(vIdx);
@@ -123,39 +123,28 @@ end
 %maxRepeatIdx is the set of indices when repeat numbers decrease (i.e. when a maxRepeat is reached, or a repeated trial is performed correctly.
 %potentialRepeats is the set of indices for when a trial is incorrect, and it had the potential to repeat.
 %totalRepeats is the total number of times each trial was repeated (we subtract 1 so it will be zero if a trial was correct the first time)
-timeOutsBeforeResponse = 0*vIdx';
-sequentialTimeOuts = 0*vIdx';
-sequentialTimeOuts(vIdx &  e.responseTypeValues(1:length(vIdx)) == 0) = 1;
 for i = find(vIdx)
     if i < length(vIdx) && e.responseTypeValues(i) == 0
         nextResponse = min([i+find(e.responseTypeValues(i+1:length(vIdx))~=0 | e.repeatNumValues(i+1:length(vIdx))==1,1), length(vIdx)+1]);
-        sequentialTimeOuts(i) = nextResponse - i;
         if e.repeatNumValues(nextResponse)==1 || nextResponse >= length(vIdx); continue; end
         vIdx(nextResponse) = 1;
-        timeOutsBeforeResponse(nextResponse) = nextResponse-i;
     end
 end
 
-repeatsAfterResponse = 0*vIdx';
-for i = find(vIdx)
-    if i < length(vIdx) && e.responseTypeValues(i) ~= 0
-        nextNewTrial = min([i+find(e.repeatNumValues(i+1:length(vIdx))==1,1) length(vIdx)+1]);
-        repeatsAfterResponse(i) = nextNewTrial-i-1;
-    end
-end
 %% Populate fields of "n" with basic trial data
 %stimPeriodStart extracts times when stimPeriodOnOffValues is 1 (which is when this period starts).
-%We also remove times when the first newTrialTime is greater than that the first stimPeriodStart, an error that can occur on the first trial.
-%responseTime are the times taken between the stimulus starting and the response being made (including open loop period). Must use
+%timeToFeedback are the times taken between the stimulus starting and the response being made (including open loop period). Must use
 %"1:length(stimPeriodStart)" because if a trial is interupped there can be more stimPeriodStart values than feedback values.
 eIdx = 1:length(e.endTrialTimes);
 vIdx = vIdx(eIdx);
-stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)';
+stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)'; 
 stimPeriodStart = stimPeriodStart(eIdx);
+closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)'; 
+closedLoopStart = closedLoopStart(eIdx);
 feedbackTimes = e.feedbackTimes(eIdx)';
 feedbackValues = e.feedbackValues(eIdx)';
 timeOuts = feedbackValues==0;
-responseTime = feedbackTimes-stimPeriodStart;
+timeToFeedback = feedbackTimes-stimPeriodStart;
 
 if length(p.audAmplitude)==1; p.audAmplitude = repmat(p.audAmplitude,1,length(p.numRepeats)); end    %Make sure there is a value for each condition
 if length(p.visContrast)==1; p.visContrast = repmat(p.visContrast,1,length(p.numRepeats)); end       %Make sure there is a value for each condition
@@ -170,34 +159,30 @@ visInitialAzimuth(visContrast==0) = inf;              %Change case when visContr
 p.visInitialAzimuth(p.visContrast == 0) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
 
 %Get trial start/end times for valid trials
-trialStartTimes = e.newTrialTimes(eIdx)';
-trialEndTimes = e.endTrialTimes(eIdx)';
-trialTimes = [trialStartTimes trialEndTimes];
+trialTimes = [e.newTrialTimes(eIdx)' e.endTrialTimes(eIdx)'];
 
 %Process the raw data to be stored separately (because it is large). These are the times at which the visual and auditory stimuli turned on/off and
 %all the wheel values. All are indexed by trial using the "indexByTrial" function, and times are relative to stimulus onset.
-r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues'], stimPeriodStart, [1 0]);
-r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], stimPeriodStart, [1 0]);
-r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], stimPeriodStart, [1 0]);
+times2Subtract = [stimPeriodStart stimPeriodStart*0];
+r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues'], times2Subtract);
+r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], times2Subtract);
+r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], times2Subtract);
 r.wheelTimeValue(cellfun(@isempty, r.wheelTimeValue)) = deal({[0 0]});
 r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)-x(find([x(1:end-1,1);1]>0,1),2)], r.wheelTimeValue, 'uni', 0);
 n = rmfield(n, 'rawWheelTimeValue');
 
-%As above, but for the auditory and visual azimuth. These are smaller in size, so we save in the main structure.
-r.visAzimuthTimeValue = prc.indexByTrial(trialTimes, e.visAzimuthTimes', [e.visAzimuthTimes' e.visAzimuthValues'], stimPeriodStart, [1 0]);
-r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audAzimuthTimes' e.audAzimuthValues'], stimPeriodStart, [1 0]);
-
-%Get closed loop start times, relative to the stimulus start times (likely to all be the same for a constant delay)
-closedLoopStart = e.closedLoopOnOffTimes(e.closedLoopOnOffValues == 1)';
-closedLoopStart = closedLoopStart(eIdx) - stimPeriodStart;
+%As above, but for the auditory and visual azimuth.
+r.visAzimuthTimeValue = prc.indexByTrial(trialTimes, e.visAzimuthTimes', [e.visAzimuthTimes' e.visAzimuthValues'], times2Subtract);
+r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audAzimuthTimes' e.audAzimuthValues'], times2Subtract);
 
 %Calculate an approximate time to the first wheel movement. This is different from the response time in that it is based on wheel movement, rather
 %than the time when the threshold was reached. WheelMove is an interpolation of the wheel movement (to get it's nearest position at every ms).
 %wheelToThresh uses the difference between the wheel position at the closed loop start and threshold to calculate the change in wheel value that
 %represents a response (this can be very different for different rotary encoders). timeToWheelMove is then the time at which wheelMove exceeds 25% of
 %wheelToThresh
-wheelMove = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(diff(x(:,1))~=0,1), x(diff(x(:,1))~=0,2), -1:0.001:x(end,1), 'nearest'))'], r.wheelTimeValue(~timeOuts), 'uni', 0);
-wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelMove, closedLoopStart(~timeOuts), feedbackTimes(~timeOuts)-stimPeriodStart(~timeOuts), 'uni', 0);
+time2closedLoop = closedLoopStart(~timeOuts)-stimPeriodStart(~timeOuts);
+wheelMove = cellfun(@(x) [(-1:0.01:x(end,1))', (interp1(x(diff(x(:,1))~=0,1), x(diff(x(:,1))~=0,2), -1:0.01:x(end,1), 'nearest'))'], r.wheelTimeValue(~timeOuts), 'uni', 0);
+wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelMove, time2closedLoop, timeToFeedback(~timeOuts), 'uni', 0);
 wheelToThresh = nanmedian(abs(cellfun(@(x) x(end)-x(1), wheelToThresh)));
 timeToWheelMove = feedbackValues;
 timeToWheelMove(~timeOuts) = cell2mat(cellfun(@(x) x(find(abs(x(:,2))>wheelToThresh/4 & x(:,1)>0,1),1), wheelMove, 'uni', 0));
@@ -248,34 +233,28 @@ visDiff = uniqueDiff(conditionRowIdx, 2);
 %Create vectors that indicate the separated values for contrast and audio azimuth on left and right (used for modeling)
 
 %Populate n with all fields;
-n.validTrials = vIdx(:);
-n.trialStartEnd = [trialStartTimes trialEndTimes];
-n.stimPeriodStart = stimPeriodStart;
-n.closedLoopStart = closedLoopStart;
-n.correctResponse = (correctResponse>0)+1;
-n.feedback = feedbackValues;
-n.responseTime = responseTime;
-n.timeToWheelMove = timeToWheelMove;
-n.responseMade = ((responseMade>0)+1).*(responseMade~=0);
-n.trialType = trialType;
-n.sequentialTimeOuts = sequentialTimeOuts(eIdx);
-n.timeOutsBeforeResponse = timeOutsBeforeResponse(eIdx);
-n.repeatsAfterResponse = repeatsAfterResponse(eIdx);
-n.audAmplitude = audAmplitude;
-n.audInitialAzimuth = audInitialAzimuth;
-n.audDiff = audDiff;
-n.audValues = unique(uniqueDiff(:,1));
-n.visContrast = visContrast;
-n.visInitialAzimuth = visInitialAzimuth;
-n.visDiff = visDiff;
-n.visValues = unique(uniqueDiff(:,2));
-n.uniqueConditions = uniqueConditions;
-n.uniqueDiff = uniqueDiff;
-n.uniqueConditionLabels = uniqueConditionLabels;
-n.conditionLabelRow = [conditionLabel conditionRowIdx]; 
+n.conditionList = uniqueDiff;
+n.conditionLabels = uniqueConditionLabels;
+n.timings.trialStartEnd = trialTimes;
+n.timings.stimPeriod = stimPeriodStart;
+n.timings.closedLoopStart = closedLoopStart;
+n.stim.audAmplitude = audAmplitude;
+n.stim.audInitialAzimuth = audInitialAzimuth;
+n.stim.audDiff = audDiff;
+n.stim.visContrast = visContrast;
+n.stim.visInitialAzimuth = visInitialAzimuth;
+n.stim.visDiff = visDiff;
+n.stim.type = trialType; 
+n.stim.labelRow = [conditionLabel conditionRowIdx]; 
+[n.inactivation.laserType, n.inactivation.laserPower, n.inactivation.galvoType, n.inactivation.laserOnsetDelay] = deal(n.stim.type*nan);
+[n.inactivation.galvoPosition,  n.inactivation.laserOnOff] = deal(n.stim.type*[nan nan]);
+n.outcome.validTrial = vIdx(:);
+n.outcome.feedback = feedbackValues;
+n.outcome.timeToFeedback = timeToFeedback;
+n.outcome.timeToWheelMove = timeToWheelMove;
+n.outcome.responseMade = ((responseMade>0)+1).*(responseMade~=0);
 
-[n.laserType, n.laserPower, n.galvoType, n.laserOnsetDelay] = deal(n.feedback*nan);
-[n.galvoPosition,  n.laserOnOff] = deal(n.feedback*[nan nan]);
+
 p.galvoCoords = [nan nan];
 if p.laserSession
     %Galvo position is the position of the galvos on each trial. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
@@ -322,12 +301,12 @@ p.orignal = x.oldParams;
 
 %Remove fields of the raw data where the trial lasts longer than 5s. The data from there trials aren't likely to be useful (since the mouse stayed
 %still for a long time) and can take up a lot of space in the mat file.
-for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(x.newBlock.responseTime>5) = {[]}; end
+for i = fields(r)'; newRaw.(i{1}) = r.(i{1}); newRaw.(i{1})(x.newBlock.timeToFeedback>5) = {[]}; end
 x.newRaw = r;
 
 %% Check that all expected fields exist
 expectedBlockFields ={'validTrials';'audAmplitude';'audDiff';'audInitialAzimuth';'audValues';'closedLoopStart';'conditionLabelRow';'correctResponse';'expDate';...
-    'expNum';'expType';'expDef';'feedback';'grids';'repeatsAfterResponse';'responseMade';'responseTime';'rigName';'sequentialTimeOuts';'stimPeriodStart';...
+    'expNum';'expType';'expDef';'feedback';'grids';'repeatsAfterResponse';'responseMade';'timeToFeedback';'rigName';'sequentialTimeOuts';'stimPeriodStart';...
     'subject';'timeOutsBeforeResponse';'timeToWheelMove';'trialStartEnd';'trialType';'uniqueConditionLabels';'uniqueConditions';'uniqueDiff';...
     'visContrast';'visDiff';'visInitialAzimuth';'visValues';'laserType';'laserPower';'galvoType';'galvoPosition';'laserOnOff';'laserOnsetDelay'};
 

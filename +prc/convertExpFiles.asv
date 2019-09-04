@@ -151,7 +151,7 @@ if timeOffset > 100
     for i = 2:2:length(fieldList); x.oldBlock.events.(fieldList{i}) = x.oldBlock.events.(fieldList{i}) + timeOffset; end
 end
 
-%This section standardizes the event names etc. for each experimetns. Events have changed since early instances of multiSpaceWorld
+This section standardizes the event names etc. for each experimetns. Events have changed since early instances of multiSpaceWorld
 x.oldBlock.galvoLog = x.galvoLog;
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
 
