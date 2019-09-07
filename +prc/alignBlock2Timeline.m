@@ -246,11 +246,6 @@ if any(contains(fineTune, 'movements'))
     
     movementTimes = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sampleRate*1.5)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx)./sampleRate;
     aligned.movementTimes = movementTimes;
-    
-%     movementTimes(isnan(movementTimes)) = 1;
-%     caculatedChoice = -sign(wheel(round(movementTimes*sampleRate)) - wheel(round(stimOnsetIdx)));
-%     aligned.mindChange = single(caculatedChoice~=block.events.responseTypeValues(responseMadeIdx)');
-%     aligned.mindChange(isnan(aligned.movementTimes)) = nan;
 end
 
 rawFields = fields(aligned);

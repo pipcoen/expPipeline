@@ -3,13 +3,19 @@ classdef spatialAnalysis < matlab.mixin.Copyable
     % that can be used to plot various aspects of animal behavior. NOTE: This function is designed to operate on the output of convertExpFiles and
     % most methods are specific to multisensoty spatial integration plots.
     %
-    % Inputs(default values) subjects({'PC011';'PC012';'PC013';'PC016'})------A c   ell array of subjects collect parameter and block files for
-    % expDate('last')----------------------------------A cell array of dates, one for all subjects or one for each subject
-    % combineMice(0)----------------------------A tag to indicate whether you want to combine data across mice or retain individuals.
+    % Inputs(default values)
+    % subjects(Must be specified)------A cell array of subjects collect parameter and block files for
+    % expDate('last')------------------A cell array of dates, one for all subjects or one for each subject
+    % combineMice(0)-------------------A tag to indicate whether combine across mice or retain individuals
+    %                      0 individual mice, but data is combined across sessions, modal parameter set only
+    %                      1 means all mice combined into a single uber-mouse, modal parameter set only
+    %                      2 as with 1, but all sessions retained, regardless of conditionParameters used
+    % extraTag('eph')-----------------A tag to indicate whether you want to load extra data
+    %                      'eph' will load the ephys data, if available, for each session date
+    %                      'raw' will load the raw data, (rarely needed wheel times from signals etc.)
+    % expDef('multiSpaceWorld')-------Specify the particular expDef to load
     
     properties (Access=public)
-        subjects;                %Cell array of subject names
-        expDate;                 %Recording dates to use for each subject
         blocks;                  %Block files loaded for each subject (one cell per subject)
         glmFit;
         hand;                    %Handles to current axis/figure being used for plotting
@@ -17,20 +23,59 @@ classdef spatialAnalysis < matlab.mixin.Copyable
     
     %%
     methods
-        function obj = spatialAnalysis(subjects, expDate, combineMice, extraTag, specificExpDef)
+        function obj = spatialAnalysis(subjects, expDate, combineMice, extraTag, expDef)
             % Initialize fields with default values if no vaules are provided. Then called changeMouse function to get requested data.
             prc.updatePaths;
-            if ~exist('expDate', 'var'); expDate = 'last'; end
-            if ~iscell(expDate); expDate = {expDate}; end
+            if ~exist('subjects', 'var'); error('Must specify which subject to load data from'); end
+            if ~exist('expDate', 'var'); expDate = {'last'}; end
             if ~exist('combineMice', 'var'); combineMice = 0; end
-            if ~exist('extraTag', 'var'); extraTag = 'none'; end
-            if ~exist('specificExpDef', 'var'); specificExpDef = 'multiSpaceWorld'; end
-            if ~exist('subjects', 'var') || any(strcmp(subjects, 'all')); subjects = prc.keyDates({'all'}, expDate); end
+            if ~exist('extraTag', 'var'); extraTag = 'eph'; end
+            if ~exist('expDef', 'var'); expDef = 'multiSpaceWorld'; end
+            
+            if ~iscell(expDate); expDate = {expDate}; end
             if ~iscell(subjects); subjects = {subjects}; end
+            if any(strcmp(subjects, 'all')); subjects = prc.keyDates({'all'}, expDate); end
             if length(expDate) < length(subjects); expDate = repmat(expDate, length(subjects),1); end
             expDate = expDate(:); subjects = subjects(:);
             expDate = arrayfun(@(x,y) prc.keyDates(x,y), subjects(:), expDate(:), 'uni', 0);
-            obj = changeMouse(obj, subjects, expDate, combineMice, extraTag, specificExpDef);
+            obj = changeMouse(obj, subjects, expDate, combineMice, expDef, extraTag);
+        end
+        
+        function obj = changeMouse(obj, subjects, expDate, combineMice, extraTag, expDef)
+            if ~exist('combineMice', 'var'); combineMice = 0; end
+            if ~exist('extraTag', 'var'); extraTag = 'none'; end
+            if ~exist('expDef', 'var'); expDef = 'multiSpaceWorld'; end
+            obj.blocks  = cellfun(@(x,y) prc.getDataFromDates(x, y, extraTag, expDef), subjects(:), expDate(:), 'uni', 0);
+            obj.blocks = vertcat(obj.blocks{:});
+            
+            mouseList = unique({obj.blocks.subject})';
+            if combineMice>0; mouseList = {cell2mat(mouseList')}; end
+            if combineMice==-2 && length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
+            if combineMice==-2
+                mouseList = arrayfun(@(x) [mouseList{1} ':' num2str(x{1})], {obj.blocks.expDate}', 'uni',0);
+                [obj.blocks.subject] = deal(mouseList{:});
+            end
+            
+            
+            retainIdx = ones(length(obj.blocks),1)>0;
+            subjectRef = zeros(length(obj.blocks),1);
+            %If there are multiple parameter sets in the requested date range for a mouse, use only the most common parameter set.
+            for i = 1:length(mouseList)
+                mouseIdx = cellfun(@(x) contains(mouseList{i}, x), {obj.blocks.subject}');
+                subjectRef(mouseIdx) = i;
+                mouseConditions = {obj.blocks(mouseIdx).conditionParametersAV}';
+                [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) [num2str(x(:)'), y], mouseConditions, {obj.blocks(mouseIdx).expType}','uni',0));
+                if length(conditionSets)>1 && any(combineMice==[1 0])
+                    fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', mouseList{i});
+                    retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
+                end
+            end
+            obj.blocks = obj.blocks(retainIdx);
+            subjectRef = subjectRef(retainIdx);
+            
+            obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectRef==x)), 1:size(mouseList,1), 'uni', 0)';
+            obj.hand.axes = [];
+            obj.hand.figure = [];
         end
         
         
@@ -121,12 +166,12 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 scanPlot.colorBarLimits = max(abs(scanPlot.data(:)))*[-1 1];
                 plt.scanningBrainEffects(scanPlot);
             end
-%             for i  = 1:length(obj.subjects)
-%                 hold on; box off;
-%                 obj.hand.axes = plt.getAxes(axesOpt, i);
-%                 scanPlot.colorBarLimits = [-0.1 0.1];
-%                 plt.scanningBrainEffects(scanPlot);
-%             end
+            %             for i  = 1:length(obj.subjects)
+            %                 hold on; box off;
+            %                 obj.hand.axes = plt.getAxes(axesOpt, i);
+            %                 scanPlot.colorBarLimits = [-0.1 0.1];
+            %                 plt.scanningBrainEffects(scanPlot);
+            %             end
         end
         
         function viewDataWithoutFits(obj, plotType)
@@ -171,7 +216,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 trialGrid = prc.makeGrid(normBlock, round(normBlock.trialType), @mean, 'abscondition');
                 tkIdx = trialGrid.*fliplr(trialGrid)==12;
                 allTimes = [allTimes; [mean(timeGrid(tkIdx & trialGrid==3)), mean(timeGrid(tkIdx & fliplr(trialGrid)==3))]];
-%                 allTimes(end,:) = allTimes(end,:)./nanmean(timeGrid(:));
+                %                 allTimes(end,:) = allTimes(end,:)./nanmean(timeGrid(:));
             end
             scatter(allTimes(:,1), allTimes(:,2), 'k', 'markerfacecolor', 'k');
             [~, pVal] = ttest(allTimes(:,1), allTimes(:,2));
@@ -185,10 +230,6 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             ylabel('\fontsize{20} Conflict reaction time (ms)');
         end
         
-        function classifyNeurons(obj)
-            clusterSigLevel = kil.findResponsiveCells(obj.blocks{1});
-            
-        end
         
         function viewJitterPlot(obj, plotType)
             if ~exist('plotType', 'var'); plotType = 'coh'; end
@@ -232,52 +273,6 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         end
         
         
-        function obj = changeMouse(obj, subjects, expDate, combineMice, extraTag, specificExpDef)
-            if ~exist('combineMice', 'var'); combineMice = 0; end
-            if ~exist('extraTag', 'var'); extraTag = []; end
-            if ~exist('specificExpDef', 'var'); specificExpDef = 'multiSpaceWorld'; end
-            dataType = [extraTag 'bloprm'];
-            obj.blocks  = arrayfun(@(x,y) prc.getFilesFromDates(x, y{1}, dataType, specificExpDef), subjects(:), expDate(:), 'uni', 0);
-            obj.blocks = vertcat(obj.blocks{:});
-            obj.expDate = expDate;
-            
-            mouseList = unique({obj.blocks.subject})';
-            if combineMice>0; mouseList = {cell2mat(mouseList')}; end   
-            if combineMice==-2 && length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
-            if combineMice==-2
-                mouseList = arrayfun(@(x) [mouseList{1} ':' num2str(x{1})], {obj.blocks.expDate}', 'uni',0);
-                obj.subjects = mouseList;
-                obj.expDate = {obj.blocks.expDate}';
-                [obj.blocks.subject] = deal(mouseList{:});
-            end
-                
-            
-            retainIdx = ones(length(obj.blocks),1)>0;
-            %If there are multiple parameter sets in the requested date range for a mouse, use only the most common parameter set.
-            for i = 1:length(mouseList)
-                mouseIdx = cellfun(@(x) contains(mouseList{i}, x), {obj.blocks.subject}');
-                mouseParams = [obj.blocks(mouseIdx).params];
-                mouseConditions = {obj.blocks(mouseIdx).uniqueConditions}';
-                mouseConditions = cellfun(@(x) [x(:,1)>0 x(:,2:end)], mouseConditions, 'uni', 0); %ignoring different aud amplitudes for now
-                [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) num2str([x(:)', y]), mouseConditions, {mouseParams.laserSession}','uni',0));
-                if length(conditionSets)>1 && any(combineMice==[1 0])
-                    fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', mouseList{i});
-                    retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
-                end
-            end
-            obj.blocks = obj.blocks(retainIdx);
-            
-            obj.subjects = unique({obj.blocks.subject})';
-            if combineMice>0; obj.expDate = cell2mat([obj.expDate{ismember(subjects, obj.subjects)}]); obj.subjects = {cell2mat(obj.subjects')}; end          
-            [~, subjectIdx] = ismember({obj.blocks.subject}', obj.subjects);
-            if combineMice>0; subjectIdx = subjectIdx*0+1; end
-
-            idx = 1:length(obj.subjects);
-            obj.blocks = arrayfun(@(x) prc.combineBlocks(obj.blocks(subjectIdx==x)), idx, 'uni', 0)';
-            obj.hand.axes = [];
-            obj.hand.figure = [];
-        end
-        
         function runMouseReplicate(obj, subjectNames, funString)
             for i = 1:length(obj.subjects)
                 replicatedObj = copy(obj);
@@ -296,7 +291,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             if ~exist('removeTimeouts', 'var'); removeTimeouts = 1; end
             if removeTimeouts; timeOutFilter =  block.responseMade~=0; else, timeOutFilter =  block.responseMade*0+1; end
             laserOff = prc.filtStruct(block, (block.laserType==0 | isnan(block.laserType)) & timeOutFilter & block.validTrials);
-            laserOn = prc.filtStruct(block, (block.laserType~=0 & ~isnan(block.laserType)) & timeOutFilter & block.validTrials);            
+            laserOn = prc.filtStruct(block, (block.laserType~=0 & ~isnan(block.laserType)) & timeOutFilter & block.validTrials);
             switch lower(tag(1:3))
                 case 'nor'; filteredBlock = laserOff;
                 case 'las'; filteredBlock = laserOn;

@@ -54,7 +54,8 @@ channelPositions = readNPY([kilosortOutput '\channel_positions.npy']);
 channelMap = readNPY([kilosortOutput '\channel_map.npy']); %#ok<NASGU>
 winv = readNPY([kilosortOutput '\whitening_mat_inv.npy']);
 templateAmplitudes = readNPY([kilosortOutput '\amplitudes.npy']);
-if exist([kilosortOutput '\lfpPowerSpectra.mat'], 'file'); powerSpectra = load([kilosortOutput '\lfpPowerSpectra.mat']);
+if exist([kilosortOutput '\lfpPowerSpectra.mat'], 'file'); powerSpectra = load([kilosortOutput '\lfpPowerSpectra.mat']); 
+    powerSpectra.powerSpectra = mean(powerSpectra.powerSpectra,3);
 else, powerSpectra = [];
 end
 
@@ -155,25 +156,24 @@ newSpikeIdx = nan(max(spikeTemplates)+1,1);
 newSpikeIdx(goodTemplatesList+1) = 1:length(goodTemplatesList);
 spikeTemplates = newSpikeIdx(spikeTemplates+1);
 
-%%
-x = kil.getExpDets(x);
-if length(x.expDets)>1 && contains('ephys', {x.expDets.folder}); error('Multiple penetrations, but only ephys folder?'); end
-if length(x.expDets)>1; x.expDets = x.expDets(str2double(kilosortOutput(strfind(kilosortOutput, 'site')+4:end))); end
-if isempty(x.expDets); fprintf('WARNING: no expDets'); penetrationIdx = 0;
-else, penetrationIdx = x.expDets.penetrationIdx;
+reducedTemplates = zeros(size(templates,1), size(templates,2)+1, 20, 'single');
+for i = 1:size(templates,1)
+    [~, maxSignals] = sort(max(abs(squeeze(templates(i,:,:)))), 'descend');
+    reducedTemplates(i,1:end-1,:) = templates(i,:,maxSignals(1:20));
+    reducedTemplates(i,end,:) = maxSignals(1:20);
 end
-
-eph.spikePenetrationIdx = uint16(spikeTimesTimeline*0+penetrationIdx);
-eph.spikeTimes = single(spikeTimesTimeline);
-eph.spikeAmps = single(spikeAmps);
-eph.spikeCluster = uint16(spikeTemplates);
-eph.clusterPenetrationIdx = uint16(templateDepths*0+penetrationIdx);
-eph.clusterDepths = templateDepths;
-eph.clusterAmps = templateAmps;
-eph.clusterDuration = templateDuration;
-eph.clusterWaveforms = waveforms;
-eph.clusterTemplates = {templates};
+%%
+[~, eph.ephysFolder] = fileparts(kilosortOutput);
+eph.spike.times = single(spikeTimesTimeline);
+eph.spike.amplitudes = single(spikeAmps);
+eph.spike.clusterNumber = uint16(spikeTemplates);
+eph.cluster.number = (1:length(templateDepths))';
+eph.cluster.depths = templateDepths;
+eph.cluster.amplitudes = templateAmps;
+eph.cluster.duration = templateDuration;
+eph.cluster.waveforms = waveforms;
+eph.cluster.templates = {reducedTemplates};
 eph.channelMap = {readNPY([kilosortOutput '\channel_positions.npy'])};
-eph.lfpPowerSpectra = powerSpectra;
+eph.lfpPowerSpectra = {powerSpectra};
 %%
 fprintf('Finished loading experiment... \n');

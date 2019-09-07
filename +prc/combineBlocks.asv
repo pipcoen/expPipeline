@@ -1,13 +1,10 @@
 function combinedBlocks = combineBlocks(blocks)
 %% Function to combine and filter block files.
 totalTrials = sum(arrayfun(@(x) size(x.timings.trialStartEnd(:,1),1), blocks));
+if isfield(blocks,'ephys'); exp
+
 combinedBlocks.index.trialBySubject = zeros(totalTrials,1,'uint16');
 combinedBlocks.index.trialByExperiment = zeros(totalTrials,1,'uint16');
-
-if isfield(blocks,'ephys'); ephysExists = 1; else, ephysExists = 0; end
-if ephysExists
-    totalSpikes = sum([cellfun(@length, {blocks.eph_spikeTimes}') cellfun(@length, {blocks.eph_clusterDepths}')]);
-end
 
 
 combinedBlocks.subExpPenLink = num2cell([combinedBlocks.subExpPenLink (1:length(blocks))']);

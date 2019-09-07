@@ -10,7 +10,6 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %Outputs
 %An output files is generated for each experiment in the form subject_yymmdd_expNumProc.mat These files will contain the following
 %"blk" is a structure comprising a reduced, processed block file which contains all essential information.
-%"prm" is a structure comprising a reduced, processed parameters file which contains all essential information.
 %"raw" is a structure with some raw, rarely needed information that isn't usually loaded (takes too much time)
 %"fus" is a structure with fusi-specific information
 %"eph" is a structure with ephys-specific information
@@ -49,35 +48,41 @@ end
 %Check whether the processed files already exist. If on Pip's computer, then also delete any files that are processed but have since been tagged as
 %excluded, along with any fusi-processed blocks on the server. Also, check that any processed fusi files have also been backed up into their
 %corresponding server folders
-existProcessed = cellfun(@(x) exist(x,'file'), {expList.processedData}')>0;
+javaHandles = cellfun(@(x) java.io.File(x), {expList.processedData}', 'uni', 0);
+processedSize = cellfun(@(x) x.length, javaHandles);
+existProcessed = processedSize>100000;
+notExcluded = [expList.excluded]'~=1;
+
+fusiIdx = contains({expList.expType}', 'fusi');
+fusiList = find(fusiIdx);
+kruminBackup = cellfun(@(x) strrep(x, 'Timeline', 'ProcBlock'), {expList.rawTimeline}', 'uni', 0);
+javaHandlesKruminServer = cellfun(@(x) java.io.File(x), kruminBackup(fusiList), 'uni', 0);
+javaHandlesProcessed = cellfun(@(x) java.io.File(x), {expList(fusiList).processedData}', 'uni', 0);
+copyIdx = fusiList(cellfun(@(x) x.lastModified, javaHandlesKruminServer)<cellfun(@(x) x.lastModified, javaHandlesProcessed));
+arrayfun(@(x) copyfile(expList(x).processedData, kruminBackup{x}), copyIdx);
+
 if zipComp
-    deleteList = find([expList.excluded]'==1 & existProcessed);
-    cellfun(@delete, {expList(deleteList).processedData});
-    cellfun(@delete, {expList(deleteList).serverProcessedData});
-    cellfun(@(x) delete(strrep(x, 'Timeline', 'ProcBlock')), {expList(deleteList).rawTimeline});
-    existProcessed = existProcessed([expList.excluded]'~=1);
-    expList = expList([expList.excluded]'~=1);
+    deleteIdx = ([expList.excluded]'==1 & existProcessed) | (processedSize>0 & processedSize<100000);
+    cellfun(@delete, {expList(deleteIdx).processedData});
+    cellfun(@delete, {expList(deleteIdx).serverProcessedData});
+    cellfun(@(x) delete(strrep(x, 'Timeline', 'ProcBlock')), {expList(deleteIdx & fusiIdx).rawTimeline});
     
-    missBackup = find(~cellfun(@(x) exist(x,'file'), {expList.rawBlock}')>0);
+    javaHandles = cellfun(@(x) java.io.File(x), {expList.rawBlock}', 'uni', 0);
+    missBackup = find(cellfun(@(x) x.length, javaHandles)==0 & notExcluded);
     if ~isempty(missBackup)
         missFolders = cellfun(@fileparts, {expList(missBackup).rawBlock}', 'uni', 0);
         cellfun(@(x) mkdir(x), missFolders(cellfun(@(x) ~exist(x, 'dir'), missFolders)));
         arrayfun(@(x,y) copyfile(prc.pathFinder('serverBlock', expList(x)), y{1}), missBackup, {expList(missBackup).rawBlock}');
         arrayfun(@(x,y) copyfile(prc.pathFinder('serverParams', expList(x)), y{1}), missBackup, {expList(missBackup).rawParams}');
     end
-else
-    existProcessed = existProcessed([expList.excluded]'~=1);
-    expList = expList([expList.excluded]'~=1);
 end
-fusiIdx = find(contains({expList.expType}', 'fusi'));
-kruminBackup = cellfun(@(x) strrep(x, 'Timeline', 'ProcBlock'), {expList.rawTimeline}', 'uni', 0);
-copyKruminBackup = fusiIdx(~cellfun(@(x) exist(x,'file'), kruminBackup(fusiIdx))>0 & existProcessed(fusiIdx));
-arrayfun(@(x) copyfile(expList(x).processedData, kruminBackup{x}), copyKruminBackup);
+existProcessed = existProcessed(notExcluded);
+expList = expList(notExcluded);
 
 %If redoTag is 1, then process all files of selected animals and dates, otherwise only process ones that don't exist, or are of the experiment type
 %"fusi" or "ephys" (since these have extra processing stages).
 if redoTag==1; files2Run = find(existProcessed*0+1)';
-else, files2Run = find(~existProcessed | contains({expList.expType}', {'fusi';'ephys'}))';
+else, files2Run = find(~existProcessed | contains({expList.expType}', 'ephys'))';
 end
 
 %% Loop to process the files
@@ -97,23 +102,18 @@ for i = files2Run(files2Run>srtIdx)
             whoD = who('-file', x.processedData);
             save(x.processedData, 'whoD', '-append');
         end
-    else; whoD = {'whoD'}; save(x.processedData, 'whoD');
+    else
+        if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
+        whoD = {'whoD'}; save(x.processedData, 'whoD');
     end
     warning('on', 'MATLAB:load:variableNotFound');
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
-      
+    
     %Loop to convert ephys files
     if (~contains({'eph'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'})
         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
         convEphysFile(x, redoTag);
-        whoD = who('-file', x.processedData);
-    end
-    
-    %Loop to convert fusi files
-    if (~contains({'fus'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType(1:3), 'fus') && contains(dataType, {'all'; 'fus'})
-        fprintf('Converting fusi recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
-        convfUSiFile(x);
-        whoD = who('-file', x.processedData);
+        load(x.processedData, 'whoD');
     end
     
     %If not converted through other processing steps, convert block file.
@@ -131,8 +131,7 @@ function convBlockFile(x)
 %Load original block, params, and galvo log (if it exsits) Remove first trial because there are often timing issues with this trial
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
-x.galvoLog = 0;
-if contains(x.expType, {'inactivation'}); x.galvoLog = load(x.galvoLog); end
+if contains(x.expType, 'inactivation'); x.galvoLog = load(x.galvoLog); else, x.galvoLog = 0; end
 [x.oldBlock,  x.galvoLog] = prc.removeFirstTrialFromBlock(x.oldBlock, x.galvoLog);
 timeOffset = x.oldBlock.experimentStartedTime-x.oldBlock.events.expStartTimes;
 
@@ -175,39 +174,27 @@ wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints)
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
 x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
 
-%Run the block funciton for the expDef that was used for the mouse. This adds all relevant fields to "newBlock" and "newParams"
+%Run the block funciton for the expDef that was used for the mouse. This adds all relevant fields to "newBlock"
 blockFunction = str2func(['prc.expDef.' x.expDef]);
 x = blockFunction(x);
 
 blk = x.newBlock;
-prm = x.newParams;
 raw = x.newRaw;
 tim = x.aligned;
 
-if ~exist(fileparts(x.processedData), 'dir'); mkdir(fileparts(x.processedData)); end
-whoD = {'blk'; 'prm'; 'raw'; 'tim'}; save(x.processedData, 'blk', 'prm', 'whoD', 'raw', 'tim', '-append');
+if ~isempty(tim); whoD = {'blk'; 'raw'; 'tim'; 'whoD'}; save(x.processedData, 'blk', 'whoD', 'raw', 'tim', '-append');
+else, whoD = {'blk'; 'raw'; 'whoD'}; save(x.processedData, 'blk', 'whoD', 'raw', '-append');
 end
-
-%%
-function x = convfUSiFile(x)
-x = convBlockFile(x);
-fus = struct;
-fields2copy = {'subject'; 'expDate'; 'expNum'; 'rigName'; 'expType'; 'expDef'};
-for i = 1:length(fields2copy); fus.(fields2copy{i}) = x.(fields2copy{i}); end
-fus = prc.catStructs(fus, x.aligned);
-whoD = unique([who('-file', x.processedData); 'fus']);
-save(x.processedData, 'fus', 'whoD', '-append');
-copyfile(x.processedData, strrep(x.rawTimeline, 'Timeline', 'ProcBlock'));
 end
 
 %%
 function convEphysFile(x, redoTag)
 %If not converted through other processing steps, convert block file.
-whoD = who('-file', x.processedData);
+load(x.processedData, 'whoD');
 if  ~contains({'blk'}, whoD) || redoTag == 1
     fprintf('Converting block file for %s %s \n', x.expDate,x.subject);
     convBlockFile(x);
-    whoD = who('-file', x.processedData);
+    load(x.processedData, 'whoD');
 end
 
 siteList = dir([fileparts(x.kilosortOutput) '\*site*']);
@@ -234,18 +221,8 @@ end
 
 if loadData
     eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y, spikeSorted), siteList, 'uni', 0));
-    eph(1).clusterTemplates = [eph.clusterTemplates]';
-    eph(1).channelMap = [eph.channelMap]';
-    eph(1).lfpPowerSpectra = [eph.lfpPowerSpectra]';
-    fields2combine = fields(eph);
-    fields2combine = fields2combine(contains(fields2combine, {'spike'; 'cluster'}) & ~contains(fields2combine, {'clusterTemplates'}));
-    for i = 1:length(fields2combine); eph(1).(fields2combine{i}) = cat(1,eph.(fields2combine{i})); end
-    eph = eph(1);
-    
     if spikeSorted; whoD = unique([whoD; 'eph']); save(x.processedData, 'eph', 'whoD', '-append');
     else, ephTmp = eph; whoD = unique([whoD; 'ephTmp']); save(x.processedData, 'ephTmp', 'whoD', '-append');
     end
 end
 end
-
-%%
