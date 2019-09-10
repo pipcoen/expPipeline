@@ -38,8 +38,8 @@ switch alignType
         blockWheelPosition = interp1(block.inputs.wheelTimes+baseDelay, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
         blockWheelPosition = smooth(blockWheelPosition(:),smoothWindow);
         
-        blockWidth = 30*sampleRate;
-        sampleCentres = sampleRate*5:sampleRate*5:length(timelineTime);
+        blockWidth = 20*sampleRate;
+        sampleCentres = sampleRate*5:sampleRate*10:length(timelineTime);
         blockWheelVelocity = diff(blockWheelPosition);
         timelinehWeelVelocity = diff(timelinehWeelPosition);
         samplePoints = arrayfun(@(x) (x-blockWidth):(x+blockWidth), sampleCentres, 'uni', 0);
@@ -253,11 +253,14 @@ for i = 1:length(rawFields)
     currField = rawFields{i};
     currData = aligned.(currField);
     aligned.(currField) = prc.indexByTrial(trialStEnTimes, currData(:,1), currData);
-    
-    maxRowsCols = max(cell2mat(cellfun(@(x) size(x), aligned.(currField), 'uni', 0)));
-    if maxRowsCols(1) < 2
-        emptyIdx = cellfun(@isempty, aligned.(currField));
-        aligned.(currField)(emptyIdx) = {nan*ones(1, max([1 maxRowsCols(2)]))};
+    emptyIdx = cellfun(@isempty, aligned.(currField));
+
+    if any(strcmp(currField, {'audStimOnOff'; 'visStimOnOff'; 'rewardTimes'}))
+        aligned.(currField)(emptyIdx) = {nan};
+    end
+    if any(strcmp(currField, {'audStimPeriodOnOff'; 'visStimPeriodOnOff'; 'movementTimes'}))
+        nColumns = max(cellfun(@(x) size(x,2), aligned.(currField)));
+        aligned.(currField)(emptyIdx) = {nan*ones(1, nColumns)};
         aligned.(currField) = cell2mat(aligned.(currField));
     end
 end
@@ -265,7 +268,6 @@ requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimP
 for i = 1:length(requiredFields)
     if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
 end
-
 aligned.alignment = block.alignment;
 correctedBlock = block;
 correctedBlock.fineTuned = 1;

@@ -35,7 +35,6 @@ switch lower(dataTag{1})
     case 'uniscan'
         switch subjectID{1}
             case 'all'; dateRange = {'PC027','PC029','DJ008','DJ006','DJ007'}';
-                %             case 'PC022'; dateRange = {'2018-02-06:2018-03-20'}; %Missing some of the locations and power was only 1.5mW
             case 'PC027'; dateRange = {'2018-02-05:2018-03-21'}; %Power was only 1.5mW
             case 'PC029'; dateRange = {'2018-06-12:2018-07-17'};
             case 'DJ008'; dateRange = {'2018-06-12:2018-07-17'};

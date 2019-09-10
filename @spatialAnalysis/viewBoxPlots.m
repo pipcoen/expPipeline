@@ -3,7 +3,8 @@ if ~exist('plotType', 'var'); plotType = 'res'; end
 if ~exist('alter', 'var'); alter = 0; figure; else; axesOpt.reposition = 0; end
 if isgraphics(alter,'figure'); clf; end
 
-maxGrid = max(cell2mat(cellfun(@(x) [length(x.audValues) length(x.visValues)], obj.blocks, 'uni', 0)), [], 1);
+allBlk = prc.catStructs(obj.blocks);
+maxGrid = max(cell2mat(cellfun(@(x) [length(unique(x(:,1))) length(unique(x(:,2)))], allBlk.exp.conditionParametersAV, 'uni', 0)), [], 1);
 axesOpt.figureHWRatio = maxGrid(2)/(1.3*maxGrid(1));
 axesOpt.btlrMargins = [100 80 60 100];
 axesOpt.gapBetweenAxes = [100 40];
@@ -13,46 +14,52 @@ boxPlot.axisLimits = [0 1];
 colorBar.colorLabel = 'Fraction of right turns';
 colorBar.colorDirection = 'normal';
 
-if isgraphics(alter,'figure') || ~alter; subjects2Run = 1:length(obj.subjects);
+if isgraphics(alter,'figure') || ~alter; subjects2Run = 1:length(obj.blocks);
 elseif isaxes(alter); disp('NotFunctionalYet');
 end
 
 for i  = subjects2Run
-    normBlock = spatialAnalysis.getBlockType(obj.blocks{i},'norm');
-    boxPlot.subject = obj.subjects{i};
-    boxPlot.trialNumber = length(normBlock.responseMade);
-    boxPlot.nExperiments = size(obj.blocks{i}.subExpPenLink,1);
-    if boxPlot.nExperiments == 1; boxPlot.extraInf = [obj.blocks{i}.params.expDate ' on ' obj.blocks{i}.params.rigName]; end
-    boxPlot.xyValues = {normBlock.visValues*100; normBlock.audValues};
+    blk = spatialAnalysis.getBlockType(obj.blocks(i),'norm');
+    boxPlot.subject = unique(blk.exp.subject);
+    if length(boxPlot.subject) > 1; error('You seem to have a mixed up block file with multiple subjects'); end
+    
+    boxPlot.trialNumber = blk.tot.trials;
+    boxPlot.nExperiments = blk.tot.experiments;
+    if boxPlot.nExperiments == 1; boxPlot.extraInf = [blk.exp.expDate{1} ' on ' blk.exp.rigName{1}]; end
+    allconditionParametersAV = cell2mat(blk.exp.conditionParametersAV);
+    audValues = unique(allconditionParametersAV(:,1));
+    visValues = unique(allconditionParametersAV(:,2));
+    
+    boxPlot.xyValues = {visValues*100; audValues};
     boxPlot.xyLabel = {'AuditoryAzimuth'; 'VisualContrast'};
     switch lower(plotType(1:3))
         case 'res'
-            boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @mean);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @mean);
             if isempty(obj.hand.figure) || ~any(ismember(obj.hand.figure, gcf)); obj.hand.figure(end+1) = gcf; end
             set(gcf, 'Tag', 'boxRes', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
         case 'gng'
-            [~,normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 1, -1);
-            normBlock = prc.combineBlocks(normBlock, normBlock.timeOutsBeforeResponse==0);
+            [~,blk] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks(i), 1, -1);
+            blk = prc.combineBlocks(blk, blk.timeOutsBeforeResponse==0);
             set(gcf, 'Tag', 'boxGNG', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
-            boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade~=0, @mean);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade~=0, @mean);
         case 'las'  
-            [~,normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 1);
+            [~,blk] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks(i), 1);
             set(gcf, 'Tag', 'boxLas', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
-            boxPlot.plotData = prc.makeGrid(normBlock, normBlock.laserType~=0, @sum);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.inactivaiton.laserType~=0, @sum);
         case 'num'
-            boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==2, @length);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @length);
             set(gcf, 'Tag', 'boxNum', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
             colorBar.colorLabel = 'Relative Num of Trials';
             boxPlot.axisLimits = [0 max(boxPlot.plotData(:))];
         case 'rea'
-            boxPlot.plotData = prc.makeGrid(normBlock, round(normBlock.responseTime*1e3), @median, 1);
+            boxPlot.plotData = prc.makeGrid(blk, round(blk.responseTime*1e3), @median, 1);
             boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
         case 'tim'
-            [normBlock] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks{i}, 0, 5);
-            boxPlot.plotData = prc.makeGrid(normBlock, normBlock.responseMade==0, @mean);
+            [blk] = spatialAnalysis.getMaxNumberOfTrials(obj.blocks(i), 0, 5);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade==0, @mean);
             boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
     end
-    axesOpt.totalNumOfAxes = length(obj.subjects);
+    axesOpt.totalNumOfAxes = length(obj.blocks);
     plt.getAxes(axesOpt, i);
     plt.boxPlot(boxPlot);
     colorBar.colorYTick = {'Min'; 'Max'};

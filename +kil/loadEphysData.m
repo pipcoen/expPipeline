@@ -162,18 +162,19 @@ for i = 1:size(templates,1)
     reducedTemplates(i,1:end-1,:) = templates(i,:,maxSignals(1:20));
     reducedTemplates(i,end,:) = maxSignals(1:20);
 end
+[~, ephysFolder] = fileparts(kilosortOutput);
+if strcmp(ephysFolder, 'kilosort'); ephysFolder = 'ephys'; end
 %%
-[~, eph.ephysFolder] = fileparts(kilosortOutput);
-eph.spike.times = single(spikeTimesTimeline);
-eph.spike.amplitudes = single(spikeAmps);
-eph.spike.clusterNumber = uint16(spikeTemplates);
-eph.cluster.number = (1:length(templateDepths))';
+eph.penetration.folder = ephysFolder;
+eph.penetration.channelMap = {readNPY([kilosortOutput '\channel_positions.npy'])};
+eph.penetration.lfpPowerSpectra = {powerSpectra};
 eph.cluster.depths = templateDepths;
 eph.cluster.amplitudes = templateAmps;
 eph.cluster.duration = templateDuration;
 eph.cluster.waveforms = waveforms;
-eph.cluster.templates = {reducedTemplates};
-eph.channelMap = {readNPY([kilosortOutput '\channel_positions.npy'])};
-eph.lfpPowerSpectra = {powerSpectra};
+eph.cluster.templates = reducedTemplates;
+eph.spike.times = single(spikeTimesTimeline);
+eph.spike.amplitudes = uint16(spikeAmps);
+eph.spike.clusterNumber = uint16(spikeTemplates);
 %%
 fprintf('Finished loading experiment... \n');

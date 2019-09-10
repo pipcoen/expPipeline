@@ -50,7 +50,6 @@ end
 selectedDateNums = unique(cell2mat(selectedDateNums));
 
 selectedFiles = {availableExps(ismember(availableDateNums, selectedDateNums)).processedData}';
-selectedExps = availableExps(ismember(availableDateNums, selectedDateNums));
 if isempty(selectedFiles); warning(['No processed files matching ' subject{1} ' for requested dates']); return; end
 whoD = cellfun(@(x) load(x, 'whoD'), selectedFiles, 'uni', 0);
 whoD = [whoD{:}]'; whoD = {whoD(:).whoD}';
@@ -75,14 +74,10 @@ if contains(lower(extraData), {'eph'; 'all'})
     end
     
     ephysAvailable = find(cellfun(@(x) contains('tim', x), whoD));
-    ephys = cellfun(@(x) load(x, 'eph'), selectedFiles(ephysAvailable), 'uni', 0);   
+    ephys = cellfun(@(x) load(x, 'eph'), selectedFiles(ephysAvailable), 'uni', 0);
     if ~isempty(ephys)
         ephys = [ephys{:}]';
-        ephysDetails = kil.getExpDets(selectedExps);
-        for i = 1:length(ephysAvailable)
-            tDat =  ephys(i).eph;
-            blk(ephysAvailable(i)).ephys = ephys(i).eph; 
-        end
+        for i = 1:length(ephysAvailable); blk(ephysAvailable(i)).ephys = ephys(i).eph; end
     end
 end
 
