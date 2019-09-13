@@ -1,7 +1,5 @@
 function [gridData, gridXY] = makeGrid(blks, data, operation, type, split)
 %Make grid is a function for separating trials into a grid of audiovisual conditionLabels. It operates on the output of concatenate blks.
-
-if ~exist('data', 'var'); error('Need data to sort into grid'); end
 if ~exist('blks', 'var'); error('Need block information to sort into grid'); end
 if ~exist('operation', 'var'); operation = @sum; end
 if ~exist('type', 'var') || isempty(type); type = 'condition'; end
@@ -20,10 +18,12 @@ visValues = unique(paramsAV(:,2));
 [~, gridIdx] = ismember(paramsAV, [grids.audValues(:) grids.visValues(:)], 'rows');
 grids.conditionLabels = nan*grids.visValues;
 grids.conditionLabels(gridIdx) = blks.exp.conditionLabels{1};
-
-%%
 gridIdx = num2cell(grids.conditionLabels);
 gridXY = {audValues; visValues};
+
+
+if ~exist('data', 'var'); gridData = grids; return; end
+
 switch lower(type)
     case 'abscondition'
         conditionLabels = abs(conditionLabels);
@@ -36,8 +36,8 @@ switch lower(type)
 end
 
 if split == 1
-    fullGrid = repmat(gridIdx,[1,1,length(experiments)]);
-    repSessions = arrayfun(@(x) zeros(size(gridIdx))+x, experiments, 'uni', 0);
+    fullGrid = repmat(gridIdx,[1,1,experiments]);
+    repSessions = arrayfun(@(x) zeros(size(gridIdx))+x, 1:experiments, 'uni', 0);
     repSessions = num2cell(cat(3,repSessions{:}));
 end
 

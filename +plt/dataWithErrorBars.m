@@ -1,21 +1,24 @@
 function dataWithErrorBars(blk, errorOn, splitValues)
-if ~exist('splitValues', 'var') || isempty(splitValues); splitValues = blk.audValues(~isinf(blk.audValues)); end
+if ~exist('splitValues', 'var') || isempty(splitValues)
+    splitValues = unique(blk.tri.stim.audDiff(~isinf(blk.tri.stim.audDiff))); 
+end
 if ~exist('errorOn', 'var'); errorOn = 1; end
 
 colorChoices = plt.selectRedBlueColors(splitValues);
-numTrials = prc.makeGrid(blk, blk.responseMade, @length, 1);
-numRightTurns = prc.makeGrid(blk, blk.responseMade==2, @sum, 1);
+numTrials = prc.makeGrid(blk, blk.tri.outcome.responseMade, @length, 1);
+numRightTurns = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @sum, 1);
 [prob,confInterval] = arrayfun(@(x,z) binofit(x, z, 0.05), numRightTurns, numTrials, 'uni', 0);
 centerPoints = cell2mat(cellfun(@(x) permute(x, [3,1,2]), prob, 'uni', 0));
 lowBound = cell2mat(cellfun(@(x) permute(x(:,1), [3,2,1]), confInterval, 'uni', 0));
 highBound = cell2mat(cellfun(@(x) permute(x(:,2), [3,2,1]), confInterval, 'uni', 0));
 
-if all(ismember(splitValues, blk.audValues)) 
-    gridOfConditions = blk.grids.visValues; 
-    gridOfSplits = blk.grids.audValues;
-elseif all(ismember(splitValues, blk.visValues))
-    gridOfConditions = blk.grids.audValues; 
-    gridOfSplits = blk.grids.visValues;
+grids = prc.makeGrid(blk); 
+if all(ismember(splitValues, blk.tri.stim.audDiff))     
+    gridOfConditions = grids.visValues; 
+    gridOfSplits = grids.audValues;
+elseif all(ismember(splitValues, blk.tri.stim.visDiff))
+    gridOfConditions = grids.audValues; 
+    gridOfSplits = grids.visValues;
 else, error('Selected split values could not be found');
 end
 

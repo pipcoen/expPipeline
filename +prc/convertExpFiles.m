@@ -213,7 +213,7 @@ clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList
 clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
 %%
 spikeSorted = length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id));
-loadData = isempty(whoD) || ~any(contains({'ephTmp'; 'eph'}, whoD)) || redoTag;
+loadData = isempty(whoD) || ~any(strcmp('eph', whoD)) && spikeSorted==1 || ~any(contains({'ephTmp'; 'eph'}, whoD)) || redoTag;
 if spikeSorted && loadData; fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
 elseif ~spikeSorted && loadData; fprintf('WARNING: %s %s needs to be SORTED. Processing temp file now... \n', x.expDate,x.subject);
 else, fprintf('WARNING: %s %s needs to be SORTED. \n', x.expDate,x.subject);
@@ -221,7 +221,8 @@ end
 
 if loadData
     eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y, spikeSorted), siteList, 'uni', 0));
-    if spikeSorted; whoD = unique([whoD; 'eph']); save(x.processedData, 'eph', 'whoD', '-append');
+    load(x.processedData); whoD = whoD(~contains(whoD, 'eph'));
+    if spikeSorted; whoD = unique([whoD; 'eph']); save(x.processedData, whoD{:});
     else, ephTmp = eph; whoD = unique([whoD; 'ephTmp']); save(x.processedData, 'ephTmp', 'whoD', '-append');
     end
 end

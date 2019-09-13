@@ -35,6 +35,17 @@ switch obj.modelString
         obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
         obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
         
+    case {'ReducedLogCNSplit'}
+        if strcmp(obj.modelString, 'ReducedLogCN'); end
+        obj.prmLabels = {'bias';'visScaleR';'visScaleL';'N';'audScaleR';'audScaleL'};
+        if exist('P', 'var')
+            visContributionLR = P(2)*(abs(visDiff.*(visDiff>0)).^P(4)) - P(3)*(abs(visDiff.*(visDiff<0)).^P(4));
+            audContributionLR = P(5)*(abs(audDiff.*(audDiff>0))) - P(6)*(abs(audDiff.*(audDiff<0)));
+            logOddsLR = P(1)+visContributionLR + audContributionLR;
+        end
+        obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
+        obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
+        
     case {'ReducedLogCNSplitDelta'}
         obj.prmLabels = {'bias';'visScaleR';'visScaleL';'N';'audScaleR';'audScaleL'};
         freeP = zeros(1,length(obj.prmLabels));
