@@ -15,12 +15,12 @@ classdef GLMmulti < matlab.mixin.Copyable
     methods
         function obj = GLMmulti(inputBlockData, modelString)
             %% Input blockData must be a struct with fields: conditions and responseMade
-            inputBlockData.origMax = [max(abs(inputBlockData.visDiff)) max(abs(inputBlockData.audDiff))];
-            inputBlockData.visDiff = inputBlockData.visDiff./inputBlockData.origMax(1);
-            inputBlockData.audDiff = inputBlockData.audDiff./inputBlockData.origMax(2);
+            inputBlockData.origMax = [max(abs(inputBlockData.tri.stim.visDiff)) max(abs(inputBlockData.tri.stim.audDiff))];
+            inputBlockData.visDiff = inputBlockData.tri.stim.visDiff;%./inputBlockData.origMax(1);
+            inputBlockData.audDiff = inputBlockData.tri.stim.audDiff./inputBlockData.origMax(2);
             obj.blockData = inputBlockData;
             obj.blockData.selectedTrials = ones(size(inputBlockData.audDiff,1),1);
-            tab = tabulate(obj.blockData.responseMade)/100;
+            tab = tabulate(obj.blockData.tri.outcome.responseMade)/100;
             obj.initGuess = sum(tab(:,3).*log2(tab(:,3)));
             if exist('modelString', 'var'); obj.GLMMultiModels(modelString); end
         end
@@ -35,7 +35,7 @@ classdef GLMmulti < matlab.mixin.Copyable
                 obj.prmFits = nan(1,length(obj.prmLabels));
             end
             obj.pHat = obj.calculatepHat(obj.prmFits);
-            obj.logLik = obj.calculateLogLik(obj.prmFits);%./length(obj.blockData.responseMade);
+            obj.logLik = obj.calculateLogLik(obj.prmFits);%./length(obj.blockData.tri.outcome.responseMade);
         end
         
         function fitCV(obj,nFolds)
@@ -44,7 +44,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             if ~exist('nFolds', 'var') || isempty(nFolds); nFolds = 10; end
             
             options = optimoptions('fmincon','UseParallel',0,'MaxFunEvals',100000,'MaxIter',2000);
-            cvObj = cvpartition(obj.blockData.responseMade,'KFold',nFolds);
+            cvObj = cvpartition(obj.blockData.tri.outcome.responseMade,'KFold',nFolds);
             obj.prmFits = nan(cvObj.NumTestSets,length(obj.prmLabels));
             obj.pHat = [];
             obj.logLik = nan(cvObj.NumTestSets,1);
@@ -58,16 +58,16 @@ classdef GLMmulti < matlab.mixin.Copyable
                 
                 cvTestObj = copy(obj); cvTestObj.blockData = prc.filtStruct(cvTestObj.blockData, cvObj.test(i));
                 pHatTested = cvTestObj.calculatepHat(obj.prmFits(i,:));
-                if min(cvTestObj.blockData.responseMade) == 0; idxMod = 1; else, idxMod = 0; end
-                obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.responseMade+idxMod));
+                if min(cvTestObj.blockData.tri.outcome.responseMade) == 0; idxMod = 1; else, idxMod = 0; end
+                obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.tri.outcome.responseMade+idxMod));
                 obj.logLik(i) = -mean(log2(obj.pHat(cvObj.test(i))));
             end
         end
         
         function h = plotblockData(obj)
             %%
-            numTrials = prc.makeGrid(obj.blockData, obj.blockData.responseMade~=0, @length, 1);
-            numRightTurns = prc.makeGrid(obj.blockData, obj.blockData.responseMade==2, @sum, 1);
+            numTrials = prc.makeGrid(obj.blockData, obj.blockData.tri.outcome.responseMade~=0, @length, 1);
+            numRightTurns = prc.makeGrid(obj.blockData, obj.blockData.tri.outcome.responseMade==2, @sum, 1);
             
             audValues = [obj.blockData.audValues]./abs(max(obj.blockData.audValues));
             colorChoices = plt.selectRedBlueColors(audValues);
@@ -98,13 +98,14 @@ classdef GLMmulti < matlab.mixin.Copyable
             pHatCalculated = obj.calculatepHat(params2use,'eval');
             for audVal = obj.blockData.audValues(:)'
                 plotIdx = obj.evalPoints(:,2)==audVal;
-                plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,2), ...
+%                 plot(gca, obj.evalPoints(plotIdx,1)*obj.blockData.origMax(1), pHatCalculated(plotIdx,2), ...
+                plot(gca, obj.evalPoints(plotIdx,1), pHatCalculated(plotIdx,2), ...
                     'Color', colorChoices(obj.blockData.audValues==audVal,:), 'linewidth', 2);
             end
             maxContrast =obj.blockData.origMax(1);
             xlim([-maxContrast maxContrast])
             set(gca, 'xTick', (-maxContrast):(maxContrast/4):maxContrast, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
-            title([obj.blockData.subject, obj.modelString]);
+            title({cell2mat(unique(obj.blockData.exp.subject)'); obj.modelString});
             hold off;
             figureHand = gca;
         end
@@ -128,7 +129,7 @@ classdef GLMmulti < matlab.mixin.Copyable
         
         function logLik = calculateLogLik(obj,testParams)
             pHatCalculated = obj.calculatepHat(testParams);
-            responseMade = obj.blockData.responseMade+(min(obj.blockData.responseMade(:)) == 0);
+            responseMade = obj.blockData.tri.outcome.responseMade+(min(obj.blockData.tri.outcome.responseMade(:)) == 0);
             logLik = -mean(log2(pHatCalculated(sub2ind(size(pHatCalculated),(1:size(pHatCalculated,1))', responseMade))));
         end
         

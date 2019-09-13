@@ -1,4 +1,4 @@
-function sortedByTrial = indexByTrial(trialTimes, prmTimes, prmValues, timesToSubtract, paramsForSubtraction)
+function sortedByTrial = indexByTrial(trialTimes, prmTimes, prmValues, timesToSubtract)
 %% A helper function to split variables into cells that contain all the values for that trial
 %Inputs(default)
 %trialTimes               (required) is an nx2 vector of the form [trialStartTimes, trialEndTimes];
@@ -13,8 +13,6 @@ function sortedByTrial = indexByTrial(trialTimes, prmTimes, prmValues, timesToSu
 %%
 %Set default values
 if ~exist('prmValues', 'var'); prmValues = prmTimes; end
-if ~exist('timesToSubtract', 'var'); timesToSubtract =0*prmValues(1,:); end
-if ~exist('paramsForSubtraction', 'var'); paramsForSubtraction = 0*prmValues(1,:); end
 
 %Use histcounts to find all the times that fall between trial start and end times--this is a computationally fast way to do this. We remove indices
 %with 0 values because these are out of bounds. 
@@ -30,12 +28,10 @@ eventCount(2:2:end) = [];
 %Get the unique tiral indices that aren't inter-trial spaces and pre-populate the sortedByTrial cell array according to this.
 idx = 0;
 sortedByTrial = cell(length(eventCount),1);
+if ~exist('timesToSubtract', 'var'); timesToSubtract = repmat(0*prmValues(:,1), length(eventCount),1); end
 for i = 1:length(eventCount)
     if eventCount(i)==0; continue; else; idx = idx+1; end
-    
-    subtractValues = repmat(paramsForSubtraction, eventCount(i), 1);
-    if any(paramsForSubtraction); subtractValues = timesToSubtract(i)*subtractValues; end
-
+    subtractValues = repmat(timesToSubtract(i,:), eventCount(i), 1);
     sortedByTrial{i} = prmValues(idxBounds(idx,1):idxBounds(idx,2),:);
     if isempty(sortedByTrial{i}); continue; end
     sortedByTrial{i} = sortedByTrial{i} - subtractValues;

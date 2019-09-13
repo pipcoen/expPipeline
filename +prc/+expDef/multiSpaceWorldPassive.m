@@ -1,45 +1,43 @@
 function x = multiSpaceWorldPassive(x)
 %% A helper function for multisensoySpaceWorld experimental definition that produces standardised files with useful structures for further analysis.
-
 %% Convert to shorter names for ease of use later
 v = x.standardizedBlock.paramsValues;  %Parameter values at start of trial
 e = x.standardizedBlock.events;        %Event structure
 n = x.newBlock;                        %x.newBlock, already populated with subject, expDate, expNum, rigName, and expType
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
+eIdx = 1:length(e.endTrialTimes);
 
 p.visContrast = p.visContrast(1,:);
-trialTimes = [e.newTrialTimes' e.endTrialTimes'];
+trialTimes = [e.newTrialTimes(eIdx)' e.endTrialTimes(eIdx)'];
+stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)';
 p.audInitialAzimuth(p.audAmplitude == 0) = inf;       %Change case when audAmplitude was 0 to have infinite azimuth (an indication of no azimuth value)
 p.visInitialAzimuth(p.visContrast == 0) = inf;        %Change case when visContrast was 0 to have infinite azimuth (an indication of no azimuth value)
 
-stimPeriodStart = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues == 1)';
 %Process the raw data to be stored separately (because it is large). These are the times at which the visual and auditory stimuli turned on/off and
 %all the wheel values. All are indexed by trial using the "indexByTrial" function, and times are relative to stimulus onset.
-r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues'], stimPeriodStart, [1 0]);
-r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], stimPeriodStart, [1 0]);
-r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], stimPeriodStart, [1 0]);
+times2Subtract = [stimPeriodStart stimPeriodStart*0];
+r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e.visStimOnOffTimes' e.visStimOnOffValues'], times2Subtract);
+r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], times2Subtract);
+r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], times2Subtract);
 r.wheelTimeValue(cellfun(@isempty, r.wheelTimeValue)) = deal({[0 0]});
 r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)-x(find([x(1:end-1,1);1]>0,1),2)], r.wheelTimeValue, 'uni', 0);
 n = rmfield(n, 'rawWheelTimeValue');
 
-n.trialStartEnd = [e.newTrialTimes' e.endTrialTimes'];
-n.audAmplitude = [v.audAmplitude]';
-n.audInitialAzimuth = [v.audInitialAzimuth]';     
-n.audInitialAzimuth(n.audAmplitude == 0) = inf; 
-
-n.visContrast = max([v.visContrast])';
-n.visInitialAzimuth = [v.visInitialAzimuth]';
-n.visInitialAzimuth(n.visContrast==0) = inf;
-n.visAltitude = [v.visAltitude]';
-n.visSigma = [v.visSigma]';
-n.rewardTriggered = [v.feedback]';
+audAmplitude = [v.audAmplitude]';
+visContrast = max([v.visContrast])';
+audInitialAzimuth = [v.audInitialAzimuth]';     
+audInitialAzimuth(audAmplitude == 0) = inf; 
+visInitialAzimuth = [v.visInitialAzimuth]';     
+visInitialAzimuth(visContrast == 0) = inf; 
+rewardClick = [v.feedback]'>0; 
+closedLoopOnsetTone = [v.closedLoopOnsetToneAmplitude]'>0;
 
 %allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, and the
 %intial azimuth of aud and vis stimuli.
 %Unique conditions is based on the parameter set, and includes all possible conditions that the mouse could have experienced. We repeat audAmplitude
 %because in some cases it will only have one value, and in some cases it will have more;
-allConditions = [n.audAmplitude n.visContrast n.audInitialAzimuth n.visInitialAzimuth];
-uniqueConditions = unique([p.audAmplitude' p.visContrast' p.audInitialAzimuth' p.visInitialAzimuth'], 'rows');
+allConditions = [audAmplitude visContrast audInitialAzimuth visInitialAzimuth];
+uniqueConditions = unique(allConditions(~(rewardClick | closedLoopOnsetTone),:), 'rows');
 %Create a set of unique conditions, where each row is a condition in the order: [zero conditions; right conditions; left conditions].
 leftInitialConditions = uniqueConditions(uniqueConditions(:,end-1)< 0 | ((isinf(uniqueConditions(:,end-1)) | ~(uniqueConditions(:,end-1))) & uniqueConditions(:,end)<0),:);
 rightInitialConditions = [leftInitialConditions(:,1:2) leftInitialConditions(:,end-1:end)*-1];
@@ -55,49 +53,44 @@ uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialCondition
 [~, leftConditionsIdx] = ismember(allConditions, leftInitialConditions, 'rows');
 if any(all([rightConditionsIdx~=0, leftConditionsIdx~=0],2)); error('Detect same condition as being Left and Right'); end
 conditionLabel = rightConditionsIdx + -1*leftConditionsIdx;
-if size(zeroConditions,1)>1
-    [~, zeroConditionsIdx] = ismember(allConditions, zeroConditions, 'rows');
-    zeroConditionsIdx(zeroConditionsIdx~=0) = zeroConditionsIdx(zeroConditionsIdx~=0)+max(rightConditionsIdx);
-    conditionLabel = conditionLabel+zeroConditionsIdx;
-end
-uniqueConditionLabels = [unique(zeroConditionsIdx(zeroConditionsIdx~=0)); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
+conditionLabel((rewardClick | closedLoopOnsetTone)) = nan;
+uniqueConditionLabels = [0*find(zeroConditions,1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
 [~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionLabels);
+uniqueDiff = [uniqueConditions(:,3) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
 
-n.uniqueConditions = uniqueConditions;
-n.uniqueConditionLabels = uniqueConditionLabels;
-n.conditionLabelRow = [conditionLabel conditionRowIdx]; 
+%Create a "trialType" field which is 0,1,2,3,4 for blank, auditory, visual, coherent, and incoherent trials.
+trialClass.blank = (visContrast==0 | visInitialAzimuth==0) & (audAmplitude==0 | audInitialAzimuth==0);
+trialClass.auditory = (visContrast==0 | visInitialAzimuth==0) & (audAmplitude>0 & audInitialAzimuth~=0);
+trialClass.visual = (audAmplitude==0 | audInitialAzimuth==0) & (visContrast>0 & visInitialAzimuth~=0);
+trialClass.coherent = sign(visInitialAzimuth.*audInitialAzimuth)>0 & audAmplitude>0 & visContrast>0;
+trialClass.conflict = sign(visInitialAzimuth.*audInitialAzimuth)<0 & audAmplitude>0 & visContrast>0;
+trialClass.rewardClick = rewardClick; 
+trialClass.closedLoopOnsetTone = closedLoopOnsetTone;
 
-x.newParams = prc.chkThenRemoveFields(p, {'postQuiescentDelay';'laserOnsetDelays';'waveformType';'maxRepeatIncorrect';'galvoType';'laserPower';...#
-    'laserTypeProportions';'laserDuration';'rewardTotal';});
+[audDiff, visDiff] = deal(nan*conditionRowIdx); 
+audDiff(conditionRowIdx~=0) = uniqueDiff(conditionRowIdx(conditionRowIdx~=0), 1);
+visDiff(conditionRowIdx~=0) = uniqueDiff(conditionRowIdx(conditionRowIdx~=0), 2);
+
+[grids.visValues, grids.audValues] = meshgrid(unique(uniqueDiff(:,2)), unique(uniqueDiff(:,1)));
+[~, gridIdx] = ismember(uniqueDiff, [grids.audValues(:) grids.visValues(:)], 'rows');
+grids.conditionLabels = nan*grids.visValues;
+grids.conditionLabels(gridIdx) = uniqueConditionLabels;
+
+n.conditionParametersAV = uniqueDiff;
+n.conditionLabels = uniqueConditionLabels;
+n.timings.trialStartEnd = trialTimes;
+n.trialClass = trialClass; 
+n.timings.stimPeriodStart = stimPeriodStart;
+n.stim.audAmplitude = audAmplitude;
+n.stim.audInitialAzimuth = audInitialAzimuth;
+n.stim.audDiff = audDiff;
+n.stim.visContrast = visContrast;
+n.stim.visInitialAzimuth = visInitialAzimuth;
+n.stim.visDiff = visDiff;
+n.stim.conditionLabel = conditionLabel; 
+n.grids = grids;
+n.params = x.oldParams;
+
 x.newBlock = n;
 x.newRaw = r;
-
-%% Check that all expected fields exist
-expectedBlockFields = {'subject';'expDate' ;'expNum';'expDef';'rigName';'expType';'trialStartEnd' ;'audAmplitude';'audInitialAzimuth' ;'visContrast';'visInitialAzimuth';...
-    'visAltitude' ;'visSigma';'rewardTriggered' ;'uniqueConditions';'uniqueConditionLabels';'conditionLabelRow'};
-expectedParamFields =  {'audAmplitude';'audInitialAzimuth';'backgroundNoiseAmplitude';'clickDuration';'clickRate';'closedLoopOnsetToneAmplitude';'feedback';'responseWindow';...
-    'rewardSize';'visAltitude';'visContrast';'visInitialAzimuth';'visSigma';'numRepeats';'subject';'expDate';'expNum';'expDef';'rigName';...
-    'expType';'totalTrials';'minutesOnRig';'laserSession'};
-
-if any(~contains(fields(x.newBlock), expectedBlockFields))
-    excessfields = fields(x.newBlock);
-    excessfields = excessfields(~contains(excessfields, expectedBlockFields));
-    fprintf('Field mistmatch in block file %s - \n', excessfields{:});
-    keyboard;
-elseif any(~contains(expectedBlockFields, fields(x.newBlock)))
-    excessfields = expectedBlockFields(~contains(expectedBlockFields, fields(x.newBlock)));
-    fprintf('Field mistmatch in block file %s - \n', excessfields{:});
-    keyboard;
-end
-
-if any(~contains(fields(x.newParams), expectedParamFields))
-    excessfields = fields(x.newParams);
-    excessfields = excessfields(~contains(excessfields, expectedParamFields));
-    fprintf('Field mistmatch in Param file %s - \n', excessfields{:});
-    keyboard;
-elseif any(~contains(expectedParamFields, fields(x.newParams)))
-    excessfields = expectedParamFields(~contains(expectedParamFields, fields(x.newParams)));
-    fprintf('Field mistmatch in Param file %s - \n', excessfields{:});
-    keyboard;
-end
 end

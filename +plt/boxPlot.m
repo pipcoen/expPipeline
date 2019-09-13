@@ -1,6 +1,7 @@
 function boxPlot(boxPlot, addText)
 if ~exist('addText', 'var'); addText = 1; end
 if ~isfield(boxPlot, 'plotLabels'); boxPlot.plotLabels = boxPlot.plotData; end
+if iscell(boxPlot.subject); boxPlot.subject = boxPlot.subject{1}; end
 plotData = boxPlot.plotData;
 imsc(plotData, boxPlot.axisLimits, boxPlot.colorMap, 'k'); 
 daspect([1 1 1]); axis xy;

@@ -1,55 +1,90 @@
-function combinedBlocks = combineBlocks(blocks)
+function comBlks = combineBlocks(blks)
 %% Function to combine and filter block files.
-nTrials = sum(arrayfun(@(x) size(x.trialStartEnd(:,1),1), blocks));
-nEPhys = [0 0];
-[~, combinedBlocks.subExpPenLink] = ismember({blocks.subject}', unique({blocks.subject}'));
-combinedBlocks.subExpPenLink = num2cell([combinedBlocks.subExpPenLink (1:length(blocks))']);
-if length(unique(arrayfun(@(x) num2str(x.uniqueConditions(:)'),blocks,'uni',0))) > 1
-    noMerge = 1;
-    fprintf('WARNING: Can only semi-concatenate blocks. Some fields will be turned into cells \n')
-else, noMerge = 0;
-end
-blnkMat = cellfun(@(x) x(:,1)*0, {blocks.trialStartEnd}', 'uni', 0);
-combinedBlocks.trialExperimentIdx = cell2mat(arrayfun(@(x) blnkMat{x}+x, 1:length(blocks), 'uni', 0)');
-combinedParms = vertcat(blocks(:).params);
-fieldNames = fields(blocks);
+[uniqueSubjects, ~, expBySubject] = unique({blks.subject}');
+if length(blks) > 255; acc1 = 'uint16'; else, acc1 = 'uint8'; end
+numOfTrials = arrayfun(@(x) size(x.timings.trialStartEnd(:,1),1), blks);
+trialBySubject = cell2mat(arrayfun(@(x,y) x*ones(y,1, 'uint8'), expBySubject, numOfTrials, 'uni', 0));
+trialByExp = cell2mat(arrayfun(@(x,y) x*ones(y,1, acc1), cumsum(expBySubject*0+1), numOfTrials, 'uni', 0));
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ephysAvailable = arrayfun(@(x) isfield(x, 'ephys'), blks);
+numOfSites = arrayfun(@(x) length(x.ephys), blks(ephysAvailable));
+if any(numOfSites); ephysExists = 1; else, ephysExists = 0; end
 
-if contains('eph_spikeTimes',fieldNames)
-    nEPhys = sum([cellfun(@length, {blocks.eph_spikeTimes}') cellfun(@length, {blocks.eph_clusterDepths}')]);
-    combinedBlocks.subExpPenLink = [combinedBlocks.subExpPenLink, cellfun(@unique, {blocks.eph_clusterPenetrationIdx}', 'uni', 0)];
-end
-
-for fieldName = fieldNames'
-    currField = fieldName{1};
-    if contains(currField, [fields(combinedBlocks);'experimentNum']); continue; end
-    mergeCriticalList = {'visVal'; 'audVal';'uniq';'Label';'grid'};
-    alwaysCellsList = {'expT'; 'rigN';'subject';'expD';'expN';'channelMap';'clusterTemp';'lfpPower';'alignment'};
-    if contains(currField, alwaysCellsList); combinedBlocks.(currField) = {blocks(:).(currField)}'; continue; end
-    if contains(currField, mergeCriticalList) && noMerge; combinedBlocks.(currField) = {blocks(:).(currField)}'; continue; end
-    if contains(currField, {'visVal'; 'audVal'}) && ~noMerge; combinedBlocks.(currField) = blocks(1).(currField); continue; end
+if ephysExists
+    if sum(numOfSites) > 255; acc2 = 'uint16'; else, acc2 = 'uint8'; end
+    ephys = vertcat(blks(numOfSites>0).ephys);
+    numOfSpikes = arrayfun(@(x) length(x.spike.amplitudes),ephys);
+    numOfClusters = arrayfun(@(x) length(x.cluster.amplitudes),ephys);
+    numOfSpikesPerCluster = cell2mat(arrayfun(@(x) accumarray(x.spike.clusterNumber,1),ephys, 'uni', 0));
+    clusterNumber = cell2mat(arrayfun(@(x) (1:length(x.cluster.amplitudes))',ephys, 'uni', 0));
     
-    tDat = vertcat(blocks(:).(currField));
-    if iscell(tDat) && all(cellfun(@ischar, tDat)) && length(unique(tDat))==1
-        combinedBlocks.(currField) = unique(tDat);
-    elseif iscell(tDat) || ismember(size(tDat,1), [nTrials nEPhys])
-        combinedBlocks.(currField) = tDat;
-    elseif ~isstruct(tDat) && size(unique(tDat, 'rows'),1) ==1
-        combinedBlocks.(currField) = blocks(1).(currField);
-    elseif ~noMerge
-        combinedBlocks.(currField) = blocks(1).(currField);
-    else, combinedBlocks.(currField) = [];
-    end
+    ephys = prc.catStructs(ephys);
+    ephys.penetration.subjectRef = cell2mat(arrayfun(@(x,y) x*ones(y,1), expBySubject, numOfSites, 'uni', 0));
+    ephys.penetration.expRef = cell2mat(arrayfun(@(x,y) x*ones(y,1), cumsum(numOfSites*0+1), numOfSites, 'uni', 0));
+    ephys.penetration.numOfClusters = numOfClusters;
+    ephys.penetration.numOfSpikes = numOfSpikes;
+    
+    penByExp = ephys.penetration.expRef;
+    ephys.spike.penetrationRef = cell2mat(arrayfun(@(x,y) x*ones(y,1, acc2), cumsum(penByExp*0+1), numOfSpikes, 'uni', 0));   
+    ephys.cluster.number = clusterNumber;
+    ephys.cluster.numOfSpikes = numOfSpikesPerCluster;
+    ephys.cluster.subjectRef = cell2mat(arrayfun(@(x,y) x*ones(y,1, 'uint8'), ephys.penetration.subjectRef, numOfClusters, 'uni', 0));
+    ephys.cluster.expRef = cell2mat(arrayfun(@(x,y) x*ones(y,1, acc1), penByExp, numOfClusters, 'uni', 0));
+    ephys.cluster.penetrationRef = cell2mat(arrayfun(@(x,y) x*ones(y,1, acc2), cumsum(penByExp*0+1), numOfClusters, 'uni', 0));   
+    
+    expDets = kil.getExpDets(uniqueSubjects(ephys.penetration.subjectRef), {blks(penByExp).expDate}', {blks(penByExp).expNum}', ephys.penetration.folder);
+    expDets = prc.catStructs(expDets);
+    
+    fields2copy = fields(expDets); 
+    for i = fields2copy'; ephys.penetration.(i{1}) = expDets.(i{1}); end
+    ephys.penetration = prc.chkThenRemoveFields(ephys.penetration, {'subject'; 'expDate'; 'expNum'; 'estDepth'});
 end
-combinedBlocks = rmfield(combinedBlocks, 'params');
-%%
-allfields = fields(combinedBlocks);
-firstFields = {'subject';'expDate';'expNum';'rigName';'expType';'expDef';'subExpPenLink'; 'trialExperimentIdx'; 'validTrials';'trialStartEnd';'stimPeriodStart';...
-'closedLoopStart';'correctResponse';'feedback';'responseTime';'timeToWheelMove';'responseMade';'trialType';'sequentialTimeOuts';...
-'timeOutsBeforeResponse';'repeatsAfterResponse';'audAmplitude';'audInitialAzimuth';'audDiff';'audValues';'visContrast';'visInitialAzimuth';...
-'visDiff';'visValues';'uniqueConditions';'uniqueDiff';'uniqueConditionLabels';'conditionLabelRow';'laserType';'laserPower';'galvoType';...
-'laserOnsetDelay';'galvoPosition';'laserOnOff';'grids'};
-firstFields = firstFields(contains(firstFields,allfields));
-nextFields = sort(allfields(~contains(allfields, '_') & ~cellfun(@(x) any(strcmp(x, firstFields)), allfields)));
-extraFields = allfields(~cellfun(@(x) any(strcmp(x, firstFields)), allfields) & ~cellfun(@(x) any(strcmp(x, nextFields)), allfields));
-combinedBlocks = orderfields(combinedBlocks, [firstFields;nextFields;extraFields]);
-combinedBlocks.params = combinedParms;
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+comBlks.tot.subjects = length(uniqueSubjects);
+comBlks.tot.experiments = length(blks);
+comBlks.tot.trials = sum(numOfTrials);
+if ephysExists
+    comBlks.tot.penetrations = sum(numOfSites);
+    comBlks.tot.clusters = sum(numOfClusters);
+    comBlks.tot.spikes = sum(numOfSpikes);
+end
+
+comBlks.exp.subjectRef = expBySubject;
+perExpFields = {'subject', 'expDate', 'expNum', 'rigName', 'expType', 'expDef', 'performanceAVM', 'conditionParametersAV', 'conditionLabels'};
+for i = perExpFields; comBlks.exp.(i{1}) = {blks.(i{1})}'; end
+blks = prc.chkThenRemoveFields(blks, [perExpFields, 'params', 'ephys', 'grids']);
+comBlks.exp.numOfTrials = numOfTrials;
+
+comBlks.tri.subjectRef = trialBySubject;
+comBlks.tri.expRef = trialByExp;
+
+if isfield(blks, 'timeline')
+    timelineAvailable = arrayfun(@(x) isfield(x, 'timeline') & ~isempty(x.timeline), blks);
+    nanTimeline = blks(find(timelineAvailable,1)).timeline;
+    timelineFields = fields(nanTimeline);
+    for i = timelineFields'
+        if iscell(nanTimeline.(i{1})); nanTimeline.(i{1}) = {NaN};
+        else, nanTimeline.(i{1}) = nanTimeline.(i{1})(1,:)*NaN;
+        end
+    end
+    for i = find(~timelineAvailable)'
+        for j = timelineFields'; blks(i).timeline.(j{1}) = repmat(nanTimeline.(j{1}), numOfTrials(i), 1); end
+    end
+    for i = 1:length(blks); blks(i).timeline = prc.chkThenRemoveFields(blks(i).timeline, 'alignment'); end
+end
+
+catBlks = prc.catStructs(blks);
+trialFields = {'trialClass', 'timings', 'timeline', 'stim', 'inactivation', 'outcome'};
+for i = trialFields
+    if isfield(blks, i{1}); comBlks.tri.(i{1}) = catBlks.(i{1}); end
+end
+blks = prc.chkThenRemoveFields(blks, trialFields);
+
+if ephysExists
+    comBlks.pen = ephys.penetration;
+    comBlks.clu = ephys.cluster; 
+    comBlks.spk = ephys.spike; 
+end
+
+if ~isempty(fields(blks)); warning('Unexpected fields in blocks!'); end
+
