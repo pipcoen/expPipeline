@@ -29,7 +29,7 @@ fprintf('Loading block file... \n');
 %% Load ephys data (single long recording)
 fprintf('Loading ephys... \n');
 % These are the digital channels going into the FPGA
-if strcmpi(x.rigName, 'lilrig-stim'); acqLiveSyncIdx = 2; flipperSyncIdx = 4;
+if contains(x.rigName, {'lilrig-stim', 'zrig1'}); acqLiveSyncIdx = 2; flipperSyncIdx = 4;
 elseif strcmpi(x.rigName, 'zatteo'); acqLiveSyncIdx = 1; flipperSyncIdx = 2;
 end
 

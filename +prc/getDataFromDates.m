@@ -22,32 +22,23 @@ availableDateNums = datenum(cell2mat({availableExps.expDate}'), 'yyyy-mm-dd');
 selectedDateNums = cell(size(requestedDates,1),1);
 for i = 1:size(requestedDates,1)
     currDat = requestedDates{i};
-    switch find(cellfun(@(x) contains(currDat, x), {'las';'fir';'yes';'all';':'}))
-        case 1
-            if numel(currDat)==4; currDat = [currDat '1']; end %#ok<*AGROW>
-            lastDate = str2double(currDat(5:end));
-            selectedDateNums{i} = availableDateNums(end-min([lastDate length(availableDateNums)])+1:end);
-            
-        case 2
-            if numel(currDat)==5; currDat = [currDat '1']; end
-            lastDate = str2double(currDat(6:end));
-            selectedDateNums{i} = availableDateNums(1:min([length(availableDateNums), lastDate]));
-            
-        case 3
-            selectedDateNums{i} = availableDateNums(end-1);
-            
-        case 4
-            selectedDateNums{i} = availableDateNums;
-            
-        case 5
-            dateNums = datenum(strsplit(currDat, ':')', 'yyyy-mm-dd');
-            selectedDateNums{i} = availableDateNums(availableDateNums>=dateNums(1) & availableDateNums<=dateNums(2));
-            
-        otherwise
-            selectedDateNums = datenum(requestedDates, 'yyyy-mm-dd');
+    if strcmpi(currDat(1:4), 'last')
+        if numel(currDat)==4; currDat = [currDat '1']; end %#ok<*AGROW>
+        lastDate = str2double(currDat(5:end));
+        selectedDateNums{i} = availableDateNums(end-min([lastDate length(availableDateNums)])+1:end);
+    elseif strcmpi(currDat(1:5), 'first')
+        if numel(currDat)==5; currDat = [currDat '1']; end
+        lastDate = str2double(currDat(6:end));
+        selectedDateNums{i} = availableDateNums(1:min([length(availableDateNums), lastDate]));
+    elseif strcmpi(currDat(1:4), 'yest');  selectedDateNums{i} = availableDateNums(end-1); 
+    elseif strcmpi(currDat(1:3), 'all');  selectedDateNums{i} = availableDateNums;
+    elseif contains(lower(currDat), ':')
+        dateNums = datenum(strsplit(currDat, ':')', 'yyyy-mm-dd');
+        selectedDateNums{i} = availableDateNums(availableDateNums>=dateNums(1) & availableDateNums<=dateNums(2));
+    else, selectedDateNums = datenum(requestedDates, 'yyyy-mm-dd');
     end
 end
-selectedDateNums = unique(cell2mat(selectedDateNums));
+if iscell(selectedDateNums); selectedDateNums = unique(cell2mat(selectedDateNums)); end
 
 selectedFiles = {availableExps(ismember(availableDateNums, selectedDateNums)).processedData}';
 if isempty(selectedFiles); warning(['No processed files matching ' subject{1} ' for requested dates']); return; end

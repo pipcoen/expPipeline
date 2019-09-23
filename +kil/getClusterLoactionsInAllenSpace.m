@@ -6,7 +6,7 @@ end
 probLength = 3840;
 ephysRecord = load(prc.pathFinder('ephysrecord'), 'ephysRecord'); ephysRecord = ephysRecord.ephysRecord;
 penetrations = unique(clusterPenetrationIdx);
-penetrationDetails = ephysRecord(cell2mat(arrayfun(@(x) find([ephysRecord.penetrationIdx] == x),penetrations, 'uni', 0)));
+penetrationDetails = ephysRecord(penetrations);
 tipLocations = cell2mat(arrayfun(@(x) penetrationDetails(x==penetrations).calcTip,clusterPenetrationIdx, 'uni', 0));
 scaleFactors = cell2mat(arrayfun(@(x) penetrationDetails(x==penetrations).scalingFactor,clusterPenetrationIdx, 'uni', 0));
 probeVectors = cell2mat(arrayfun(@(x) penetrationDetails(x==penetrations).calcLine(:)',clusterPenetrationIdx, 'uni', 0));

@@ -220,7 +220,9 @@ else, fprintf('WARNING: %s %s needs to be SORTED. \n', x.expDate,x.subject);
 end
 
 if loadData
-    eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y, spikeSorted), siteList, 'uni', 0));
+    [~, availableFolders] = cellfun(@fileparts, siteList, 'uni', 0);
+    penetrationsExist = cellfun(@(y) ~isempty(kil.getExpDets(x.subject, x.expDate, x.expNum, y)), availableFolders);
+    eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y, spikeSorted), siteList(penetrationsExist), 'uni', 0));
     load(x.processedData); whoD = whoD(~contains(whoD, 'eph'));
     if spikeSorted; whoD = unique([whoD; 'eph']); save(x.processedData, whoD{:});
     else, ephTmp = eph; whoD = unique([whoD; 'ephTmp']); save(x.processedData, 'ephTmp', 'whoD', '-append');

@@ -157,21 +157,21 @@ for currSite = find(sites2Process')
     resultsPath = [kilosortPath '\results'];
     copyfile(resultsPath,currSavePath);
     
-    % Copy kilosort results and raw data to phy folder for clustering
-    % Clear out whatever's currently in phy
-    rmdir(localPhyPath,'s');
-    mkdir(localPhyPath);
-    
-    % Copy the CAR'd data
-    [~,apFile,apExt] = fileparts(apTempCarFilename);
-    movefile(apTempCarFilename,[localPhyPath filesep apFile apExt])
-    
-    % Copy the results
-    movefile([resultsPath filesep '*'],localPhyPath)
+%     % Copy kilosort results and raw data to phy folder for clustering
+%     % Clear out whatever's currently in phy
+%     rmdir(localPhyPath,'s');
+%     mkdir(localPhyPath);
+%     
+%     % Copy the CAR'd data
+%     [~,apFile,apExt] = fileparts(apTempCarFilename);
+%     movefile(apTempCarFilename,[localPhyPath filesep apFile apExt])
+%     
+%     % Copy the results
+%     movefile([resultsPath filesep '*'],localPhyPath)
     
     % Delete all temporarly local data
     if exist(kilosortPath, 'dir'); rmdir(kilosortPath,'s'); end
-    if exist(kilosortPath, 'dir'); rmdir(kilosortPath,'s'); end 
+    if exist(localPhyPath, 'dir'); rmdir(localPhyPath,'s'); end 
 end
 
 disp('Done processing phase 3 data.');

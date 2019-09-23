@@ -1,5 +1,10 @@
 function expDets = getExpDets(subject, expDate, expNum, folder)
 %%
+if ischar(subject); subject = {subject}; end
+if ischar(expDate); expDate = {expDate}; end
+if ischar(expNum); expNum = {expNum}; end
+if ischar(folder); folder = {folder}; end
+
 ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
 uniqueRecords = cellfun(@(w,x,y,z) [w,x,y,z], {ephysRecord.subject}', {ephysRecord.expDate}', {ephysRecord.expNum}', {ephysRecord.folder}', 'uni', 0);
 requestedRecords = cellfun(@(w,x,y,z) [w,x,y,z], subject, expDate, expNum, folder, 'uni', 0);

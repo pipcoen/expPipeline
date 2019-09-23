@@ -164,7 +164,7 @@ if rechkExcludeTxts
 end
 
 if chkExpRigs
-    potentialEphys = find(contains({expList.rigName}', 'lilrig-stim') & ~contains({expList.expType}', 'ephys'));
+    potentialEphys = find(contains({expList.rigName}', {'lilrig-stim'; 'zrig1'}) & ~contains({expList.expType}', 'ephys'));
     foundEphys = potentialEphys(arrayfun(@(x) ~isempty(dir([fileparts(x.serverFolder(1:end-1)) '\*hys*'])), tLoc(potentialEphys)));
     [expList(foundEphys).expType] = deal('ephys');
     

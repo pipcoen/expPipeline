@@ -37,6 +37,17 @@ switch obj.modelString
         
     case {'ReducedLogCNSplit'}
         if strcmp(obj.modelString, 'ReducedLogCN'); end
+        obj.prmLabels = {'bias';'visScaleR';'N';'audScaleR';'audScaleL'};
+        if exist('P', 'var')
+            visContributionLR = P(2)*(abs(visDiff.*(visDiff>0)).^P(3)) - P(2)*(abs(visDiff.*(visDiff<0)).^P(3));
+            audContributionLR = P(4)*(abs(audDiff.*(audDiff>0))) - P(5)*(abs(audDiff.*(audDiff<0)));
+            logOddsLR = P(1)+visContributionLR + audContributionLR;
+        end
+        obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
+        obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
+        
+    case {'ReducedLogCNSplitBoth'}
+        if strcmp(obj.modelString, 'ReducedLogCN'); end
         obj.prmLabels = {'bias';'visScaleR';'visScaleL';'N';'audScaleR';'audScaleL'};
         if exist('P', 'var')
             visContributionLR = P(2)*(abs(visDiff.*(visDiff>0)).^P(4)) - P(3)*(abs(visDiff.*(visDiff<0)).^P(4));
