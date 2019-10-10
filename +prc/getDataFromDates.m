@@ -64,7 +64,7 @@ if contains(lower(extraData), {'eph'; 'all'})
         for i = 1:length(timelineAvailable); blk(timelineAvailable(i)).timeline = timeline(i); end
     end
     
-    ephysAvailable = find(cellfun(@(x) contains('tim', x), whoD));
+    ephysAvailable = find(cellfun(@(x) contains('eph', x), whoD));
     ephys = cellfun(@(x) load(x, 'eph'), selectedFiles(ephysAvailable), 'uni', 0);
     if ~isempty(ephys)
         ephys = [ephys{:}]';

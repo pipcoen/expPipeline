@@ -36,8 +36,8 @@ if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
 expInfo = prc.pathFinder('expInfo');
 includedMice = [cellfun(@(x) ['PC0' x], ...
     split({'10,11,12,13,15,22,25,27,29,30,31,32,33,34,36,37,38,41,43,45,46,48,50,51'},','), 'uni', 0); ...
-        {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR015'}];
-aliveMice = {'PC045'; 'PC046'; 'PC048'; 'PC050'; 'PC051'};
+        {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR015'; 'TS001'}];
+aliveMice = {'TS001'; 'PC051'};
 
 startedDates = {...
     'CR015' '2019-07-30'};
@@ -77,6 +77,7 @@ else
 end
 
 for i = 1:cycles
+    if isempty(processList); continue; end
     fprintf('Detecting folder level %d ... \n', i);
     processList = cellfun(@(x) java.io.File(x), processList, 'uni', 0);
     processList = cellfun(@(x) arrayfun(@char,x.listFiles,'uni',0), processList, 'uni', 0);
@@ -135,6 +136,7 @@ for i = 1:length(processList)
     %Check and label sessions that aren't training based on the rig names
     if contains(expList(end).rigName, {'zym1'; 'zym2'}) && exist(tempLoc.galvoLog, 'file'); expList(end).expType = 'inactivation'; end
     if strcmp(expList(end).rigName, 'zatteo') && ~isempty(dir([tempLoc.serverFolder '\*fus.mat*'])); expList(end).expType = 'fusi'; end
+    if strcmp(expList(end).rigName, 'zurprise') && ~isempty(dir([tempLoc.serverFolder '\*2P_00*.tif*'])); expList(end).expType = 'twophoton'; end
     if isfield(b, 'duration'); expList(end).expDuration = b.duration; else, expList(end).expDuration = 0; end
 %     expList(end).blockFunction = str2func(['prc.expDef.' expList(end).expDef]);
     expList(end).excluded = 0;

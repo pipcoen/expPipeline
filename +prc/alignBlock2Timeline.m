@@ -3,14 +3,17 @@ function [correctedBlock, aligned] = alignBlock2Timeline(block, timeline, expDef
 inputNames = {timeline.hw.inputs.name}';
 timelineTime = timeline.rawDAQTimestamps;
 sampleRate = 1/diff(timeline.rawDAQTimestamps(1:2));
-
+if contains('audioOut', inputNames); audInput = 'audioOut';
+% elseif  contains('audioMonitor', inputNames); audInput = 'audioMonitor';
+else, audInput = 0;
+end
 
 switch expDef
     case 'multiSpaceWorld'
         alignType = 'wheel';
         fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'};
         trialGapThresh = 1;
-    case 'multiSpaceWorldPassive'
+    case {'multiSpaceWorldPassive'; 'multiSpaceWorldPassiveTwoSpeakers'}
         if contains('photoDiode', inputNames); alignType = 'photoDiode';
         elseif contains('rotaryEncoder', inputNames); alignType = 'wheel';
         else, error('What am I supposed to use to align block with timeline?!')
@@ -119,8 +122,8 @@ if contains('reward', fineTune) && contains('rewardEcho',inputNames)
 end
 if contains('reward', fineTune) && ~contains('rewardEcho',inputNames); warning('No reward input echo... skipping'); end
 
-if any(contains(fineTune, 'clicks')) && contains('audioOut', inputNames)
-    timelineClickTrace = [0;diff(detrend(timeline.rawDAQData(:,strcmp(inputNames, 'audioOut'))))];
+if any(contains(fineTune, 'clicks')) && ischar(audInput)
+    timelineClickTrace = [0;diff(detrend(timeline.rawDAQData(:,strcmp(inputNames, audInput))))];
     [~, thresh] = kmeans(timelineClickTrace,5);
     timelineClickOn = timelineTime(strfind((timelineClickTrace>max(thresh)*0.25)', [0 1]));
     timelineClickOff = timelineTime(strfind((timelineClickTrace<min(thresh)*0.25)', [0 1]));
@@ -268,6 +271,7 @@ requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimP
 for i = 1:length(requiredFields)
     if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
 end
+
 aligned.alignment = block.alignment;
 correctedBlock = block;
 correctedBlock.fineTuned = 1;

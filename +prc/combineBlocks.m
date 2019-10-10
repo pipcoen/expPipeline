@@ -50,7 +50,8 @@ if ephysExists
 end
 
 comBlks.exp.subjectRef = expBySubject;
-perExpFields = {'subject', 'expDate', 'expNum', 'rigName', 'expType', 'expDef', 'performanceAVM', 'conditionParametersAV', 'conditionLabels'};
+perExpFields = {'subject', 'expDate', 'expNum', 'rigName', 'expType', 'expDef', 'conditionParametersAV', 'conditionLabels'};
+if ~any(contains({blks.expDef}', 'Passive')); perExpFields = [perExpFields; 'performanceAVM']; end
 for i = perExpFields; comBlks.exp.(i{1}) = {blks.(i{1})}'; end
 blks = prc.chkThenRemoveFields(blks, [perExpFields, 'params', 'ephys', 'grids']);
 comBlks.exp.numOfTrials = numOfTrials;
@@ -70,7 +71,7 @@ if isfield(blks, 'timeline')
     for i = find(~timelineAvailable)'
         for j = timelineFields'; blks(i).timeline.(j{1}) = repmat(nanTimeline.(j{1}), numOfTrials(i), 1); end
     end
-    for i = 1:length(blks); blks(i).timeline = prc.chkThenRemoveFields(blks(i).timeline, 'alignment'); end
+    for i = 1:length(blks); blks(i).timeline = prc.chkThenRemoveFields(blks(i).timeline, {'alignment';'frameTimes'}); end
 end
 
 catBlks = prc.catStructs(blks);

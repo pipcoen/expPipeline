@@ -160,10 +160,6 @@ if contains(x.expType, {'ephys'; 'fusi';'twophoton'})
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
     
-    if contains(x.expType, {'twophoton'})
-        nerualFrameTrace = x.timeline.rawDAQData(:,strcmp({x.timeline.hw.inputs.name}', 'neuralFrames'));
-        x.aligned.frameTimes = x.timeline.rawDAQTimestamps(diff(nerualFrameTrace)>0);
-    end
 else, x.aligned = [];
 end
 

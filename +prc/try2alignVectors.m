@@ -4,8 +4,8 @@ function [t1Corrected, t2Corrected] = try2alignVectors(t1, t2, diffThresh)
 t1Diff = diff(t1);
 t2Diff = diff(t2);
 if ~exist('diffThresh', 'var')
-[~, dist] = knnsearch(t2Diff,t1Diff);
-diffThresh = 20*mad(dist);
+    [~, dist] = knnsearch(t2Diff,t1Diff);
+    diffThresh = max([0.25 20*mad(dist)]);
 end
 
 buff = 5;
@@ -21,7 +21,6 @@ loopNumber = 0;
 %%
 while find(abs(diff(diff(compareVect,[],2)))>diffThresh,1)
     errPoint = find(abs(diff(diff(compareVect,[],2)))>diffThresh,1);
-%     compareVect
     t2(errPoint+1) = [];
     t2(errPoint-1:errPoint+1) = [];
     t1(errPoint-1:errPoint+1) = [];
@@ -31,6 +30,6 @@ while find(abs(diff(diff(compareVect,[],2)))>diffThresh,1)
     loopNumber = loopNumber+1;
     if loopNumber > 50; error('Extreme alignment error'); end
 end
-t1Corrected = t1;
-t2Corrected = t2;
+t1Corrected = t1(1:minL);
+t2Corrected = t2(1:minL);
 end

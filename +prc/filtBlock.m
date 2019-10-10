@@ -8,6 +8,7 @@ if ~exist('filterTag', 'var')
     filterTag = totFields(totals==length(criterion));
 end
 if iscell(filterTag); filterTag = filterTag{1}; end
+if strcmp(filterTag, 'spikes'); filterTag = 'spks'; end
 filterTag = filterTag(1:3);
 criterion = criterion>0;
 

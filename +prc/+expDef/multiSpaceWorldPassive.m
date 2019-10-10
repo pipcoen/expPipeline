@@ -74,7 +74,7 @@ visDiff(conditionRowIdx~=0) = uniqueDiff(conditionRowIdx(conditionRowIdx~=0), 2)
 [grids.visValues, grids.audValues] = meshgrid(unique(uniqueDiff(:,2)), unique(uniqueDiff(:,1)));
 [~, gridIdx] = ismember(uniqueDiff, [grids.audValues(:) grids.visValues(:)], 'rows');
 grids.conditionLabels = nan*grids.visValues;
-grids.conditionLabels(gridIdx) = uniqueConditionLabels;
+% grids.conditionLabels(gridIdx) = uniqueConditionLabels;
 
 n.conditionParametersAV = uniqueDiff;
 n.conditionLabels = uniqueConditionLabels;
