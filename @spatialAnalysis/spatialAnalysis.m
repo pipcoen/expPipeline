@@ -33,10 +33,12 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             
             if ~iscell(expDate); expDate = {expDate}; end
             if ~iscell(subjects); subjects = {subjects}; end
-            if any(strcmp(subjects, 'all')); subjects = prc.keyDates({'all'}, expDate); end
+            if any(strcmp(subjects, 'all')); subjects = [arrayfun(@(x)['PC0' num2str(x)], 11:99,'uni', 0), 'DJ007','DJ008','DJ010']; end
             if length(expDate) < length(subjects); expDate = repmat(expDate, length(subjects),1); end
             expDate = expDate(:); subjects = subjects(:);
             expDate = arrayfun(@(x,y) prc.keyDates(x,y), subjects(:), expDate(:), 'uni', 0);
+            subjects = subjects(~cellfun(@isempty, expDate));
+            expDate = expDate(~cellfun(@isempty, expDate));
             obj = changeMouse(obj, subjects, expDate, combineMice, expDef, extraTag);
         end
         
@@ -207,26 +209,28 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
         end
         
-        function scatterReactionTimes(obj, plotType)
-            if ~exist('plotType', 'var'); plotType = 'res'; end
+        function scatterReactionTimes(obj)
             figure;
             allTimes = [];
             for i  = 1:length(obj.blks)
-                normBlock = spatialAnalysis.getBlockType(obj.blks(i),'norm');
-                timeGrid = prc.makeGrid(normBlock, round(normBlock.timeToWheelMove*1e3), @median, 'abscondition');
-                trialGrid = prc.makeGrid(normBlock, round(normBlock.trialType), @mean, 'abscondition');
+                nBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm');
+                timeGrid = prc.makeGrid(nBlk, round(nBlk.tri.outcome.timeToWheelMove*1e3), @median, 'abscondition');
+                trialType = nBlk.tri.trialClass;
+                trialType = trialType.blank*0+trialType.auditory + 2*trialType.visual+3*trialType.coherent+4*trialType.conflict;
+                trialGrid = prc.makeGrid(nBlk, trialType, @mean, 'abscondition');
                 tkIdx = trialGrid.*fliplr(trialGrid)==12;
                 allTimes = [allTimes; [mean(timeGrid(tkIdx & trialGrid==3)), mean(timeGrid(tkIdx & fliplr(trialGrid)==3))]];
-                %                 allTimes(end,:) = allTimes(end,:)./nanmean(timeGrid(:));
+                allTimes(end,:) = allTimes(end,:) - mean(timeGrid(trialGrid==2 | trialGrid==2));
             end
             scatter(allTimes(:,1), allTimes(:,2), 'k', 'markerfacecolor', 'k');
             [~, pVal] = ttest(allTimes(:,1), allTimes(:,2));
             disp(pVal);
-            xlim([200 450]);
-            ylim([200 450]);
+            limVal = 60;
+            xlim([-limVal limVal/2]);
+            ylim([-limVal limVal/2]);
             axis equal; axis square;
             hold on
-            plot([200,500], [200,500], '--k')
+            plot([-limVal,limVal/2], [-limVal,limVal/2], '--k')
             xlabel('\fontsize{20} Coherent reaction time (ms)');
             ylabel('\fontsize{20} Conflict reaction time (ms)');
         end

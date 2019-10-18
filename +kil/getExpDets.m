@@ -6,13 +6,18 @@ if ischar(expNum); expNum = {expNum}; end
 if ischar(folder); folder = {folder}; end
 
 ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
-uniqueRecords = cellfun(@(w,x,y,z) [w,x,y,z], {ephysRecord.subject}', {ephysRecord.expDate}', {ephysRecord.expNum}', {ephysRecord.folder}', 'uni', 0);
+allSubjects = {ephysRecord.subject};
+allDates = {ephysRecord.expDate};
+allExpNums = {ephysRecord.expNum};
+allFolders = {ephysRecord.folder};;
+uniqueRecords = cellfun(@(w,x,y,z) [w,x,y,z], allSubjects(:), allDates(:), allExpNums(:), allFolders(:), 'uni', 0);
 requestedRecords = cellfun(@(w,x,y,z) [w,x,y,z], subject, expDate, expNum, folder, 'uni', 0);
 requestedRecordsAll = cellfun(@(w,x,y,z) [w,x,y,z], subject, expDate, repmat({'all'}, length(folder),1), folder, 'uni', 0);
 [~, selectedIdx] = ismember(requestedRecords, uniqueRecords);
 [~, selectedIdxAll] = ismember(requestedRecordsAll, uniqueRecords);
 selectedIdx = max([selectedIdx selectedIdxAll], [], 2);
 expDets = ephysRecord(selectedIdx(selectedIdx>0));
+for i = 1:length(expDets); expDets(i).ephysRecordIdx = selectedIdx(i); end
 
 
 % for i = 1:length(uniIdx)

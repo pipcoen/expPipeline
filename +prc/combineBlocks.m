@@ -15,7 +15,7 @@ if ephysExists
     ephys = vertcat(blks(numOfSites>0).ephys);
     numOfSpikes = arrayfun(@(x) length(x.spike.amplitudes),ephys);
     numOfClusters = arrayfun(@(x) length(x.cluster.amplitudes),ephys);
-    numOfSpikesPerCluster = cell2mat(arrayfun(@(x) accumarray(x.spike.clusterNumber,1),ephys, 'uni', 0));
+    numOfSpikesPerCluster = cell2mat(arrayfun(@(x) accumarray(x.spike.clusterNumber,1,[length(x.cluster.depths),1]),ephys, 'uni', 0));
     clusterNumber = cell2mat(arrayfun(@(x) (1:length(x.cluster.amplitudes))',ephys, 'uni', 0));
     
     ephys = prc.catStructs(ephys);
@@ -51,7 +51,7 @@ end
 
 comBlks.exp.subjectRef = expBySubject;
 perExpFields = {'subject', 'expDate', 'expNum', 'rigName', 'expType', 'expDef', 'conditionParametersAV', 'conditionLabels'};
-if ~any(contains({blks.expDef}', 'Passive')); perExpFields = [perExpFields; 'performanceAVM']; end
+if ~any(contains({blks.expDef}', 'Passive')); perExpFields = [perExpFields, 'performanceAVM']; end
 for i = perExpFields; comBlks.exp.(i{1}) = {blks.(i{1})}'; end
 blks = prc.chkThenRemoveFields(blks, [perExpFields, 'params', 'ephys', 'grids']);
 comBlks.exp.numOfTrials = numOfTrials;
@@ -59,7 +59,7 @@ comBlks.exp.numOfTrials = numOfTrials;
 comBlks.tri.subjectRef = trialBySubject;
 comBlks.tri.expRef = trialByExp;
 
-if isfield(blks, 'timeline')
+if isfield(blks, 'timeline') && any(arrayfun(@(x) ~isempty(x.timeline), blks))
     timelineAvailable = arrayfun(@(x) isfield(x, 'timeline') & ~isempty(x.timeline), blks);
     nanTimeline = blks(find(timelineAvailable,1)).timeline;
     timelineFields = fields(nanTimeline);
@@ -72,6 +72,7 @@ if isfield(blks, 'timeline')
         for j = timelineFields'; blks(i).timeline.(j{1}) = repmat(nanTimeline.(j{1}), numOfTrials(i), 1); end
     end
     for i = 1:length(blks); blks(i).timeline = prc.chkThenRemoveFields(blks(i).timeline, {'alignment';'frameTimes'}); end
+else, blks = prc.chkThenRemoveFields(blks, {'timeline'});
 end
 
 catBlks = prc.catStructs(blks);

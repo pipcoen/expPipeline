@@ -22,15 +22,15 @@ availableDateNums = datenum(cell2mat({availableExps.expDate}'), 'yyyy-mm-dd');
 selectedDateNums = cell(size(requestedDates,1),1);
 for i = 1:size(requestedDates,1)
     currDat = requestedDates{i};
-    if strcmpi(currDat(1:4), 'last')
+    if strcmpi(currDat(1:3), 'las')
         if numel(currDat)==4; currDat = [currDat '1']; end %#ok<*AGROW>
         lastDate = str2double(currDat(5:end));
         selectedDateNums{i} = availableDateNums(end-min([lastDate length(availableDateNums)])+1:end);
-    elseif strcmpi(currDat(1:5), 'first')
+    elseif strcmpi(currDat(1:3), 'fir')
         if numel(currDat)==5; currDat = [currDat '1']; end
         lastDate = str2double(currDat(6:end));
         selectedDateNums{i} = availableDateNums(1:min([length(availableDateNums), lastDate]));
-    elseif strcmpi(currDat(1:4), 'yest');  selectedDateNums{i} = availableDateNums(end-1); 
+    elseif strcmpi(currDat(1:3), 'yes');  selectedDateNums{i} = availableDateNums(end-1); 
     elseif strcmpi(currDat(1:3), 'all');  selectedDateNums{i} = availableDateNums;
     elseif contains(lower(currDat), ':')
         dateNums = datenum(strsplit(currDat, ':')', 'yyyy-mm-dd');

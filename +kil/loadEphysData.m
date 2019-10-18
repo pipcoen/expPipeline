@@ -60,7 +60,7 @@ else, powerSpectra = [];
 end
 
 % Default channel map/positions are from end: make from surface
-channelPositions(:,2) = max(channelPositions(:,2)) - channelPositions(:,2);
+channelPositions(:,2) = 3840 - channelPositions(:,2); %% Hard coded for now
 
 
 if exist('flipperFlipTimesTimeline','var')

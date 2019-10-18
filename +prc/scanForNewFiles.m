@@ -37,7 +37,7 @@ expInfo = prc.pathFinder('expInfo');
 includedMice = [cellfun(@(x) ['PC0' x], ...
     split({'10,11,12,13,15,22,25,27,29,30,31,32,33,34,36,37,38,41,43,45,46,48,50,51'},','), 'uni', 0); ...
         {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR015'; 'TS001'}];
-aliveMice = {'TS001'; 'PC051'};
+aliveMice = {'PC050'};
 
 startedDates = {...
     'CR015' '2019-07-30'};
@@ -57,12 +57,13 @@ if any(startedIdx); includedMice(startedIdx > 0,2) = num2cell(datenum(startedDat
 if any(retiredIdx); includedMice(retiredIdx > 0,3) = num2cell(datenum(retiredDates(retiredIdx(retiredIdx>0), 2), 'yyyy-mm-dd')); end
 
 %% Check for all files generated in the past 10 days for alive mice.
+nDays2Chk = 10;
 if rebuildList ~= 1
     cycles = 2;
     mice2Update = includedMice(contains(includedMice(:,1), aliveMice),:);
     recentDates = cell(size(mice2Update,1),1);
     for i = 1:size(mice2Update,1)
-        dateRange = num2cell(datestr(datenum(mice2Update{i,3})-9:datenum(mice2Update{i,3}), 'yyyy-mm-dd'),2);
+        dateRange = num2cell(datestr(datenum(mice2Update{i,3})-nDays2Chk:datenum(mice2Update{i,3}), 'yyyy-mm-dd'),2);
         recentDates{i,1} = cellfun(@(x) fileparts(fileparts(prc.pathFinder('serverfolder',mice2Update{i,1},x,'1'))),dateRange, 'uni', 0);
     end
     processList = vertcat(recentDates{:});

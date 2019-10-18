@@ -8,11 +8,10 @@ expList = load(prc.pathFinder('expList')); expList = expList.expList;
 ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
 selectedRecords = ephysRecord(contains({ephysRecord.subject}', subjects));
 expList = expList(contains({expList.subject}', subjects) & [expList.excluded]' ~=1 & contains({expList.expType}', 'eph'));
-expList = kil.getExpDets(expList);
 
 guiData = struct;
 guiData.expList = expList;
-guiData.penetrations =[selectedRecords.penetrationIdx];
+guiData.penetrations = find(contains({ephysRecord.subject}', subjects));
 guiData.tv = readNPY([allenPath 'template_volume_10um.npy']); % grey-scale "background signal intensity"
 guiData.av = readNPY([allenPath 'annotation_volume_10um_by_index.npy']); % the number at each pixel labels the area, see note below
 guiData.st = loadStructureTree([allenPath 'structure_tree_safe_2017.csv']); % a table of what all the labels mean
@@ -146,10 +145,9 @@ switch eventdata.Key
         end
     case 's'
         ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
-        recordIdx = [ephysRecord.penetrationIdx] == guiData.currPenetration;
-        ephysRecord(recordIdx).calcLine = guiData.currProbeVector;
-        ephysRecord(recordIdx).calcTip = guiData.currTipLocation;
-        ephysRecord(recordIdx).scalingFactor = guiData.currScalingFactor;
+        ephysRecord(guiData.currPenetration).calcLine = guiData.currProbeVector';
+        ephysRecord(guiData.currPenetration).calcTip = guiData.currTipLocation;
+        ephysRecord(guiData.currPenetration).scalingFactor = guiData.currScalingFactor;
         save(prc.pathFinder('ephysrecord'), 'ephysRecord');
         set(guiData.title, 'String', strrep(get(guiData.title, 'String'), 'UNSAVED', 'SAVED'));
     case 'c'
@@ -267,22 +265,26 @@ function switchPenetration(probeDepthGui)
 guiData = guidata(probeDepthGui);
 expList = guiData.expList;
 ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
-penetrationDetails = ephysRecord([ephysRecord.penetrationIdx]==guiData.currPenetration);
+penetrationDetails = ephysRecord(guiData.currPenetration);
 
 ephysRecordForBrain = ephysRecord(contains({ephysRecord.subject}', penetrationDetails.subject));
-exp4Pen = find(cellfun(@(x) any([x.penetrationIdx]==guiData.currPenetration), {expList.expDets}'));
-blk = prc.combineBlocks(prc.getFilesFromDates(expList(exp4Pen(1)).subject, expList(exp4Pen(1)).expDate, 'eph', expList(exp4Pen(1)).expDef));
-ephInfo = prc.filtStruct(blk, guiData.currPenetration, 'penetration');
-clusterDepths = ephInfo.eph_clusterDepths;
-spikeTimes = ephInfo.eph_spikeTimes;
-spikeCluster = ephInfo.eph_spikeCluster;
+exp4Pen = expList(strcmp({expList.subject}', penetrationDetails.subject) & strcmp({expList.expDate}', penetrationDetails.expDate));
+if strcmp(penetrationDetails.expNum, 'all'); exp4Pen = exp4Pen(1);
+else, exp4Pen = exp4Pen(strcmp({exp4Pen.expNum}', penetrationDetails.expNum));
+end
+
+blk = prc.combineBlocks(prc.getDataFromDates(penetrationDetails.subject, penetrationDetails.expDate, exp4Pen.expDef,'eph'));
+blk = prc.filtBlock(blk, blk.pen.ephysRecordIdx==guiData.currPenetration, 'penetration');
+clusterDepths = blk.clu.depths;
+spikeTimes = blk.spk.times;
+spikeCluster = blk.spk.clusterNumber;
 %%
-powerSpectra = flipud(log(median(ephInfo.eph_lfpPowerSpectra{1}.powerSpectra,3)'));
+powerSpectra = flipud(log(blk.pen.lfpPowerSpectra{1}.powerSpectra'));
 channelMean = mean(powerSpectra,2);
 channels2Remove = abs(channelMean-mean(channelMean))>2;
 powerSpectra(channels2Remove,:) = median(powerSpectra(:));
 keptMedians = mat2gray(median(powerSpectra(~channels2Remove,:),2));
-freqPoints = ephInfo.eph_lfpPowerSpectra{1}.freqPoints;
+freqPoints = blk.pen.lfpPowerSpectra{1}.freqPoints;
 idx2highlight = sub2ind(size(powerSpectra), find(~channels2Remove),round((max(freqPoints)-1)*keptMedians)+1);
 powerSpectra(idx2highlight) = nan;
 
@@ -319,28 +321,35 @@ set(guiData.handles.unitAxes, 'xlim', [0 1]);
 
 %%
 if ~penetrationDetails.probePainted
-    refProbeDetails = ephysRecordForBrain([ephysRecordForBrain.probePainted]' & [ephysRecordForBrain.histIdx]'==penetrationDetails.histIdx);
-    exp4Pen = find(cellfun(@(x) any([x.penetrationIdx]==refProbeDetails.penetrationIdx), {expList.expDets}'));
-    blk = prc.combineBlocks(prc.getFilesFromDates(expList(exp4Pen(1)).subject, expList(exp4Pen(1)).expDate, 'eph', expList(exp4Pen(1)).expDef));
-    ephInfo = prc.filtStruct(blk, refProbeDetails.penetrationIdx, 'penetration');
-    clusterDepths = ephInfo.eph_clusterDepths;
+    refProbeIdx = find([ephysRecord.probePainted]' & [ephysRecord.histIdx]'==penetrationDetails.histIdx & contains({ephysRecord.subject}', penetrationDetails.subject));
+    refProbeDetails = ephysRecord(refProbeIdx);
+    exp4Pen = expList(strcmp({expList.subject}', refProbeDetails.subject) & strcmp({expList.expDate}', refProbeDetails.expDate));
+    if strcmp(refProbeDetails.expNum, 'all'); exp4Pen = exp4Pen(1);
+    else, exp4Pen = exp4Pen(strcmp({exp4Pen.expNum}', refProbeDetails.expNum));
+    end
+    blk = prc.combineBlocks(prc.getDataFromDates(refProbeDetails.subject, refProbeDetails.expDate, exp4Pen.expDef,'eph'));
+    blk = prc.filtBlock(blk, blk.pen.ephysRecordIdx==refProbeIdx, 'penetration');
+    clusterDepths = blk.clu.depths;
     spikeJitter = abs(randn(length(clusterDepths), 1)/2.5)+0.1;
     
     guiData.guideTipLocation = refProbeDetails.calcTip;
     guiData.guideCellDepths = clusterDepths;
     guiData.currScalingFactor = refProbeDetails.scalingFactor;
     set(guiData.handles.guideCellScatter, 'XData', spikeJitter, 'YData', clusterDepths);
-    set(guiData.title, 'String', sprintf('%s: %s Penetration %d--Probe was NOT painted', blk.subject{1},blk.expDate{1},guiData.currPenetration));
+    set(guiData.title, 'String', sprintf('%s: %s Penetration %d--Probe was NOT painted', penetrationDetails.subject,penetrationDetails.expDate,guiData.currPenetration));
 else
     guiData.currScalingFactor = penetrationDetails.scalingFactor;
-    if isnan(guiData.currScalingFactor); guiData.currScalingFactor = 1; end
+    if isnan(guiData.currScalingFactor) && isnan(nanmean([ephysRecordForBrain.scalingFactor])); guiData.currScalingFactor = 1; 
+    elseif isnan(guiData.currScalingFactor); guiData.currScalingFactor = (nanmean([ephysRecordForBrain.scalingFactor]));
+    end
     guiData.guideTipLocation = nan;
     set(guiData.handles.guideCellScatter, 'XData', [], 'YData', []);
-    set(guiData.title, 'String', sprintf('%s: %s Penetration %d--Probe was painted', blk.subject{1},blk.expDate{1},guiData.currPenetration));
+    set(guiData.title, 'String', sprintf('%s: %s Penetration %d--Probe was painted', penetrationDetails.subject,penetrationDetails.expDate,guiData.currPenetration));
 end
 
-histologyData = load(prc.pathFinder('probepathdata', penetrationDetails.subject));
-histologyPoints = histologyData.pointList.pointList{penetrationDetails.histIdx,1};
+histologyData = load([prc.pathFinder('probepathdata', penetrationDetails.subject) num2str(penetrationDetails.histIdx)]);
+histologyPoints = histologyData.probe_ccf;
+histologyPoints = [histologyPoints(:,3) histologyPoints(:,2) histologyPoints(:,1)];
 probeCenter = mean(histologyPoints,1);
 xyz = bsxfun(@minus,histologyPoints,probeCenter);
 [~,~,V] = svd(xyz,0);
@@ -405,7 +414,7 @@ end
 probeAreaCenters = probeAreaCenters(newAreaBoundaries(1:end-1));
 
 ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
-ephysRecordForBrain = ephysRecord(contains({ephysRecord.subject}', ephysRecord([ephysRecord.penetrationIdx]==guiData.currPenetration).subject));
+ephysRecordForBrain = ephysRecord(contains({ephysRecord.subject}', ephysRecord(guiData.currPenetration).subject));
 averageScalingForBrain = round(nanmean([ephysRecordForBrain.scalingFactor])*100)/100;
 
 % Update the probe areas

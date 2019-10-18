@@ -1,8 +1,11 @@
 function dateRange = keyDates(subjectID, dataTag)
+allMice = {arrayfun(@(x)[p
+    'PC046','PC050','PC051','DJ007','DJ008','DJ010'};
                 
 switch lower(dataTag{1})
     case {'behavior'; 'behaviour'}
         switch subjectID{1}
+            case 'all'; dateRange = allMice';
             case 'PC011'; dateRange = {'2017-06-14:2017-08-16'};
             case 'PC012'; dateRange = {'2017-09-06:2017-10-17'}; %Regular trials within inactivation
             case 'PC013'; dateRange = {'2017-09-05:2017-10-17'}; %Regular trials within inactivation
@@ -23,62 +26,73 @@ switch lower(dataTag{1})
             case 'DJ007'; dateRange = {'2018-05-11:2018-05-19'; '2018-05-11:2018-06-19'}; %Intermediate days without conflicts are excluded
             case 'DJ008'; dateRange = {'2018-05-11:2018-05-30'};
             case 'DJ010'; dateRange = {'2018-06-09:2018-06-18'};
-            otherwise, dateRange = [];
+            otherwise, dateRange = dataTag;
+                %PC022 dateRange = {'2017-11-02:2017-11-21'}; %Data without any inactivation, but fewer trials
         end
-        
     case 'aud5'
         switch subjectID{1}
+            case 'all'; dateRange = {'PC013','PC015','PC022'}';
             case 'PC013'; dateRange = {'2017-10-18:2017-11-04'}; %Regular trials within inactivation
-            otherwise, dateRange = [];
+            otherwise, dateRange = dataTag;
+                %PC022 dateRange = {'2017-11-02:2017-11-21'}; %Data without any inactivation, but fewer trials
         end
     case 'uniscan'
         switch subjectID{1}
+            case 'all'; dateRange = {'PC027','PC029','DJ008','DJ006','DJ007'}';
             case 'PC027'; dateRange = {'2018-02-05:2018-03-21'}; %Power was only 1.5mW
             case 'PC029'; dateRange = {'2018-06-12:2018-07-17'};
             case 'DJ008'; dateRange = {'2018-06-12:2018-07-17'};
             case 'DJ006'; dateRange = {'2018-08-06:2018-09-16'};
             case 'DJ007'; dateRange = {'2018-08-06:2018-10-18'};
-            otherwise, dateRange = []; 
+            otherwise, dateRange = dataTag;
+                %PC022 dateRange = {'2017-11-02:2017-11-21'}; %Data without any inactivation, but fewer trials
         end
         
     case 'biscan'
         switch subjectID{1}
+            case 'all'; dateRange = {'PC010','PC012','PC013'}';
             case 'PC010'; dateRange = {'2017-06-20:2017-07-05'}; %Power was only 1.5mW
             case 'PC012'; dateRange = {'2017-06-21:2017-07-05'};
             case 'PC013'; dateRange = {'2017-06-20:2017-07-06'};
-            otherwise, dateRange = []; 
+            otherwise, dateRange = dataTag;
+                %PC022 dateRange = {'2017-11-02:2017-11-21'}; %Data without any inactivation, but fewer trials
         end
         
     case 'm2ephysgood'
         switch subjectID{1}
+            case 'all'; dateRange = {'PC045','PC046','PC048','PC050'}';
             case 'PC045'; dateRange = {'2019-08-27:2019-09-06'};
             case 'PC046'; dateRange = {'2019-08-27:2019-09-06'};
             case 'PC048'; dateRange = {'2019-09-17:2019-09-26'};
             case 'PC050'; dateRange = {'2019-09-17:2019-09-26'};
-%             case 'PC032'; dateRange = {'2019-04-03:2019-04-14'};
-            otherwise, dateRange = []; 
+            case 'PC032'; dateRange = {'2019-04-03:2019-04-14'};
+            otherwise, dateRange = dataTag;
+                %PC022 dateRange = {'2017-11-02:2017-11-21'}; %Data without any inactivation, but fewer trials
         end
         
     case 'm2ephys'
         switch subjectID{1}
+            case 'all'; dateRange = {'DJ007','PC029','PC030','PC033','PC032','PC043'}';
             case 'DJ007'; dateRange = {'2018-11-28:2018-12-02'}; %Power was only 1.5mW
             case 'PC029'; dateRange = {'2018-10-18:2018-10-19'};
             case 'PC032'; dateRange = {'2019-04-03:2019-04-14'};
             case 'PC033'; dateRange = {'2019-03-27:2019-03-31'};
             case 'PC030'; dateRange = {'2019-05-07:2019-05-13'};
             case 'PC043'; dateRange = {'2019-05-07:2019-05-16'};
-            otherwise, dateRange = []; 
+            otherwise, dateRange = dataTag;
+                %PC022 dateRange = {'2017-11-02:2017-11-21'}; %Data without any inactivation, but fewer trials
         end
         
     case 'presurg'
         switch subjectID{1}
+            case 'all'; dateRange = allMice';
             case 'DJ007'; dateRange = {'2018-11-13:2018-11-27'}; %Power was only 1.5mW
             case 'PC029'; dateRange = {'2018-10-03:2018-10-17'};
             case 'PC032'; dateRange = {'2019-03-13:2019-04-02'};
             case 'PC033'; dateRange = {'2019-03-12:2019-03-26'};
             case 'PC030'; dateRange = {'2019-04-21:2019-05-06'};
             case 'PC043'; dateRange = {'2019-04-21:2019-05-06'};
-            otherwise, dateRange = []; 
+            otherwise, dateRange = dataTag;
         end
         
     otherwise, dateRange = dataTag;

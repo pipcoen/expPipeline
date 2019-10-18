@@ -9,7 +9,7 @@ if isstruct(subject) && ~exist('expDate', 'var') && ~exist('expNum', 'var')
     subject = subject.subject;
 end
 if exist('expDate', 'var') && ~exist('dateNumber', 'var'); dateNumber = datenum(expDate, 'yyyy-mm-dd'); end
-if ~exist('expDate', 'var'); expDate = 'noDataGiven'; end
+if ~exist('expDate', 'var'); expDate = 'noDataGiven'; dateNumber = {}; end
 if ~exist('expNum', 'var'); expNum = 'noDataGiven'; end
 
 if ~iscell(pathType); pathType = {pathType}; end
@@ -82,7 +82,7 @@ for i = 1:size(subject,1)
             case 'expinfo'; pathOut{i,j} = expInfo;
             case 'ephysrecord'; pathOut{i,j} = [processedDirectory 'ePhysRecord.mat'];
             case 'allenatlas'; pathOut{i,j} = [driveName '\Dropbox (Neuropixels)\MouseData\Atlas\allenCCF\'];
-            case 'probepathdata'; pathOut{i,j} = [processedDirectory 'XHistology\' subject{i} '\probe_points.mat'];
+            case 'probepathdata'; pathOut{i,j} = [processedDirectory 'XHistology\' subject{i} '\probe_histIdx'];
         end
     end
 end
