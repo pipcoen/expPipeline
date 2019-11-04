@@ -24,7 +24,7 @@ if exist('sortRule','var'); guiData.sortRule = sortRule; else; guiData.sortRule 
 % (put eventTimes into cell array if it isn't already, standardize dim)
 if ~iscell(eventTimes); eventTimes = {eventTimes}; end
 for i = find(cellfun(@(x) size(x,2)==1, eventTimes))'
-    if length(eventTimes{i}) == length(blk.tri.expRef); eventTimes{i} = [eventTimes{i} blk.tri.expRef];
+    if length(eventTimes{i}) == length(blk.tri.expRef); eventTimes{i} = [eventTimes{i} double(blk.tri.expRef)];
     else, error('Need to know which experiments each event relates to');
     end
 end
