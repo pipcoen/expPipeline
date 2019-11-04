@@ -8,7 +8,6 @@ if ~exist('filterTag', 'var')
     filterTag = totFields(totals==length(criterion));
 end
 if iscell(filterTag); filterTag = filterTag{1}; end
-if strcmp(filterTag, 'spikes'); filterTag = 'spks'; end
 filterTag = filterTag(1:3);
 criterion = criterion>0;
 
@@ -25,7 +24,9 @@ if isfield(newBlk, 'pen'); ephysExists = 1; else, ephysExists = 0; end
 if strcmpi(filterTag, 'exp')
     newBlk = filterByReference(newBlk, 'expRef', newBlk.exp.expRef);
     newBlk = filterByReference(newBlk, 'subjectRef', unique(newBlk.exp.subjectRef));  
-    if ephysExists;  newBlk = filterByReference(newBlk, 'penetrationRef', newBlk.pen.penRef); end
+    if ephysExists
+        newBlk = filterByReference(newBlk, 'penetrationRef', newBlk.pen.penRef); 
+    end
     newBlk = updateTotals(newBlk, totFields, shortFields);
 end
 
@@ -40,6 +41,12 @@ if strcmpi(filterTag, 'pen')
     newBlk = filterByReference(newBlk, 'subjectRef', unique(newBlk.exp.subjectRef));   
     newBlk = filterByReference(newBlk, 'penetrationRef', newBlk.pen.penRef);
     newBlk = updateTotals(newBlk, totFields, shortFields);
+end
+
+if strcmpi(filterTag, 'clu')
+    newBlk.pen.numOfClusters = accumarray(newBlk.clu.penetrationRef,1);
+    newBlk = updateTotals(newBlk, totFields, shortFields);
+    if any(~newBlk.pen.numOfClusters); newBlk = prc.filtBlock(newBlk, newBlk.pen.numOfClusters>0, 'pen'); end
 end
 end
 

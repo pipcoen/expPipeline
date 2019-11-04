@@ -1,5 +1,5 @@
 function stdPatch(xDat, mnVal, stdVal, patchColor, alphaValue, edgeOnly)
-if ~exist('alphaValue', 'var');alphaValue = 0.5; end
+if ~exist('alphaValue', 'var');alphaValue = 1; end
 if ~exist('edgeOnly', 'var');edgeOnly = 0; end
 nVal = numel(xDat);
 mnVal = mnVal(:)';

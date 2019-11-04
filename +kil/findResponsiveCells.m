@@ -1,6 +1,6 @@
-function [clusterSigLevel, clusterTTestData] = findResponsiveCells(blk,eventTimes,tWin)
+function [clusterSigLevel, clusterTTestBlka] = findResponsiveCells(blk,eventTimes,tWin)
 %Assigning default values
-experimentIdxs = cell2mat(blk.subExpPenLink(:,2));
+experimentIdxs = blk.pen.expRef;
 if ~exist('eventTimes', 'var') || isempty(eventTimes)
     switch blk.expDef
         case 'multiSpaceWorldPassive'
@@ -11,19 +11,20 @@ if ~exist('eventTimes', 'var') || isempty(eventTimes)
             eventTimes = [nanmean([blk.eph_visStimPeriodOnOff(:,1) blk.eph_audStimPeriodOnOff(:,1)],2) blk.trialExperimentIdx];
             eventTimes = eventTimes(~isnan(eventTimes(:,1)),:);
     end
-elseif size(eventTimes,2) == 1 && size(eventTimes,1) == length(blk.trialStartEnd); eventTimes = [eventTimes blk.trialExperimentIdx];
+elseif size(eventTimes,2) == 1 && size(eventTimes,1) == blk.tot.trials; eventTimes = [eventTimes blk.tri.expRef];
 elseif size(eventTimes,2) == 1 && length(unique(experimentIdxs)) == 1; eventTimes = [eventTimes eventTimes*0+experimentIdxs];
 elseif size(eventTimes,2) == 1, error('Could not figure out experiment info for event times');
 end
 
 %% Note: this looping is faster because it means smaller subsets are indexed when searching.
-clusterSigLevel = nan*ones(length(blk.eph_clusterAmps),1);
-clusterTTestData = cell(length(blk.eph_clusterAmps),1);
+clusterSigLevel = nan*ones(blk.tot.clusters,1);
+clusterTTestBlka = cell(blk.tot.clusters,1);
 
-for i = cell2mat(blk.subExpPenLink(:,3))'
-    tDat = prc.filtStruct(blk, i, 'penetration');
+for i = 1:length(blk.pen.ephysRecordIdx)
+    pentrationRef = blk.pen.ephysRecordIdx==blk.pen.ephysRecordIdx(i);
+    tBlk = prc.filtBlock(blk, pentrationRef, 'pen');
     if ~exist('tWin', 'var') || isempty(tWin)
-        switch blk.expDef{1}
+        switch blk.exp.expDef{1}
             case 'multiSpaceWorldPassive'; tWin = [-0.5 -0.01 0.01 0.5];
             case 'multiSpaceWorld'; tWin = [-0.5 -0.1 0.05 0.25];
         end
@@ -31,19 +32,22 @@ for i = cell2mat(blk.subExpPenLink(:,3))'
     elseif ~all([(tWin(1:2)<=0) (tWin(3:4)>=0)]); error('pre/post windows should be negative/positive (or zero)');
     end
     
-    selEvents = sort(eventTimes(eventTimes(:,2)==tDat.subExpPenLink{:,2},1));
-    clusters = 1:length(tDat.eph_clusterAmps);
-    
+    selEvents = sort(eventTimes(eventTimes(:,2)==experimentIdxs(i)));
+    cluIdx = (1:length(tBlk.clu.depths))';
+    spkTimes = cell2mat(tBlk.clu.spkTimes);
+    spkCluster = cell2mat(cellfun(@(x,y) x*0+y, tBlk.clu.spkTimes, num2cell(cluIdx), 'uni', 0));
     if ~isempty(selEvents)
         eventWindows = selEvents+tWin;
-        spikeCounts = histcounts2(tDat.eph_spikeTimes, tDat.eph_spikeCluster, sort(eventWindows(:)), 1:(clusters(end)+1));
-        spikeCountsPre = spikeCounts(1:4:end,clusters)./range(tWin(1:2));
-        spikeCountsPost = spikeCounts(3:4:end,clusters)./range(tWin(3:4));
-        ttestData = spikeCountsPost - spikeCountsPre;
+        spikeCounts = histcounts2(spkTimes, spkCluster, sort(eventWindows(:)), 1:(cluIdx(end)+1));
+        spikeCountsPre = spikeCounts(1:4:end,cluIdx)./range(tWin(1:2));
+        spikeCountsPost = spikeCounts(3:4:end,cluIdx)./range(tWin(3:4));
+        ttestBlka = spikeCountsPost - spikeCountsPre;
         
-        [~, pVal] = ttest(ttestData);
-        clusterTTestData(blk.eph_clusterPenetrationIdx==i) = num2cell(ttestData,1)';
-        clusterSigLevel(blk.eph_clusterPenetrationIdx==i) = pVal';
+        %         [~, pVal] = ttest(ttestBlka);
+        pVal = zeros(1, size(ttestBlka,2));
+        for k = 1:size(ttestBlka,2); pVal(1,k) = signrank(ttestBlka(:,k)); end
+        clusterTTestBlka(blk.clu.penetrationRef==find(pentrationRef)) = num2cell(ttestBlka,1)';
+        clusterSigLevel(blk.clu.penetrationRef==find(pentrationRef)) = pVal';
     end
 end
 end

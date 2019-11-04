@@ -2,7 +2,9 @@ function clusterLocations = getClusterLoactionsInAllenSpace(clusterDepths, clust
 if ~exist('atlas', 'var');kil.loadAtlas;
 else, av = atlas.av; st = atlas.st;
 end
-
+if isstruct(clusterDepths); blkInput = 1; blk = clusterDepths; else, blkInput = 0; end
+if blkInput; clusterDepths = blk.clu.depths; clusterPenetrationIdx = blk.pen.ephysRecordIdx(blk.clu.penetrationRef); end
+    
 probLength = 3840;
 ephysRecord = load(prc.pathFinder('ephysrecord'), 'ephysRecord'); ephysRecord = ephysRecord.ephysRecord;
 penetrations = unique(clusterPenetrationIdx);
@@ -18,4 +20,10 @@ parentIdx = st.parent_structure_id(clusterLocations.areaIdx);
 parentIdx(parentIdx==0) = 997;
 [~,parentIdx] = ismember(parentIdx,st.id);
 clusterLocations.parent = st.acronym(parentIdx);
+
+if blkInput
+    fieldNames = fields(clusterLocations);
+    for i = 1:length(fieldNames); blk.clu.(fieldNames{i}) = clusterLocations.(fieldNames{i}); end
+    clusterLocations = blk;
+end
 end

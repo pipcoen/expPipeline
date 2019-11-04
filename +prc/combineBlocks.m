@@ -13,20 +13,15 @@ if any(numOfSites); ephysExists = 1; else, ephysExists = 0; end
 if ephysExists
     if sum(numOfSites) > 255; acc2 = 'uint16'; else, acc2 = 'uint8'; end
     ephys = vertcat(blks(numOfSites>0).ephys);
-    numOfSpikes = arrayfun(@(x) length(x.spike.amplitudes),ephys);
     numOfClusters = arrayfun(@(x) length(x.cluster.amplitudes),ephys);
-    numOfSpikesPerCluster = cell2mat(arrayfun(@(x) accumarray(x.spike.clusterNumber,1,[length(x.cluster.depths),1]),ephys, 'uni', 0));
-    clusterNumber = cell2mat(arrayfun(@(x) (1:length(x.cluster.amplitudes))',ephys, 'uni', 0));
+    numOfSpikesPerCluster = cell2mat(arrayfun(@(x) cellfun(@length, x.cluster.spkTimes),ephys, 'uni', 0));
     
     ephys = prc.catStructs(ephys);
     ephys.penetration.subjectRef = cell2mat(arrayfun(@(x,y) x*ones(y,1), expBySubject, numOfSites, 'uni', 0));
     ephys.penetration.expRef = cell2mat(arrayfun(@(x,y) x*ones(y,1), cumsum(numOfSites*0+1), numOfSites, 'uni', 0));
     ephys.penetration.numOfClusters = numOfClusters;
-    ephys.penetration.numOfSpikes = numOfSpikes;
     
     penByExp = ephys.penetration.expRef;
-    ephys.spike.penetrationRef = cell2mat(arrayfun(@(x,y) x*ones(y,1, acc2), cumsum(penByExp*0+1), numOfSpikes, 'uni', 0));   
-    ephys.cluster.number = clusterNumber;
     ephys.cluster.numOfSpikes = numOfSpikesPerCluster;
     ephys.cluster.subjectRef = cell2mat(arrayfun(@(x,y) x*ones(y,1, 'uint8'), ephys.penetration.subjectRef, numOfClusters, 'uni', 0));
     ephys.cluster.expRef = cell2mat(arrayfun(@(x,y) x*ones(y,1, acc1), penByExp, numOfClusters, 'uni', 0));
@@ -46,7 +41,6 @@ comBlks.tot.trials = sum(numOfTrials);
 if ephysExists
     comBlks.tot.penetrations = sum(numOfSites);
     comBlks.tot.clusters = sum(numOfClusters);
-    comBlks.tot.spikes = sum(numOfSpikes);
 end
 
 comBlks.exp.subjectRef = expBySubject;
@@ -85,7 +79,6 @@ blks = prc.chkThenRemoveFields(blks, trialFields);
 if ephysExists
     comBlks.pen = ephys.penetration;
     comBlks.clu = ephys.cluster; 
-    comBlks.spk = ephys.spike; 
 end
 
 if ~isempty(fields(blks)); warning('Unexpected fields in blocks!'); end

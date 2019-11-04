@@ -164,6 +164,9 @@ for i = 1:size(templates,1)
 end
 [~, ephysFolder] = fileparts(kilosortOutput);
 if strcmp(ephysFolder, 'kilosort'); ephysFolder = 'ephys'; end
+
+spkTimesForClusters = arrayfun(@(x) single(spikeTimesTimeline(spikeTemplates==x)) ,1:length(templateAmps), 'uni', 0)';
+spkAmpsForClusters = arrayfun(@(x) single(spikeAmps(spikeTemplates==x)) ,1:length(templateAmps), 'uni', 0)';
 %%
 eph.penetration.folder = ephysFolder;
 eph.penetration.channelMap = {readNPY([kilosortOutput '\channel_positions.npy'])};
@@ -173,8 +176,7 @@ eph.cluster.amplitudes = templateAmps;
 eph.cluster.duration = templateDuration;
 eph.cluster.waveforms = waveforms;
 eph.cluster.templates = reducedTemplates;
-eph.spike.times = single(spikeTimesTimeline);
-eph.spike.amplitudes = uint16(spikeAmps);
-eph.spike.clusterNumber = uint16(spikeTemplates);
+eph.cluster.spkTimes = spkTimesForClusters;
+eph.cluster.spkAmplitudes = spkAmpsForClusters;
 %%
 fprintf('Finished loading experiment... \n');

@@ -276,8 +276,8 @@ end
 blk = prc.combineBlocks(prc.getDataFromDates(penetrationDetails.subject, penetrationDetails.expDate, exp4Pen.expDef,'eph'));
 blk = prc.filtBlock(blk, blk.pen.ephysRecordIdx==guiData.currPenetration, 'penetration');
 clusterDepths = blk.clu.depths;
-spikeTimes = blk.spk.times;
-spikeCluster = blk.spk.clusterNumber;
+spikeTimes = cell2mat(blk.clu.spkTimes);
+spkCluster = cell2mat(cellfun(@(x,y) x*0+y, blk.clu.spkTimes, num2cell((1:length(blk.clu.depths))'), 'uni', 0));
 %%
 powerSpectra = flipud(log(blk.pen.lfpPowerSpectra{1}.powerSpectra'));
 channelMean = mean(powerSpectra,2);
@@ -303,7 +303,7 @@ spikeBinning = 0.01; % seconds
 corrEdges = nanmin(spikeTimes):spikeBinning:nanmax(spikeTimes);
 binnedSpikesDepth = zeros(length(uniqueDepths),length(corrEdges)-1);
 for currDepth = 1:length(uniqueDepths)
-    binnedSpikesDepth(currDepth,:) = histcounts(spikeTimes(ismember(spikeCluster,find(groupDepths == uniqueDepths(currDepth)))), corrEdges);
+    binnedSpikesDepth(currDepth,:) = histcounts(spikeTimes(ismember(spkCluster,find(groupDepths == uniqueDepths(currDepth)))), corrEdges);
 end
 muaCorr = corrcoef(binnedSpikesDepth');
 muaCorr(eye(numCorrGroups)>0) = nan;
