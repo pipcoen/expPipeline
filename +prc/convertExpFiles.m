@@ -20,7 +20,7 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %Set the default values for the inputs and check that they are of the right format
 if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
-if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ';'TS';'KM'}; end
+if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 
@@ -173,8 +173,7 @@ for i = 1:length(fields2copy); x.newBlock.(fields2copy{i}) = x.(fields2copy{i});
 for i = 1:length(fields2copy); x.standardizedParams.(fields2copy{i}) = x.(fields2copy{i}); end
 
 %Section remove repeats from the wheel inputs (this makes the biggest difference to the size of the saved block file)
-repeatPoints = [strfind(diff([-1000,x.standardizedBlock.inputs.wheelValues])~=0, [0 0]) ...
-    strfind(abs(diff([-1000,x.standardizedBlock.inputs.wheelValues(1:2:end)]))>1, [0 0])*2];
+repeatPoints = strfind(diff([-1000,x.standardizedBlock.inputs.wheelValues])==0, [1 1]);
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
 x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);

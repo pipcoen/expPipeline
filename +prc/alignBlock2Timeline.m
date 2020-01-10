@@ -11,7 +11,7 @@ end
 switch expDef
     case 'multiSpaceWorld'
         alignType = 'wheel';
-        fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'};
+        fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'; 'wheelTraceTimeValue'};
         trialGapThresh = 1;
     case {'multiSpaceWorldPassive'; 'multiSpaceWorldPassiveTwoSpeakers'}
         if contains('photoDiode', inputNames); alignType = 'photoDiode';
@@ -19,7 +19,7 @@ switch expDef
         else, error('What am I supposed to use to align block with timeline?!')
         end
         trialGapThresh = 1./max([block.paramsValues.clickRate])*3;
-        fineTune = {'clicksfine'; 'flashesfine'; 'reward'};
+        fineTune = {'clicksfine'; 'flashesfine'; 'reward'; 'wheelTraceTimeValue'};
 end
 
 if strcmp(alignType, 'wheel') && max(timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'))) == 1
@@ -251,6 +251,18 @@ if any(contains(fineTune, 'movements'))
     aligned.movementTimes = movementTimes;
 end
 
+if any(contains(fineTune, 'wheelTraceTimeValue'))
+    trialStEnIdx = round(trialStEnTimes.*sampleRate)';
+    if ~exist('timelinehWeelPosition', 'var')
+        timelinehWeelPosition = timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'));
+        timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
+    end
+    repeatPoints = strfind(diff([-1000,timelinehWeelPosition'])==0, [1 1]);
+    wheelValue = timelinehWeelPosition(setdiff(1:end, repeatPoints));
+    wheelTime = timelineTime(setdiff(1:end, repeatPoints))';
+    aligned.wheelTraceTimeValue = [wheelTime wheelValue];
+end
+
 rawFields = fields(aligned);
 for i = 1:length(rawFields)
     currField = rawFields{i};
@@ -258,16 +270,18 @@ for i = 1:length(rawFields)
     aligned.(currField) = prc.indexByTrial(trialStEnTimes, currData(:,1), currData);
     emptyIdx = cellfun(@isempty, aligned.(currField));
 
-    if any(strcmp(currField, {'audStimOnOff'; 'visStimOnOff'; 'rewardTimes'}))
-        aligned.(currField)(emptyIdx) = {nan};
+    if any(strcmp(currField, {'audStimOnOff'; 'visStimOnOff'; 'rewardTimes';'wheelTraceTimeValue'}))
+        nColumns = max(cellfun(@(x) size(x,2), aligned.(currField)));
+        aligned.(currField)(emptyIdx) = {nan*ones(1,nColumns)};
+        aligned.(currField) = cellfun(@single,aligned.(currField), 'uni', 0);
     end
     if any(strcmp(currField, {'audStimPeriodOnOff'; 'visStimPeriodOnOff'; 'movementTimes'}))
         nColumns = max(cellfun(@(x) size(x,2), aligned.(currField)));
         aligned.(currField)(emptyIdx) = {nan*ones(1, nColumns)};
-        aligned.(currField) = cell2mat(aligned.(currField));
+        aligned.(currField) = single(cell2mat(aligned.(currField)));
     end
 end
-requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff';'movementTimes';'rewardTimes'};
+requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff';'movementTimes';'rewardTimes';'wheelTraceTimeValue'};
 for i = 1:length(requiredFields)
     if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
 end

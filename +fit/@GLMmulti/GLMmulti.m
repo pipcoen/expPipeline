@@ -16,10 +16,10 @@ classdef GLMmulti < matlab.mixin.Copyable
         function obj = GLMmulti(inputBlockData, modelString)
             %% Input blockData must be a struct with fields: conditions and responseMade
             inputBlockData.origMax = [max(abs(inputBlockData.tri.stim.visDiff)) max(abs(inputBlockData.tri.stim.audDiff))];
-            inputBlockData.visDiff = inputBlockData.tri.stim.visDiff;%./inputBlockData.origMax(1);
-            inputBlockData.audDiff = inputBlockData.tri.stim.audDiff./inputBlockData.origMax(2);
+            inputBlockData.tri.stim.visDiff = inputBlockData.tri.stim.visDiff./inputBlockData.origMax(1);
+            inputBlockData.tri.stim.audDiff = inputBlockData.tri.stim.audDiff./inputBlockData.origMax(2);
             obj.blockData = inputBlockData;
-            obj.blockData.selectedTrials = ones(size(inputBlockData.audDiff,1),1);
+            obj.blockData.tri.outcome.selectedTrials = ones(size(inputBlockData.tri.stim.audDiff,1),1);
             tab = tabulate(obj.blockData.tri.outcome.responseMade)/100;
             obj.initGuess = sum(tab(:,3).*log2(tab(:,3)));
             if exist('modelString', 'var'); obj.GLMMultiModels(modelString); end
@@ -49,14 +49,14 @@ classdef GLMmulti < matlab.mixin.Copyable
             obj.pHat = [];
             obj.logLik = nan(cvObj.NumTestSets,1);
             for i = 1:cvObj.NumTestSets
-                cvTrainObj = copy(obj); cvTrainObj.blockData = prc.filtStruct(cvTrainObj.blockData, cvObj.training(i));
+                cvTrainObj = copy(obj); cvTrainObj.blockData = prc.filtBlock(cvTrainObj.blockData, cvObj.training(i));
                 disp(['Model: ' obj.modelString '. Fold: ' num2str(i) '/' num2str(cvObj.NumTestSets)]);
                 
                 fittingObjective = @(b) (cvTrainObj.calculateLogLik(b));
                 [obj.prmFits(i,:),~,exitflag] = fmincon(fittingObjective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
                 if ~any(exitflag == [1,2]); obj.prmFits(i,:) = nan(1,length(obj.prmLabels)); end
                 
-                cvTestObj = copy(obj); cvTestObj.blockData = prc.filtStruct(cvTestObj.blockData, cvObj.test(i));
+                cvTestObj = copy(obj); cvTestObj.blockData = prc.filtBlock(cvTestObj.blockData, cvObj.test(i));
                 pHatTested = cvTestObj.calculatepHat(obj.prmFits(i,:));
                 if min(cvTestObj.blockData.tri.outcome.responseMade) == 0; idxMod = 1; else, idxMod = 0; end
                 obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.tri.outcome.responseMade+idxMod));

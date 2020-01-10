@@ -46,9 +46,12 @@ end
 if isdir(p1) && p1(end)~='\', p1 = [p1, '\']; end
 if isdir(p2) && p2(end)~='\', p2 = [p2, '\']; end
 
+exclusions = {'.ini'; '~'};
 % get the files and subdirectories, and sort them by alphabetically
 files1 = sortstruct(dir(p1), 'name');
 files2 = sortstruct(dir(p2), 'name');
+files1(contains({files1.name}', exclusions)) = [];
+files2(contains({files2.name}', exclusions)) = [];
 
 
 %% compare the files and subdirectories one by one

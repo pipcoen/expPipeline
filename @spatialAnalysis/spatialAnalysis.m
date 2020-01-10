@@ -17,8 +17,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
     
     properties (Access=public)
         blks;                  %Block files loaded for each subject (one cell per subject)
-        glmFit;
-        hand;                    %Handles to current axis/figure being used for plotting
+        glmFit;                %GLM class for post-fitting of data in blks
+        hand;                  %Handles to current axis/figure being used for plotting
     end
     
     %%
@@ -33,7 +33,9 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             
             if ~iscell(expDate); expDate = {expDate}; end
             if ~iscell(subjects); subjects = {subjects}; end
-            if any(strcmp(subjects, 'all')); subjects = [arrayfun(@(x)['PC0' num2str(x)], 11:99,'uni', 0), 'DJ007','DJ008','DJ010']; end
+            if any(strcmp(subjects, 'all'))
+                subjects = [arrayfun(@(x)['PC0' num2str(x)], 11:99,'uni', 0), 'DJ007','DJ008','DJ010']; 
+            end
             if length(expDate) < length(subjects); expDate = repmat(expDate, length(subjects),1); end
             expDate = expDate(:); subjects = subjects(:);
             expDate = arrayfun(@(x,y) prc.keyDates(x,y), subjects(:), expDate(:), 'uni', 0);
@@ -209,30 +211,56 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
         end
         
-        function scatterReactionTimes(obj)
+        function scatterData(obj,plotType)
+            if ~exist('plotType', 'var'); plotType = 'rea'; end
             figure;
-            allTimes = [];
-            for i  = 1:length(obj.blks)
-                nBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm');
-                timeGrid = prc.makeGrid(nBlk, round(nBlk.tri.outcome.timeToWheelMove*1e3), @median, 'abscondition');
-                trialType = nBlk.tri.trialClass;
-                trialType = trialType.blank*0+trialType.auditory + 2*trialType.visual+3*trialType.coherent+4*trialType.conflict;
-                trialGrid = prc.makeGrid(nBlk, trialType, @mean, 'abscondition');
-                tkIdx = trialGrid.*fliplr(trialGrid)==12;
-                allTimes = [allTimes; [mean(timeGrid(tkIdx & trialGrid==3)), mean(timeGrid(tkIdx & fliplr(trialGrid)==3))]];
-                allTimes(end,:) = allTimes(end,:) - mean(timeGrid(trialGrid==2 | trialGrid==2));
+            switch plotType(1:3)
+                case 'rea'
+                    scatterData = zeros(length(obj.blks),2);
+                    for i  = 1:length(obj.blks)
+                        nBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm');
+                        timeGrid = prc.makeGrid(nBlk, round(nBlk.tri.outcome.timeToWheelMove*1e3), @median, 'abscondition');
+                        trialType = nBlk.tri.trialClass;
+                        trialType = trialType.blank*0+trialType.auditory + 2*trialType.visual+3*trialType.coherent+4*trialType.conflict;
+                        trialGrid = prc.makeGrid(nBlk, trialType, @mean, 'abscondition');
+                        tkIdx = trialGrid.*fliplr(trialGrid)==12;
+                        scatterData(i,:) = [mean(timeGrid(tkIdx & trialGrid==3)), mean(timeGrid(tkIdx & fliplr(trialGrid)==3))];
+                        scatterData(i,:) = scatterData(i,:) - mean(timeGrid(trialGrid==2 | trialGrid==2));
+                    end
+                    limVal = 60;
+                    xLimits = ([-limVal limVal/2]);
+                    yLimits = ([-limVal limVal/2]);
+                    xlabel2Use = '\fontsize{20} Coherent reaction time (ms)';
+                    ylabel2Use = '\fontsize{20} Conflict reaction time (ms)';
+                case 'coh'
+                    scatterData = zeros(length(obj.blks),2);
+                    for i  = 1:length(obj.blks)
+                        nBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm');
+                        nBlk = prc.filtBlock(nBlk, ~nBlk.tri.trialClass.conflict & ~nBlk.tri.trialClass.blank);
+                        perfGrid = prc.makeGrid(nBlk, round(nBlk.tri.outcome.feedbackGiven), @mean, 'abscondition');
+                        trialType = nBlk.tri.trialClass;
+                        trialType = trialType.blank*0+trialType.auditory + 2*trialType.visual+3*trialType.coherent+4*trialType.conflict;
+                        trialGrid = prc.makeGrid(nBlk, trialType, @mean, 'abscondition');
+                        columns2use = find(sum(trialGrid == 2 | trialGrid==3)==2);
+                        maxUnimodalPer = max([columns2use*0+perfGrid(trialGrid==1); perfGrid(2,columns2use)]);
+                        multimodalPer = perfGrid(3,columns2use);
+                        scatterData(i,:) = round([mean(maxUnimodalPer) mean(multimodalPer)]*100);
+                    end
+                    xLimits = ([50 100]);
+                    yLimits = ([50 100]);
+                    ylabel2Use = '\fontsize{20} Coherent perf (%)';
+                    xlabel2Use = '\fontsize{20} Best unimodal perf (%)';
             end
-            scatter(allTimes(:,1), allTimes(:,2), 'k', 'markerfacecolor', 'k');
-            [~, pVal] = ttest(allTimes(:,1), allTimes(:,2));
+            scatter(scatterData(:,1), scatterData(:,2), 'k', 'markerfacecolor', 'k');
+            [~, pVal] = ttest(scatterData(:,1), scatterData(:,2));
             disp(pVal);
-            limVal = 60;
-            xlim([-limVal limVal/2]);
-            ylim([-limVal limVal/2]);
             axis equal; axis square;
+            xlim(xLimits);
+            ylim(yLimits);
             hold on
-            plot([-limVal,limVal/2], [-limVal,limVal/2], '--k')
-            xlabel('\fontsize{20} Coherent reaction time (ms)');
-            ylabel('\fontsize{20} Conflict reaction time (ms)');
+            plot(xLimits, yLimits, '--k')
+            xlabel(xlabel2Use);
+            ylabel(ylabel2Use);
         end
         
         

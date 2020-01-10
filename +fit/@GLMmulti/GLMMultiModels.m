@@ -1,15 +1,15 @@
 function [logOddsLR, logOddsTO] = GLMMultiModels(obj, tag, P)
 if ~exist('P', 'var'); obj.modelString = tag; end
 % obj.blockData = prc.combineBlocks(obj.blockData, obj.blockData.selectedTrials);
-[obj.blockData.audValues, uniA] = deal(unique(obj.blockData.audDiff));
-[obj.blockData.visValues, uniV] = deal(unique(obj.blockData.visDiff));
+[obj.blockData.audValues, uniA] = deal(unique(obj.blockData.tri.stim.audDiff));
+[obj.blockData.visValues, uniV] = deal(unique(obj.blockData.tri.stim.visDiff));
 uniA = sort(uniA, 'descend'); uniV = sort(uniV, 'descend');
 
 [audGrid,visGrid] = meshgrid(uniA,uniV);
-comb = unique([obj.blockData.visDiff obj.blockData.audDiff], 'rows');
+comb = unique([obj.blockData.tri.stim.visDiff obj.blockData.tri.stim.audDiff], 'rows');
 switch tag
     case 'eval'; visDiff = obj.evalPoints(:,1); audDiff = obj.evalPoints(:,2);
-    otherwise, audDiff = obj.blockData.audDiff; visDiff = obj.blockData.visDiff;
+    otherwise, audDiff = obj.blockData.tri.stim.audDiff; visDiff = obj.blockData.tri.stim.visDiff;
 end
 if contains(obj.modelString, 'Nest'); nested = 1; else; nested = 0; end
 if contains(obj.modelString, 'Conf'); addConf = 1; else; addConf = 0; end
