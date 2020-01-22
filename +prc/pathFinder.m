@@ -49,11 +49,12 @@ for i = 1:size(subject,1)
     expRef = [expDate{i} '_' expNum{i} '_' subject{i}];
     processedFileName = [subject{i} '\' subject{i} '_' expDate{i}([3:4 6:7 9:10]) '_' expNum{i}  'Proc.mat'];
     
-    expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zserver.cortexlab.net\Data\Subjects\'};
+    expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zserver.cortexlab.net\Data\Subjects\'; '\\znas.cortexlab.net\Subjects\'};
     if ~strcmp(expDate{i}, 'noDataGiven')
         if dateNumber{i} > 737589 && strcmp(subject{i}, 'PC037'); expInfo = expInfo{2}; %'2019-06-13'
         elseif dateNumber{i} > 737590 && strcmp(subject{i}, 'PC038'); expInfo = expInfo{2}; %'2019-06-14'
-        elseif dateNumber{i} < 737612; expInfo = expInfo{1}; %'2019-07-06'
+        elseif dateNumber{i} < 737612 && dateNumber{i} <= 737739; expInfo = expInfo{1}; %'2019-07-06'
+        elseif dateNumber{i} > 737739; expInfo = expInfo{3}; %'2019-11-10'
         else, expInfo = expInfo{2};
         end
     end

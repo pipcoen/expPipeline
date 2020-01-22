@@ -20,7 +20,7 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %Set the default values for the inputs and check that they are of the right format
 if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
-if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
+if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'; 'AN'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 

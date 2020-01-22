@@ -31,8 +31,8 @@ if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
 expInfo = prc.pathFinder('expInfo');
 includedMice = [cellfun(@(x) ['PC0' x], ...
     split({'10,11,12,13,15,22,25,27,29,30,31,32,33,34,36,37,38,41,43,45,46,48,50,51'},','), 'uni', 0); ...
-        {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR015'}];
-aliveMice = {'KM011';'KM010'};
+        {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR015';'AN002'}];
+aliveMice = {'AN002'};
 
 startedDates = {...
     'CR015' '2019-07-30'};
@@ -52,7 +52,7 @@ if any(startedIdx); includedMice(startedIdx > 0,2) = num2cell(datenum(startedDat
 if any(retiredIdx); includedMice(retiredIdx > 0,3) = num2cell(datenum(retiredDates(retiredIdx(retiredIdx>0), 2), 'yyyy-mm-dd')); end
 
 %% Check for all files generated in the past 10 days for alive mice.
-nDays2Chk = 10;
+nDays2Chk = 90;
 if rebuildList ~= 1
     cycles = 2;
     mice2Update = includedMice(contains(includedMice(:,1), aliveMice),:);
@@ -194,8 +194,9 @@ end
 processList = cellfun(@(x) fileparts(x(1:end-1)), {tLoc.serverFolder}', 'uni', 0);
 processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expList.expDef}', 'uni', 0);
 processList([expList.excluded]>0) = num2cell(num2str(rand(sum([expList.excluded]>0),1),15),2);
-[~, uniqueFileIdx] = unique(processList(~[expList.excluded]'));
-duplicates = unique(processList(setdiff(1:length(processList(~[expList.excluded]')),uniqueFileIdx)));
+noExcludedList = processList(~[expList.excluded]');
+[~, uniqueFileIdx] = unique(noExcludedList);
+duplicates = unique(noExcludedList(setdiff(1:length(noExcludedList),uniqueFileIdx)));
 for i = 1:length(duplicates)
     duplicatesIdx = strcmp(processList,duplicates{i}) & [expList.excluded]'==0;
     tDat = expList(duplicatesIdx);
