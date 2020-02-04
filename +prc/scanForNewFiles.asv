@@ -24,23 +24,6 @@ if ~exist('rebuildList', 'var') || isempty(rebuildList); rebuildList = 0; end
 if ~exist('rechkExcludeTxts', 'var') || isempty(rechkExcludeTxts); rechkExcludeTxts = 0; end
 if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
 
-<<<<<<< Updated upstream
-expInfo = prc.pathFinder('expInfo');
-includedMice = [cellfun(@(x) ['PC0' x], ...
-    split({'10,11,12,13,15,22,25,27,29,30,31,32,33,34,36,37,38,41,43,45,46,48,50,51'},','), 'uni', 0); ...
-        {'DJ006'; 'DJ007'; 'DJ008'; 'DJ010'; 'CR015';'AN002'}];
-aliveMice = {'AN002'};
-
-startedDates = {...
-    'CR015' '2019-07-30'};
-retiredDates = {...
-    'PC005' '2017-07-28'; ...
-    'PC006' '2017-07-28'; ...
-    'PC009' '2017-03-22'; ...
-    'PC014' '2017-07-01'; ...
-    'DJ011' '2018-06-08'; ...
-    'CR010' '2019-01-29'};
-=======
 expInfo = prc.pathFinder('expInfo'); %Get the top-level of the experimental files
 
 %The full list of subjects to be included (generally, mice that learnt the task and have a decent amount of data). 
@@ -53,7 +36,6 @@ aliveMice = {''}; %Mice that are currently alive (i.e. may generate new data)
 %swathe of dates from a particular mouse for some reason. Defaults assume all data from a given mouse is included.
 startedDates = {'' ''};
 retiredDates = {'' ''};
->>>>>>> Stashed changes
 includedMice(:,2) = {datenum('2015-09-01', 'yyyy-mm-dd')};
 includedMice(:,3) = {datenum(floor(now))};
 [~, startedIdx] = ismember(includedMice(:,1), startedDates(:,1));
@@ -61,14 +43,9 @@ if any(startedIdx); includedMice(startedIdx > 0,2) = num2cell(datenum(startedDat
 [~, retiredIdx] = ismember(includedMice(:,1), retiredDates(:,1));
 if any(retiredIdx); includedMice(retiredIdx > 0,3) = num2cell(datenum(retiredDates(retiredIdx(retiredIdx>0), 2), 'yyyy-mm-dd')); end
 
-<<<<<<< Updated upstream
-%% Check for all files generated in the past 10 days for alive mice.
-nDays2Chk = 90;
-=======
 %% Create the search tree for experiments
 %Depending on rebuildList, we assign a number of folder cycles to look through, folders from the last 10 days (for living mice), etc.
 nDays2Chk = 10;
->>>>>>> Stashed changes
 if rebuildList ~= 1
     cycles = 2;
     mice2Update = includedMice(contains(includedMice(:,1), aliveMice),:);
@@ -101,11 +78,7 @@ end
 
 %Check whether there are new files, the whole list is being rebuilt etc. If the whole list is being rebuilt, the create an empty "epxList" to append
 %experiments to. Otherwise, only process identified files that are not already part of the expList.
-if ~isempty(processList); blockList = processList(~cellfun(@isempty, regexp(processList, '20.*_Block.mat'))); end
-if ~isempty(processList); excludeTxtFiles = processList(~cellfun(@isempty, regexp(processList, 'Exclude'))); end
-dir2Exclude
-filteredList = cellfun(@(x) max(blockList
-
+if ~isempty(processList); processList = processList(~cellfun(@isempty, regexp(processList, '20.*lock.mat'))); end
 if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return;
 elseif ~rebuildList, tLoc = prc.updatePaths(expList); processList = processList(~contains(processList,{tLoc.serverFolder}'));
 end
@@ -121,9 +94,7 @@ for i = 1:length(processList)
     datNum = datenum(splitStr{end-2}, 'yyyy-mm-dd');
     mouseIdx = strcmp(includedMice(:,1), splitStr{end-3});
     if datNum < includedMice{mouseIdx,2} || datNum > includedMice{mouseIdx,3}; continue; end
-    
-    tempLoc = prc.updatePaths(expList(end));
-    
+      
     %Populate the new entry with basic subject data
     if isempty(expList); idx = 1; else, idx = length(expList)+1; end
     expList(idx).subject = splitStr{end-3};
@@ -135,6 +106,7 @@ for i = 1:length(processList)
     addedFiles = 1;
     %Poplate fields for addition to expList
     
+    tempLoc = prc.updatePaths(expList(end));  
     if exist(prc.pathFinder('serverblock',expList(end)), 'file'); load(prc.pathFinder('serverblock',expList(end)), 'block'); b = block;
     else, clear b; load(processList{i});
         if exist(tempLoc.rawTimeline, 'file'); load(tempLoc.rawTimeline);
@@ -218,9 +190,8 @@ end
 processList = cellfun(@(x) fileparts(x(1:end-1)), {tLoc.serverFolder}', 'uni', 0);
 processList = cellfun(@(x,y,z) [x, y, z], processList, {expList.expType}', {expList.expDef}', 'uni', 0);
 processList([expList.excluded]>0) = num2cell(num2str(rand(sum([expList.excluded]>0),1),15),2);
-noExcludedList = processList(~[expList.excluded]');
-[~, uniqueFileIdx] = unique(noExcludedList);
-duplicates = unique(noExcludedList(setdiff(1:length(noExcludedList),uniqueFileIdx)));
+[~, uniqueFileIdx] = unique(processList(~[expList.excluded]'));
+duplicates = unique(processList(setdiff(1:length(processList(~[expList.excluded]')),uniqueFileIdx)));
 for i = 1:length(duplicates)
     duplicatesIdx = strcmp(processList,duplicates{i}) & [expList.excluded]'==0;
     tDat = expList(duplicatesIdx);
