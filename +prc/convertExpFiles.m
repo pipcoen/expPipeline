@@ -3,15 +3,14 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 
 %Inputs(default values)
 %redoTag(0)---------------------Value of 1 will redo analyses even if they are already processed
-%dataType('all')----------------A tag to process only a specific file type ("flu" for 2P, "fus" for fusi, "eph" for ephys and "all" for all of them)
+%dataType('all')----------------A tag to process only a specific file type ("eph" for ephys and "all" for all of them)
 %selectedSubjects({'PC'; 'DJ'})-Run for a specific mouse, or group of mice containing this string(s)
-%selectedSubjects({'1'})-Run for a specific date, or group of dates containing this string(s)
+%selectedDates({'1'})-----------Run for a specific date, or group of dates containing this string(s)
 
 %Outputs
 %An output files is generated for each experiment in the form subject_yymmdd_expNumProc.mat These files will contain the following
 %"blk" is a structure comprising a reduced, processed block file which contains all essential information.
 %"raw" is a structure with some raw, rarely needed information that isn't usually loaded (takes too much time)
-%"fus" is a structure with fusi-specific information
 %"eph" is a structure with ephys-specific information
 %"whoD"is a cell will the names of all variables in the file (loading this is quicker than asking matlab to check)
 
@@ -30,7 +29,7 @@ if zipComp; fprintf('Running on Zip so will sync local folder and server... \n')
 end
 
 %Scan for new files and update the experiment list. Filter the list based on subject and date inputs.
-expList = prc.scanForNewFiles(0,[0 1]);
+expList = prc.scanForNewFiles(0,1);
 expList = prc.updatePaths(expList);
 expList = expList(cellfun(@(x) contains(x, selectedSubjects), {expList.subject}));
 expList = expList(cellfun(@(x) contains(x, selectedDates), {expList.expDate}));

@@ -19,7 +19,7 @@ if ~isfield(pathInfo, 'subject'); subject = 'noDataGiven'; else, subject = pathI
 if ~isfield(pathInfo, 'expDate'); expDate = 'noDataGiven'; else, expDate = pathInfo.expDate;  end
 if ~isfield(pathInfo, 'expNum'); expNum = 'noDataGiven'; else, expNum = pathInfo.expNum;  end
 if ~isfield(pathInfo, 'datNum'); datNum = 'noDataGiven'; else, datNum = pathInfo.datNum;  end
-if all(contains({expDate, datNum}, 'noDataGiven') == [0 1]); datNum = datenum(expDate, 'yyyy-mm-dd'); end
+
 if isnumeric(expNum); expNum = num2str(expNum); end
 if isnumeric(expDate); expDate =  datestr(expDate, 'yyyy-mm-dd'); end
 
@@ -43,13 +43,13 @@ end
 
 %Assign locations for the raw data, processed data etc. depending on the access of the computer being used.
 rawBackup = [driveName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
-serverProcessedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
+serverProcessedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData4Paper\';
 if strcmp(directoryCheck, 'server')
-    processedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData\';
+    processedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData4Paper\';
     if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'serverBlock'; end
     if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'serverParams'; end
 else
-    processedDirectory = [driveName '\Dropbox (Neuropixels)\MouseData\ProcessedData\'];
+    processedDirectory = [driveName '\Dropbox (Neuropixels)\MouseData\ProcessedData4Paper\'];
     if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'backupBlock'; end
     if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'backupParams'; end
 end
@@ -61,21 +61,15 @@ for i = 1:size(subject,1)
     expRef = [expDate{i} '_' expNum{i} '_' subject{i}];
     processedFileName = [subject{i} '\' subject{i} '_' expDate{i}([3:4 6:7 9:10]) '_' expNum{i}  'Proc.mat'];
     
-<<<<<<< Updated upstream
+    %Annoying adjustments to account for changes in which server stored the data in lab. This is the expInfo path.
     expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zserver.cortexlab.net\Data\Subjects\'; '\\znas.cortexlab.net\Subjects\'};
     if ~strcmp(expDate{i}, 'noDataGiven')
-        if dateNumber{i} > 737589 && strcmp(subject{i}, 'PC037'); expInfo = expInfo{2}; %'2019-06-13'
-        elseif dateNumber{i} > 737590 && strcmp(subject{i}, 'PC038'); expInfo = expInfo{2}; %'2019-06-14'
-        elseif dateNumber{i} < 737612 && dateNumber{i} <= 737739; expInfo = expInfo{1}; %'2019-07-06'
-        elseif dateNumber{i} > 737739; expInfo = expInfo{3}; %'2019-11-10'
-=======
-    %Annoying adjustments to account for changes in which server stored the data in lab. This is the expInfo path.
-    expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zserver.cortexlab.net\Data\Subjects\'};
-    if ~strcmp(expDate{i}, 'noDataGiven')
+        if strcmp(datNum, 'noDataGiven'); datNum = {datenum(expDate, 'yyyy-mm-dd')}; end
         if datNum{i} > 737589 && strcmp(subject{i}, 'PC037'); expInfo = expInfo{2}; %'2019-06-13'
         elseif datNum{i} > 737590 && strcmp(subject{i}, 'PC038'); expInfo = expInfo{2}; %'2019-06-14'
         elseif datNum{i} < 737612; expInfo = expInfo{1}; %'2019-07-06'
->>>>>>> Stashed changes
+        elseif datNum{i} > 737612 && datNum{i} <= 737739; expInfo = expInfo{2}; %'2019-07-06'
+        elseif datNum{i} > 737739; expInfo = expInfo{3}; %'2019-11-10'
         else, expInfo = expInfo{2};
         end
     end
