@@ -1,5 +1,21 @@
 function dateRange = keyDates(subjectID, dataTag)
-                
+%% A funciton to get the "key dates" for a mouse, based on a tag for the type of data requested.
+%NOTE: These are manually defined date ranges (by Pip) based on which mice were used for which experiments, and when they were used.
+
+%INPUTS(default values)
+%subjectID(required)-----The subject for which the dates are requested
+%dataTag(required)-------A string representing the type of data requested. These can be...
+%            'behavior'------The final version of the task without additional recording (e.g. ephys)
+%            'aud5'----------Version of the task with 5 auditory locations instead of 3
+%            'uniscan'-------Unilateral inactivations (with light shielding)
+%            'biscan'--------Bilateral inactivations (without light shielding)
+%            'm2ephys'-------M2 ephys sessions
+%            'm2ephysgood'---M2 ephys sessions, but only mice with good behavior on at least one session
+
+%OUTPUTS
+%dateRange---------------The selected date range. Empty if subject doesn't match one of the subjects within a tag.
+
+%%
 switch lower(dataTag{1})
     case {'behavior'; 'behaviour'}
         switch subjectID{1}
@@ -48,6 +64,21 @@ switch lower(dataTag{1})
             case 'PC013'; dateRange = {'2017-06-20:2017-07-06'};
             otherwise, dateRange = []; 
         end
+               
+    case 'm2ephys'
+        switch subjectID{1}
+            case 'DJ007'; dateRange = {'2018-11-28:2018-12-02'}; %Power was only 1.5mW
+            case 'PC029'; dateRange = {'2018-10-18:2018-10-19'};
+            case 'PC032'; dateRange = {'2019-04-03:2019-04-14'};
+            case 'PC033'; dateRange = {'2019-03-27:2019-03-31'};
+            case 'PC030'; dateRange = {'2019-05-07:2019-05-13'};
+            case 'PC043'; dateRange = {'2019-05-07:2019-05-16'};
+            case 'PC045'; dateRange = {'2019-08-27:2019-09-06'};
+            case 'PC046'; dateRange = {'2019-08-27:2019-09-06'};
+            case 'PC048'; dateRange = {'2019-09-17:2019-09-26'};
+            case 'PC050'; dateRange = {'2019-09-17:2019-09-26'};
+            otherwise, dateRange = [];
+        end
         
     case 'm2ephysgood'
         switch subjectID{1}
@@ -57,18 +88,7 @@ switch lower(dataTag{1})
             case 'PC046'; dateRange = {'2019-08-27:2019-09-06'};
             case 'PC048'; dateRange = {'2019-09-17:2019-09-26'};
             case 'PC050'; dateRange = {'2019-09-17:2019-09-26'};
-            otherwise, dateRange = []; 
-        end
-        
-    case 'm2ephys'
-        switch subjectID{1}
-            case 'DJ007'; dateRange = {'2018-11-28:2018-12-02'}; %Power was only 1.5mW
-            case 'PC029'; dateRange = {'2018-10-18:2018-10-19'};
-            case 'PC032'; dateRange = {'2019-04-03:2019-04-14'};
-            case 'PC033'; dateRange = {'2019-03-27:2019-03-31'};
-            case 'PC030'; dateRange = {'2019-05-07:2019-05-13'};
-            case 'PC043'; dateRange = {'2019-05-07:2019-05-16'};
-            otherwise, dateRange = []; 
+            otherwise, dateRange = [];
         end
         
     case 'presurg'
@@ -81,7 +101,12 @@ switch lower(dataTag{1})
             case 'PC043'; dateRange = {'2019-04-21:2019-05-06'};
             otherwise, dateRange = []; 
         end
+    
+    case 'learning'
+        %%NEED TO ADD ONE HERE FOR MICE THAT WERE ON THE FINAL LEARNING PIPELINE
         
+    %NOTE: this is important as it allows prc.keyDates to be run on every initialization of "spatialAnalysis" because it will return the original
+    %"expDate" if it doesn't match any tags. e.g. if it is a specific date, or "last2" or soemthing along these lines. 
     otherwise, dateRange = dataTag;
 end
 end

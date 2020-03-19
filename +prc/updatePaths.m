@@ -1,5 +1,5 @@
 function expList = updatePaths(expList)
-%% Function that adds a bunch of paths to the ExpList. Doing this separately ensures paths are up to date, and makes expList easier to browse 
+%% Function that adds a bunch of paths to the expList. Doing this separately ensures paths are up to date, and makes expList easier to browse 
 % INPUTS(default values)
 % expList(load expList)--The current expList (or any structure with fields: "subject", "expDate" and "expNum" 
 

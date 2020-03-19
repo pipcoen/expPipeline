@@ -77,7 +77,7 @@ for i = 1:cycles
     excludeTxtFiles = [excludeTxtFiles; processList(~cellfun(@isempty, regexp(processList, 'Exclude.txt')))];
 end
 
-%CAREFUL--commented so not accidentally used. Delete the autoExcluded experimetns if completely rebuilding the expList (basically deletes a bunch 
+%CAREFUL--commented so not accidentally used. Delete the autoExcluded experiments if completely rebuilding the expList (basically deletes a bunch 
 %of text files)
 % if rebuildList == 2
 %     cellfun(@delete, excludeTxtFiles(contains(excludeTxtFiles, 'auto2020PaperExclude.txt')));
@@ -121,7 +121,7 @@ for i = 1:length(processList)
     fprintf('Adding recording %s %s %s: %d of %d\n', newExp.expDate, newExp.subject, newExp.expNum, i, length(processList));
     
     %Add rig name and expType
-    newExp.expDef = b.expDef;
+    [~, newExp.expDef] = fileparts(b.expDef);
     newExp.rigName = b.rigName;
     newExp.expType = 'training';
 
@@ -140,6 +140,12 @@ for i = 1:length(processList)
     else, newExp.expDuration = b.duration;
     end
     
+    if ~contains(newExp.expDef, 'SpaceWorld')
+        fid = fopen([tempLoc.serverFolder 'auto2020PaperExclude.txt'],'wt');
+        fprintf(fid, 'Detected non-SpaceWorldExperiment so not relevant for 2020 paper');
+        fclose(fid);
+        continue;
+    end
     if strcmp(newExp.rigName, 'zatteo') && ~isempty(dir([tempLoc.serverFolder '\*fus.mat*']))
         fid = fopen([tempLoc.serverFolder 'auto2020PaperExclude.txt'],'wt');
         fprintf(fid, 'Detected as fusi exp so not relevant for 2020 paper');

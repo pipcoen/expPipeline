@@ -1,19 +1,27 @@
 classdef spatialAnalysis < matlab.mixin.Copyable
-    %% spatialAnalysis object that extracts beahvioral information for a specified animal or set of animals. The resulting object has a set of methods
-    % that can be used to plot various aspects of animal behavior. NOTE: This function is designed to operate on the output of convertExpFiles and
-    % most methods are specific to multisensoty spatial integration plots.
-    %
-    % Inputs(default values)
-    % subjects(Must be specified)------A cell array of subjects collect parameter and block files for
-    % expDate('last')------------------A cell array of dates, one for all subjects or one for each subject
-    % combineMice(0)-------------------A tag to indicate whether combine across mice or retain individuals
-    %                      0 individual mice, but data is combined across sessions, modal parameter set only
-    %                      1 means all mice combined into a single uber-mouse, modal parameter set only
-    %                      2 as with 1, but all sessions retained, regardless of conditionParameters used
-    % extraTag('eph')-----------------A tag to indicate whether you want to load extra data
-    %                      'eph' will load the ephys data, if available, for each session date
-    %                      'raw' will load the raw data, (rarely needed wheel times from signals etc.)
-    % expDef('multiSpaceWorld')-------Specify the particular expDef to load
+    %% SpatialAnalysis object that extracts beahvioral information for a specified animal or set of animals. The resulting object has a set of methods
+    %that can be used to plot various aspects of animal behavior. NOTE: This function is designed to operate on the output of convertExpFiles and
+    %most methods are specific to multisensoty spatial integration plots.
+    
+    %INPUTS(default values)
+    %subjects(required)------------A cell array of subjects collect parameter and block files for
+    %expDate('last')---------------A cell array of dates (case insensitive), one for all subjects or one for each subject
+    %        'yyyy-mm-dd'--------------A specific date
+    %        'all'---------------------All data
+    %        'lastx'-------------------The last x days of data (especially useful during training)
+    %        'firstx'------------------The first x days of date
+    %        'yest'--------------------The x-1 day, where x is the most recent day
+    %        'yyyy-mm-dd:yyyy-mm-dd'---Load dates in this range (including the boundaries)
+    %        A dataTag (see prc.keyDates)
+    %combineMice(0)----------------A tag to indicate whether to combine multiple mice, or split a single mouse into separate days
+    %        0-------------------------Individual mice are returned as individual structures
+    %        1-------------------------Mice combined into a single uber-mouse with a concatenated name
+    %        -1------------------------Only used with one mouse, and means that the mouse is split into individual sessions
+    %modalParams(0)----------------Indicates whether to eliminate days where the pamater set (aud/vis combos and expType) didn't match the mode
+    %extraTag('eph')---------------Indicates whether you want to load extra data
+    %        'eph'---------------------load the ephys data, if available, for each session date
+    %        'raw'---------------------load the raw data, (rarely needed wheel times from signals etc.)
+    %expDef('multiSpaceWorld')-----Specify the particular expDef to load
     
     properties (Access=public)
         blks;                  %Block files loaded for each subject (one cell per subject)
@@ -21,74 +29,93 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         hand;                  %Handles to current axis/figure being used for plotting
     end
     
-    %%
+    %%METHODS (there are other methods contained in separate .m files)
     methods
-        function obj = spatialAnalysis(subjects, expDate, combineMice, extraTag, expDef)
-            % Initialize fields with default values if no vaules are provided. Then called changeMouse function to get requested data.
+        function obj = spatialAnalysis(subjects, expDate, combineMode, modalParams, extraTag, expDef)
+            %% Central function that loads the requested mouse data into a spatial analysis object
+            
+            %Initialize fields with default values if no vaules are provided.
             if ~exist('subjects', 'var'); error('Must specify which subject to load data from'); end
             if ~exist('expDate', 'var'); expDate = {'last'}; end
-            if ~exist('combineMice', 'var'); combineMice = 0; end
+            if ~exist('combineMode', 'var'); combineMode = 0; end
+            if ~exist('modalParams', 'var'); modalParams = 0; end
             if ~exist('extraTag', 'var'); extraTag = 'eph'; end
             if ~exist('expDef', 'var'); expDef = 'multiSpaceWorld'; end
             
+            %Make sure that all fields are cells. If not, convert to cells. If "all" mice are requested, create cell array of all mice.
             if ~iscell(expDate); expDate = {expDate}; end
             if ~iscell(subjects); subjects = {subjects}; end
             if any(strcmp(subjects, 'all'))
-                subjects = [arrayfun(@(x)['PC0' num2str(x)], 11:99,'uni', 0),'DJ006', 'DJ007','DJ008','DJ010']; 
+                subjects = [arrayfun(@(x)['PC0' num2str(x)], 11:99,'uni', 0),'DJ006', 'DJ007','DJ008','DJ010'];
             end
+            
+            %If there is only one date provided, repeat for all subjects.
             if length(expDate) < length(subjects); expDate = repmat(expDate, length(subjects),1); end
-            expDate = expDate(:); subjects = subjects(:);
+            subjects = subjects(:); expDate = expDate(:);  %Make sure subjects and rows are columns.
+            
+            %If a keyDates tag was used (e.g. "behaviour") instead of a "real" date, "prc.keyDates" will get the corresponding date range. If a tag
+            %was not used, then the "expDate" input will not match a data tag in prc.keyDates, and so will be unchanged.
             expDate = arrayfun(@(x,y) prc.keyDates(x,y), subjects(:), expDate(:), 'uni', 0);
-            subjects = subjects(~cellfun(@isempty, expDate));
-            expDate = expDate(~cellfun(@isempty, expDate));
-            obj = changeMouse(obj, subjects, expDate, combineMice, expDef, extraTag);
+            subjects = subjects(~cellfun(@isempty, expDate)); %Removes excess subjects in the 'all' case
+            expDate = expDate(~cellfun(@isempty, expDate));   %Removes corresponding dates
+            
+            %Run 'changeMouse' function, which does all the loading and combining of the data
+            obj = changeMouse(obj, subjects, expDate, combineMode, modalParams, expDef, extraTag);
         end
         
-        function obj = changeMouse(obj, subjects, expDate, combineMice, extraTag, expDef)
-            if ~exist('combineMice', 'var'); combineMice = 0; end
+        function obj = changeMouse(obj, subjects, expDate, combineMode, modalParams, extraTag, expDef)
+            %% This function uses the curated inputs to actually load and combine the data as requested
+            
+            %INPUTS are defined above, but some defaults be redefined here in case this method is called for an existing object
+            if ~exist('combineMode', 'var'); combineMode = 0; end
             if ~exist('extraTag', 'var'); extraTag = 'none'; end
             if ~exist('expDef', 'var'); expDef = 'multiSpaceWorld'; end
-            obj.blks  = cellfun(@(x,y) prc.getDataFromDates(x, y, extraTag, expDef), subjects(:), expDate(:), 'uni', 0);
-            obj.blks = vertcat(obj.blks{:});
             
+            %Load the data for the requested subjects/dates using prc.getDataFromDates. Concatenate into one structure array, "blks"
+            obj.blks  = cellfun(@(x,y) prc.getDataFromDates(x, y, extraTag, expDef), subjects(:), expDate(:), 'uni', 0);
+            obj.blks = vertcat(obj.blks{:}); %NOTE: currently errors if some mice have ephys data and others don't
+            
+            %Get list of subjects and a reference index. Modify depending on the "combineMode"
             mouseList = unique({obj.blks.subject})';
-            if combineMice>0; mouseList = {cell2mat(mouseList')}; end
-            if combineMice==-2 && length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
-            if combineMice==-2
+            [~, subjectRef] = ismember({obj.blks.subject}', mouseList);
+            if combineMode==1
+                mouseList = {cell2mat(mouseList')};
+                subjectRef = subjectRef*0+1;
+            elseif combineMode==-1 
+                if length(mouseList)~=1; error('Request one mouse if you want it split into separate days'); end
                 mouseList = arrayfun(@(x) [mouseList{1} ':' num2str(x{1})], {obj.blks.expDate}', 'uni',0);
                 [obj.blks.subject] = deal(mouseList{:});
+                subjectRef = (1:length(subjectRef))';
             end
             
-            
+            %This loop removes the less common sessions for each mouse if "modalParams==1" and the mouse has a mix of paramters/expTypes
             retainIdx = ones(length(obj.blks),1)>0;
-            subjectRef = zeros(length(obj.blks),1);
-            %If there are multiple parameter sets in the requested date range for a mouse, use only the most common parameter set.
-            for i = 1:length(mouseList)
-                mouseIdx = cellfun(@(x) contains(mouseList{i}, x), {obj.blks.subject}');
-                subjectRef(mouseIdx) = i;
-                mouseConditions = {obj.blks(mouseIdx).conditionParametersAV}';
-                [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) [num2str(x(:)'), y], mouseConditions, {obj.blks(mouseIdx).expType}','uni',0));
-                if length(conditionSets)>1 && any(combineMice==[1 0])
+            for i = 1:max(subjectRef)
+                mouseConditions = {obj.blks(subjectRef==i).conditionParametersAV}';
+                mouseExpTypes = {obj.blks(subjectRef==i).expType}';
+                [conditionSets, ~, setIdx] = unique(cellfun(@(x,y) [num2str(x(:)'), y], mouseConditions, mouseExpTypes,'uni',0));
+                if length(conditionSets)>1 && modalParams
                     fprintf('WARNING: Several parameter sets in date range for %s. Using mode\n', mouseList{i});
-                    retainIdx(mouseIdx) = retainIdx(mouseIdx).*(setIdx == mode(setIdx));
+                    retainIdx(subjectRef==i) = retainIdx(subjectRef==i).*(setIdx == mode(setIdx));
                 end
             end
             obj.blks = obj.blks(retainIdx);
             subjectRef = subjectRef(retainIdx);
             
+            %Run the blk array through "combineBlocks" which converts blks into their final format
             obj.blks = cell2mat(arrayfun(@(x) prc.combineBlocks(obj.blks(subjectRef==x)), 1:size(mouseList,1), 'uni', 0)');
             obj.hand.axes = [];
             obj.hand.figure = [];
         end
         
         function viewGLMFit(obj, modelString, cvFolds)
-            if ~exist('modelString', 'var'); modelString = 'SimpLog'; end
+            if ~exist('modelString', 'var'); modelString = 'ReducedLogCN'; end
             if ~exist('cvFolds', 'var'); cvFolds = 0; end
             figure;
             axesOpt.totalNumOfAxes = length(obj.blks);
             axesOpt.btlrMargins = [80 100 80 40];
             axesOpt.gapBetweenAxes = [100 60];
-            axesOpt.numOfRows = 2;
+            axesOpt.numOfRows = 4;
             axesOpt.figureHWRatio = 1.1;
             obj.glmFit = cell(length(obj.blks),1);
             for i  = 1:length(obj.blks)
@@ -110,6 +137,9 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 if ~contains(lower(modelString), 'plot'); obj.glmFit{i}.fit; end
                 obj.glmFit{i}.plotFit;
                 hold on; box off;
+                normBlock.tri.stim.visDiff = normBlock.tri.stim.visDiff./max(abs(normBlock.tri.stim.visDiff));
+                normBlock.exp.conditionParametersAV = cellfun(@(x) [x(:,1) x(:,2)./max(abs(x(:,2)))], normBlock.exp.conditionParametersAV, 'uni', 0);
+                
                 plt.dataWithErrorBars(normBlock,0);
                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
                 yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
@@ -125,7 +155,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         
         
         function getGLMPerturbations(obj, modelString)
-            if ~exist('modelString', 'var'); modelString = 'ReducedLogCNSplitDelta'; end
+            if ~exist('modelString', 'var'); modelString = 'ReducedLogCN'; end
             
             figure;
             initBlock = prc.filtBlock(obj.blks{1}, obj.blks{1}.galvoPosition(:,2)~=4.5);
@@ -190,7 +220,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                 plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
                 obj.hand.axes = plt.getAxes(axesOpt, i);
                 audValues = unique(blk.exp.conditionParametersAV{1}(:,1));
-                visValues = unique(blk.exp.conditionParametersAV{1}(:,2));                
+                visValues = unique(blk.exp.conditionParametersAV{1}(:,2));
                 switch plotType(1:3)
                     case 'rea'
                         gridData = prc.makeGrid(blk, round(blk.tri.outcome.timeToWheelMove*1e3), @median, 1);
@@ -200,6 +230,9 @@ classdef spatialAnalysis < matlab.mixin.Copyable
                         plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
                         ylim([0 1]);
                         xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
+                        maxContrast = max(abs(blk.tri.stim.visDiff))*100;
+                        xlim([-maxContrast maxContrast]);
+                        set(gca, 'xTick', round(((-maxContrast):(maxContrast/4):maxContrast)), 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)));
                         yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
                 end
                 box off;

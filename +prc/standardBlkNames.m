@@ -1,10 +1,23 @@
 function [standardizedBlock, standardizedParams] = standardBlkNames(block, params)
-% All trials are valid trials if there are no repeats.
+%% A funciton to standardize event and paramter names for multiSpaceWorld recordings.
+%NOTE: This fuction is a shitty mess, but the expDef evolved a lot over time and there is no real alternative that I can thing of other than editing
+%the original block files. This function runs on over 2000 files over the past 4 years without error.
+
+%Inputs
+%block-------------------The block file
+%params------------------The params file
+
+%Outputs
+%standardizedBlock-------The block file with standarddized names
+%standardizedParams------The params file with standarddized names
+
+%Assign single letters to these variables because they will be used often
 b = block;
 e = block.events;
 v = block.paramsValues;
 p = params;
 
+%These are all the old field names that should be removed.
 f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFunction'; 'experimentIdx'; 'correctResponse';...
     'servicesDescription'; 'clickAmpDurRate'; 'vStimAltitude'; 'stimulusAzimuth'; 'audVisAzimuth'; 'vStimSigma'; ...
     'interactPunishDelays'; 'stimulusDurRep'; 'noiseBurstAmpDur'; 'rewardDurSize'; 'interactSigOnDurAmp'; 'audVisThreshold'; ...
@@ -17,23 +30,20 @@ f2Re = {'audDevIdx';'audSampleRate';'numAudChannels';'type'; 'services'; 'defFun
     'iAziTimes'; 'iAziValues'; 'aViCValues'; 'aViCTimes'; 'visCValues'; 'visCTimes'; 'audCValues'; 'audCTimes'; 'reflectAzimuthAndCorrectResponse'; ...
     'aViMTimes'; 'aViMValues'; 'corRValues'; 'corRTimes'; 'sPreTimes'; 'sPreValues'; 'stimContinuous'; 'galvoCoordID'};
 
+%These are all simply addeing default values and name changes etc. for fields that were added as the expDef evolved. e.g. before there was a response
+%window, the response window was infinite.
 if isfield(e, 'fBckTimes'); e.feedbackTimes = e.fBckTimes; e.feedbackValues = e.fBckValues; end
-if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if isfield(e, 'stimStartTimes'); e.sSrtTimes = e.stimStartTimes; end
 if ~isfield(e, 'responseTypeValues'); e.responseTypeValues = e.feedbackValues; end
 if isfield(p, 'backNoiseAmp'); p.backgroundNoiseAmplitude = p.backNoiseAmp; end
-if ~isfield(p, 'responseWindow'); p.responseWindow = 0; end
-if ~isempty(strfind(b.expDef, 'multiTemporalWorld'))
-    p.postStimQuiescentThreshold = inf;
-    p.postStimQuiescentDuration = 0;
-end
-
+if ~isfield(p, 'responseWindow'); p.responseWindow = inf; end
 if ~isfield(p, 'postQuiescentDelay'); p.postQuiescentDelay = 0; [v.postQuiescentDelay] = deal(0); end
 if ~isfield(p, 'laserOnsetDelays'); p.laserOnsetDelays = [0;0]; [v.laserOnsetDelays] = deal([0;0]); end
 if ~isfield(p, 'postQuiescentDelay'); p.postQuiescentDelay = 0; [v.postQuiescentDelay] = deal(0); end
 if ~isfield(p, 'waveformType'); p.waveformType = 1; end
 if ~isfield(v, 'waveformType'); [v.waveformType] = deal(1); end
 
+%Below are fields that require a little more modification, but are still essentially just replacing fieldnames
 if isfield(e, 'sPreValues')
     e.stimPeriodOnOffTimes = e.sPreTimes;
     e.stimPeriodOnOffValues = e.sPreValues;
@@ -47,12 +57,12 @@ elseif isfield(e, 'sSrtTimes')
     e.stimPeriodOnOffValues(1:2:end) = 1;
 end
 if isfield(e, 'intOTimes')
-    e.closedLoopOnOffTimes = zeros(1,length(e.intOTimes)+length(e.feedbackTimes)); 
-    e.closedLoopOnOffTimes(1:2:end) = e.intOTimes; 
-    e.closedLoopOnOffTimes(2:2:end) = e.feedbackTimes; 
+    e.closedLoopOnOffTimes = zeros(1,length(e.intOTimes)+length(e.feedbackTimes));
+    e.closedLoopOnOffTimes(1:2:end) = e.intOTimes;
+    e.closedLoopOnOffTimes(2:2:end) = e.feedbackTimes;
     
-    e.closedLoopOnOffValues = zeros(1,length(e.intOTimes)+length(e.feedbackTimes)); 
-    e.closedLoopOnOffValues(1:2:end) = 1; 
+    e.closedLoopOnOffValues = zeros(1,length(e.intOTimes)+length(e.feedbackTimes));
+    e.closedLoopOnOffValues(1:2:end) = 1;
 end
 if isfield(e, 'stmVValues')
     e.visStimOnOffTimes = e.stmVTimes; e.visStimOnOffValues = e.stmVValues;
@@ -61,14 +71,14 @@ end
 
 %Modify repeat on incorrect parameter field to deal with historical issues.
 if ~isfield(e, 'repeatNumValues')
-    e.repeatNumValues = e.endTrialTimes*0+1; 
+    e.repeatNumValues = e.endTrialTimes*0+1;
     [v(:).maxRepeatIncorrect] = deal(0);
     p.maxRepeatIncorrect = 0;
 elseif isfield(v, 'maxRetryIfIncorrect')
     tDat = {v.maxRetryIfIncorrect}'; [v.maxRepeatIncorrect] = tDat{:};
     p.maxRepeatIncorrect = p.maxRetryIfIncorrect;
-elseif ~isfield(v, 'maxRepeatIncorrect')   
-    [v(:).maxRepeatIncorrect] = deal(max([max(e.repeatNumValues)-1, 9])); 
+elseif ~isfield(v, 'maxRepeatIncorrect')
+    [v(:).maxRepeatIncorrect] = deal(max([max(e.repeatNumValues)-1, 9]));
     p.maxRepeatIncorrect = max([max(e.repeatNumValues)-1, 9]);
 end
 
@@ -76,9 +86,8 @@ if ~isfield(e, 'timeOutCountValues')
     e.timeOutCountValues = e.endTrialTimes*0;
 end
 
-if isfield(e, 'stimStartTimes'); warning('Stopping for debug'); keyboard; end
 if ~isfield(v, 'visContrast')
-    if isfield(v, 'visualContrast')     
+    if isfield(v, 'visualContrast')
         tDat = {v.visualContrast}'; [v.visContrast] = tDat{:};
         p.visContrast = p.visualContrast;
     elseif isfield(v, 'stimulusContrast')
@@ -87,13 +96,13 @@ if ~isfield(v, 'visContrast')
     else; [v.visContrast] = deal(1); p.visContrast = 1;
     end
 end
+
 if isfield(v, 'clickAmpDurRate')
     tDat = cellfun(@(x) x(1), {v.clickAmpDurRate}, 'uni', 0); [v.audAmplitude] = tDat{:};
     tDat = cellfun(@(x) x(2), {v.clickAmpDurRate}, 'uni', 0); [v.clickDuration] = tDat{:};
     tDat = cellfun(@(x) x(3), {v.clickAmpDurRate}, 'uni', 0); [v.clickRate] = tDat{:};
     tDat = {v.vStimAltitude}'; [v.visAltitude] = tDat{:};
     tDat = {v.vStimSigma}'; [v.visSigma] = tDat{:};
-
     
     p.audAmplitude = p.clickAmpDurRate(1,:);
     p.clickDuration = p.clickAmpDurRate(2,:);
@@ -124,11 +133,11 @@ if ~isfield(p, 'audVisAzimuth') && (isfield(p, 'stimulusAzimuth') && isfield(e, 
     e.audAzimuthValues = e.sPosValues; e.audAzimuthTimes = e.sPosTimes;
     e.visAzimuthValues = e.sPosValues; e.visAzimuthTimes = e.sPosTimes;
     
-    tDat = mat2cell([v.stimulusAzimuth]', ones(length(e.newTrialTimes),1));  
+    tDat = mat2cell([v.stimulusAzimuth]', ones(length(e.newTrialTimes),1));
     [v.audInitialAzimuth] = tDat{:}; [v.visInitialAzimuth] = tDat{:};
     p.audInitialAzimuth = p.stimulusAzimuth; p.visInitialAzimuth = p.stimulusAzimuth;
 elseif isfield(p, 'audVisAzimuth') && ~isfield(e, 'iAziValues') && ~isfield(e, 'audInitialAzimuth')
-    p.audInitialAzimuth = p.audVisAzimuth(1,:); 
+    p.audInitialAzimuth = p.audVisAzimuth(1,:);
     p.visInitialAzimuth = p.audVisAzimuth(2,:);
     tDat = num2cell([v.audVisAzimuth]');
     [v.audInitialAzimuth] = tDat{:,1}; [v.visInitialAzimuth] = tDat{:,2};
@@ -183,9 +192,9 @@ end
 
 if isfield(p, 'preStimQuiRangeThr')
     p.preStimQuiescentRange = sort(p.preStimQuiRangeThr(1:2));
-    p.preStimQuiescentThreshold = p.preStimQuiRangeThr(3);   
-    tDat = num2cell(mean(p.preStimQuiescentRange)*ones(1,length(e.newTrialTimes)))';  
-    [v.preStimQuiescentDuration] = tDat{:};  
+    p.preStimQuiescentThreshold = p.preStimQuiRangeThr(3);
+    tDat = num2cell(mean(p.preStimQuiescentRange)*ones(1,length(e.newTrialTimes)))';
+    [v.preStimQuiescentDuration] = tDat{:};
 elseif isfield(e, 'preStimQuiescentDurationValues')
     tDat = num2cell(e.preStimQuiescentDurationValues)';
     if length(tDat) == length(v)-1; tDat = [tDat;0]; end
@@ -196,7 +205,7 @@ if ~isfield(e, 'postStimQuiescentDurationValues')
     e.postStimQuiescentDurationValues = e.newTrialValues*0;
 end
 
-
+% The following are related to the galvo file
 if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog) || length(fields(b.galvoLog))==1; p.laserSession = 0; else, p.laserSession = 1; end
 if ~isfield(e, 'galvoTTLTimes') && p.laserSession; e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1); end
 if ~isfield(e, 'galvoAndLaserEndTimes') && p.laserSession; e.galvoAndLaserEndTimes = e.galvoTTLTimes+e.laserDurationValues(1:length(e.galvoTTLTimes)); end
@@ -208,7 +217,7 @@ if ~p.laserSession
     p.laserTypeProportions = [nan nan nan]';
 end
 
-if ~isfield(b.galvoLog, 'tictoc') && p.laserSession; e.laserInitialisationTimes = 0.001+e.newTrialTimes; 
+if ~isfield(b.galvoLog, 'tictoc') && p.laserSession; e.laserInitialisationTimes = 0.001+e.newTrialTimes;
 elseif p.laserSession
     if any(isnan(b.galvoLog.delay_issueLaser(b.galvoLog.laserType>0))); keyboard; end
     e.laserInitialisationTimes = 0.001+e.newTrialTimes;
@@ -222,50 +231,45 @@ validConditions = p.numRepeats~=0;
 for i = 1:numel(paramFields)
     if strcmp(paramFields{i}, 'type'); continue; end
     if size(p.(paramFields{i}),2) > 1
-         p.(paramFields{i}) = p.(paramFields{i})(:,validConditions);
+        p.(paramFields{i}) = p.(paramFields{i})(:,validConditions);
     end
 end
 
-if isfield(p, 'reflectAzimuthAndCorr'); p.reflectAzimuthAndCorrectResponse = p.reflectAzimuthAndCorr; end
 if isfield(p, 'audioAmplitude'); p.audAmplitude = p.audioAmplitude; end
+if isfield(p, 'reflectAzimuthAndCorr'); p.reflectAzimuthAndCorrectResponse = p.reflectAzimuthAndCorr; end
+if isfield(p, 'stimContinuous') && p.stimContinuous == 1; p.stimDuration = inf; end
+if ~isfield(e, 'rewardAvailableValues'); e.rewardAvailableValues = 0*e.newTrialValues+1; end
+
+%%
+%This section deals with the "reflections" of conditions and also conditions without repeats. Essentially, we want to create the reflected parameter
+%sets, and we want to remove any paramter sets that weren't requested (i.e. had numRepeats set to zero). 
 if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
-    if isempty(strfind(b.expDef, 'multiTemporalWorld'))
-        flippedIdx = max([p.visContrast;p.audAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
-    else
-        if length(p.requestedCoherence) < length(p.numRepeats); p.requestedCoherence = p.numRepeats*0+p.requestedCoherence; end
-        flippedIdx = p.requestedCoherence~=0.5 | min(p.visContrast)==0;
-    end
+    flippedIdx = max([p.visContrast;p.audAmplitude.*abs(p.audInitialAzimuth)],[],1)>0;
     if isfield(p, 'visInitialAzimuth') && length(p.visInitialAzimuth)==1; p.visInitialAzimuth = p.numRepeats*0+p.visInitialAzimuth; end
     if isfield(p, 'audInitialAzimuth') && length(p.audInitialAzimuth)==1; p.audInitialAzimuth = p.numRepeats*0+p.audInitialAzimuth; end
     p.numRepeats = [p.numRepeats, p.numRepeats(flippedIdx)];
 end
 
-if isfield(p, 'stimContinuous') && p.stimContinuous == 1; p.stimDuration = inf; end
-
 for i = 1:numel(paramFields)
     if strcmp(paramFields{i}, 'type'); continue; end
-        if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
-            if contains(paramFields{i}, 'InitialAzimuth') || contains(paramFields{i}, 'correctResponse')
-                p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)*-1];
-            elseif contains(paramFields{i}, 'requestedCoherence')
-                p.(paramFields{i}) = [p.(paramFields{i}) 1-p.(paramFields{i})(:,flippedIdx)];
-            elseif ~isempty(strfind(b.expDef, 'multiTemporalWorld')) && contains(paramFields{i}, 'visContrast')
-                p.(paramFields{i}) = [p.(paramFields{i}) flip(p.(paramFields{i})(:,flippedIdx),1)];
-            elseif ~strcmp(paramFields{i}, 'numRepeats') && size(p.(paramFields{i}),2) > 1
-                p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)];
-            end
-            if size(p.(paramFields{i}), 2) > 1
-                p.(paramFields{i}) = p.(paramFields{i})(:,p.numRepeats>0);
-                if size(unique(p.(paramFields{i})', 'rows'), 1) == 1 && ~strcmp(paramFields{i}, 'numRepeats')
-                    p.(paramFields{i}) = unique(p.(paramFields{i})', 'rows')';
-                end
+    if isfield(p, 'reflectAzimuthAndCorrectResponse') && p.reflectAzimuthAndCorrectResponse == 1
+        if contains(paramFields{i}, 'InitialAzimuth') || contains(paramFields{i}, 'correctResponse')
+            p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)*-1];
+        elseif ~strcmp(paramFields{i}, 'numRepeats') && size(p.(paramFields{i}),2) > 1
+            p.(paramFields{i}) = [p.(paramFields{i}) p.(paramFields{i})(:,flippedIdx)];
+        end
+        if size(p.(paramFields{i}), 2) > 1
+            p.(paramFields{i}) = p.(paramFields{i})(:,p.numRepeats>0);
+            if size(unique(p.(paramFields{i})', 'rows'), 1) == 1 && ~strcmp(paramFields{i}, 'numRepeats')
+                p.(paramFields{i}) = unique(p.(paramFields{i})', 'rows')';
             end
         end
+    end
 end
 
-if ~isfield(e, 'rewardAvailableValues'); e.rewardAvailableValues = 0*e.newTrialValues+1; end
 p.rewardTotal = sum(p.rewardSize*e.feedbackValues>0);
 
+% Assign the stardardized files, remove the unwanted fieldnames, and return to the main function
 standardizedParams = prc.chkThenRemoveFields(p, f2Re);
 standardizedBlock = b;
 standardizedBlock.paramsValues = prc.chkThenRemoveFields(v, f2Re(~contains(f2Re, 'correctResponse')));

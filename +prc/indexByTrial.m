@@ -5,7 +5,6 @@ function sortedByTrial = indexByTrial(trialTimes, prmTimes, prmValues, timesToSu
 %prmTimes                 (required) is an nx1 vector of times for the values that are to be split by trial.
 %prmValues                (prmTimes) is an nxm vector of values that should be split.
 %timesToSubtract          (0*nx1) is a nx1 of times to subtract from the paramters (e.g. if you wanted timings relative to the stimulus onset)
-%paramsForSubtraction     (0*1xm) is a 1xm logical that indicates which parameter columns should have timesToSubtract subtracted
 
 %Outputs
 %sortedByTrial is a cell array of the prmValues, sorted by the trialTimes they occured between (each cell is one trial) 

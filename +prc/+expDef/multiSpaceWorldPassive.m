@@ -71,11 +71,6 @@ trialClass.closedLoopOnsetTone = closedLoopOnsetTone;
 audDiff(conditionRowIdx~=0) = uniqueDiff(conditionRowIdx(conditionRowIdx~=0), 1);
 visDiff(conditionRowIdx~=0) = uniqueDiff(conditionRowIdx(conditionRowIdx~=0), 2);
 
-[grids.visValues, grids.audValues] = meshgrid(unique(uniqueDiff(:,2)), unique(uniqueDiff(:,1)));
-[~, gridIdx] = ismember(uniqueDiff, [grids.audValues(:) grids.visValues(:)], 'rows');
-grids.conditionLabels = nan*grids.visValues;
-% grids.conditionLabels(gridIdx) = uniqueConditionLabels;
-
 n.conditionParametersAV = uniqueDiff;
 n.conditionLabels = uniqueConditionLabels;
 n.timings.trialStartEnd = trialTimes;
@@ -88,7 +83,6 @@ n.stim.visContrast = visContrast;
 n.stim.visInitialAzimuth = visInitialAzimuth;
 n.stim.visDiff = visDiff;
 n.stim.conditionLabel = conditionLabel; 
-n.grids = grids;
 n.params = x.oldParams;
 
 x.newBlock = n;

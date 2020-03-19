@@ -103,8 +103,8 @@ classdef GLMmulti < matlab.mixin.Copyable
                     'Color', colorChoices(obj.blockData.audValues==audVal,:), 'linewidth', 2);
             end
             maxContrast =obj.blockData.origMax(1);
-            xlim([-maxContrast maxContrast])
-            set(gca, 'xTick', (-maxContrast):(maxContrast/4):maxContrast, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
+            xlim([-1 1])
+            set(gca, 'xTick', (-1):(1/4):1, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
             title({cell2mat(unique(obj.blockData.exp.subject)'); obj.modelString});
             hold off;
             figureHand = gca;
