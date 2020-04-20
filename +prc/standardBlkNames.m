@@ -209,6 +209,8 @@ end
 if ~isfield(e, 'galvoPosValues') || ~isstruct(b.galvoLog) || length(fields(b.galvoLog))==1; p.laserSession = 0; else, p.laserSession = 1; end
 if ~isfield(e, 'galvoTTLTimes') && p.laserSession; e.galvoTTLTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1); end
 if ~isfield(e, 'galvoAndLaserEndTimes') && p.laserSession; e.galvoAndLaserEndTimes = e.galvoTTLTimes+e.laserDurationValues(1:length(e.galvoTTLTimes)); end
+if ~isfield(e, 'laserOnsetDelayValues') && p.laserSession; e.laserOnsetDelayValues = e.galvoTTLTimes*0; end
+if ~isfield(e, 'laserDurationValues') && p.laserSession; e.laserDurationValues = e.galvoTTLTimes*0+1.5; end
 if ~isfield(p, 'laserDuration') && p.laserSession; p.laserDuration = 1.5; end
 if ~isfield(p, 'laserTypeProportions') && p.laserSession; p.laserDuration = 1.5; end
 

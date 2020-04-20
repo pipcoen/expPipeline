@@ -241,7 +241,7 @@ function H=makeSignificanceBar(x,y,p)
     elseif isnan(p)
         stars='n.s.';
     else
-        stars='';
+        stars='n.s';
     end
             
     x=repmat(x,2,1);

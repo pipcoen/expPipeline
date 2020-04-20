@@ -21,7 +21,10 @@ for i = 1:length(fileNames)
     logLik = cell2mat(cellfun(@(x) mean(x.logLik), s.glmFit(included), 'uni', 0));
     plotOpt.yData{i,1} = 100*(cell2mat(minPerformance(:,2))-logLik)./(cell2mat(minPerformance(:,2))-cell2mat(maxPerformance(:,2)));
 end
+expType = arrayfun(@(x) unique(x.exp.expType), s.blks);
+plotOpt.faceColors = {repmat([0 0 0], length(expType), 1)};
+plotOpt.faceColors{1}(strcmp(expType, 'inactivation'),:) = repmat([0 1 1], sum(strcmp(expType, 'inactivation')),1);
 figure;
 plt.jitter(plotOpt.yData, plotOpt); grid('on');
-ylim([0 100])
+ylim([90 100])
 end

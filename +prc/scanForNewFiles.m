@@ -27,7 +27,7 @@ expInfo = prc.pathFinder('expInfo');
 
 %The full list of subjects to be included (generally, mice that learnt the task and have a decent amount of data). 
 includedMice = [... 
-    cellfun(@(x) ['PC0' x], split({'10,11,12,13,15,22,25,27,29,30,31,32,33,34,36,37,38,41,43,45,46,48,50,51'},','), 'uni', 0); ...
+    cellfun(@(x) ['PC0' x], split({'11,12,13,15,22,27,29,30,31,32,33,34,43,45,46,48,50,51'},','), 'uni', 0); ...
     cellfun(@(x) ['DJ0' x], split({'06,07,08,10'},','), 'uni', 0)];
 aliveMice = {'None'}; %Mice that are currently alive (i.e. may generate new data)
 
@@ -127,7 +127,9 @@ for i = 1:length(processList)
 
     %Check the session is an inactivation session based on the rig names and existence of a galvolog file
     if contains(newExp.rigName, {'zym1'; 'zym2'}) && exist(tempLoc.galvoLog, 'file')
-        newExp.expType = 'inactivation'; 
+        %If galvoLog isn't a struct, or only has one field ("stereotaxCalib") then inactivation didn't run, so it is a "training" session
+        galvoLog = load(tempLoc.galvoLog);
+        if isstruct(galvoLog) && length(fields(galvoLog))>1; newExp.expType = 'inactivation';; end 
     end
     
     %Check whether to autoExclude for paper (based on whether it's the "wrong" exp type, or whether it is too short etc.) If so, created a text file

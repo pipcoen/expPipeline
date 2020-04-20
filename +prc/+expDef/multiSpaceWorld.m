@@ -145,27 +145,44 @@ r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audA
 %represents a response (this can be very different for different rotary encoders). timeToWheelMove is then the time at which wheelMove exceeds 25% of
 %wheelToThresh
 %%
-time2closedLoopResponded = closedLoopStart(~timeOuts)-stimPeriodStart(~timeOuts);
-timeToFeedbackResponded = timeToFeedback(~timeOuts);
-wheelPos = cellfun(@(x) [(-1:0.001:x(end,1))', (interp1(x(diff(x(:,1))~=0,1), x(diff(x(:,1))~=0,2), -1:0.001:x(end,1), 'nearest', 'extrap'))'], r.wheelTimeValue(~timeOuts), 'uni', 0);
+tw = [x.standardizedBlock.inputs.wheelTimes' x.standardizedBlock.inputs.wheelValues'];
+sR = 1000;
+stimOnsetIdx = round(stimPeriodStart(~timeOuts)*sR);
+feedbackIdx = round(feedbackTimes(~timeOuts)*sR);
+wheelTime = 1/sR:1/sR:max(tw(:,1));
+wheelPos = interp1(tw(:,1), tw(:,2), wheelTime', 'pchip', 'extrap')';
+wheelThresh = median(abs(wheelPos(round(feedbackTimes(~timeOuts)*sR))-wheelPos(round(closedLoopStart(~timeOuts)*sR))))*0.4;
+threshCrsIdx = arrayfun(@(x,y) max([nan find(abs(wheelPos(x:y)-wheelPos(x))>wheelThresh,1)+x]), stimOnsetIdx, feedbackIdx);
+threshCrsSign = sign(wheelPos(threshCrsIdx) - wheelPos(stimOnsetIdx))';
 
-wheelToThresh = arrayfun(@(x,y,z) x{1}(x{1}(:,1)>y & x{1}(:,1)<z,2), wheelPos, time2closedLoopResponded, timeToFeedbackResponded, 'uni', 0);
-wheelToThresh = nanmedian(abs(cellfun(@(x) x(end)-x(1), wheelToThresh(~cellfun(@isempty, wheelToThresh)))));
-time2Thresh = (cellfun(@(x) x(find(abs(x(:,2))>wheelToThresh/4 & x(:,1)>0,1),1), wheelPos, 'uni', 0));
+smthWin = 51;
+sumWin = 101;
+velThresh  = wheelThresh*2; %Note: This is somewhat arbitrary. Would be different for different rigs...
+wheelSmooth = conv(wheelPos, [zeros(1,smthWin-1) ones(1,smthWin)]./smthWin, 'same');
+wheelVel = diff([0; wheelSmooth'])*sR;
+posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<=0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same');
+negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>=0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same');
 
-smoothWindow = 31;
-velThresh  = max([5 wheelToThresh/25]);
+moveOnsetIdx = [strfind((posVelScan'>=velThresh), [0,1]) -1*strfind((-1*negVelScan'>=velThresh)>0, [0,1])];
+[~, srtIdx] = sort(abs(moveOnsetIdx));
+moveOnsetSign = sign(moveOnsetIdx(srtIdx));
+moveOnsetIdx = abs(moveOnsetIdx(srtIdx));
 
-wheelSmooth = cellfun(@(x) [x(:,1) smooth(x(:,2), smoothWindow)], wheelPos, 'uni', 0);
-wheelVel = cellfun(@(x) [x(:,1) [0; diff(x(:,2))]*1000], wheelSmooth, 'uni', 0);
-velAboveMinThresh = cellfun(@(x) [x(:,1) convn(abs(x(:,2)')>velThresh, ones(1,smoothWindow), 'same')'], wheelVel, 'uni', 0);
-velOnsetTimes = cellfun(@(x) x(strfind(x(:,2)'>=smoothWindow, [0,1]),1), velAboveMinThresh, 'uni', 0);
-velOnsetTimes = (cellfun(@(x,y) max([nan x(find(x>0 & x<y, 1, 'last'))]), velOnsetTimes, time2Thresh, 'uni', 0));
-timeToWheelMove = feedbackValues;
-timeToWheelMove(~timeOuts) = cell2mat(velOnsetTimes);
+firstMoveTimes =  arrayfun(@(x) max([nan moveOnsetIdx(find(moveOnsetIdx>x, 1))]), stimOnsetIdx)./sR;
+firstMoveTimes((firstMoveTimes-stimOnsetIdx./sR)>2) = nan;
+
+largeMoveTimes =  arrayfun(@(x,y, z) max([nan moveOnsetIdx(find(moveOnsetIdx>x & moveOnsetIdx<y & moveOnsetSign==z, 1))]), ....
+    stimOnsetIdx, threshCrsIdx, threshCrsSign)./sR;
+largeMoveTimes((largeMoveTimes-stimOnsetIdx./sR)>2) = nan;
+
+timeToFirstMove = feedbackValues;
+timeToLargeMove = feedbackValues;
+timeToFirstMove(~timeOuts) = firstMoveTimes - stimOnsetIdx/sR;
+timeToLargeMove(~timeOuts) = largeMoveTimes - stimOnsetIdx/sR;
 
 %Get the response the mouse made on each trial based on the correct response and then taking the opposite for incorrect trials. NOTE: this will not
 %work for a task with more than two response options.
+%%
 responseMade = double(correctResponse).*~timeOuts;
 responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
 
@@ -207,8 +224,9 @@ trialClass.conflict = sign(visInitialAzimuth.*audInitialAzimuth)<0 & audAmplitud
 audDiff = uniqueDiff(conditionRowIdx, 1);
 visDiff = uniqueDiff(conditionRowIdx, 2);
 
-[inactivation.laserType, inactivation.laserPower, inactivation.galvoType, inactivation.laserOnsetDelay] = deal(audDiff*nan);
-[inactivation.galvoPosition,  inactivation.laserOnOff] = deal(audDiff*[nan nan]);
+[inactivation.laserType, inactivation.laserPower, inactivation.galvoType, inactivation.laserOnsetDelay, inactivation.laserDuration] = deal(audDiff*nan);
+inactivation.galvoPosition = deal(audDiff*[nan nan]);
+inactivationSites = [nan nan];
 if strcmp(n.expType, 'inactivation')
     %Galvo position is the position of the galvos on each trial. It is changed so that for bilateral trials, the ML axis is always positive (bilateral
     %trials are when the laserTypeValue for that trial was 2). Note that the galvoPosValues output from the expDef are indices for the galvoCoords (with a
@@ -217,17 +235,17 @@ if strcmp(n.expType, 'inactivation')
     inactivation.laserType = e.laserTypeValues(eIdx)';
     inactivation.laserPower = (e.laserPowerValues(eIdx)');
     inactivation.galvoType = e.galvoTypeValues(eIdx)';
-    
-    galvoCoords = e.galvoCoordsValues(:,1:2);
+    inactivation.laserOnsetDelay = e.laserOnsetDelayValues(eIdx)';
+    inactivation.laserDuration = e.laserDurationValues(eIdx)';
+        
+    inactivationSites = e.galvoCoordsValues(:,1:2);
     galvoPosValues = e.galvoPosValues(eIdx)';
-    galvoPosition = galvoCoords(abs(galvoPosValues),:);
+    galvoPosition = inactivationSites(abs(galvoPosValues),:);
     galvoPosition(e.laserTypeValues(eIdx)'~=2,1) = galvoPosition(e.laserTypeValues(eIdx)'~=2,1).*sign(galvoPosValues(e.laserTypeValues(eIdx)'~=2));
     inactivation.galvoPosition = galvoPosition;
-   
-    if exist('timelineInfo', 'var')
-        inactivation.laserOnsetDelay = timelineInfo.laserOnsetDelay(eIdx);
-        inactivation.laserOnOff = [timelineInfo.laserOnTime(eIdx), timelineInfo.laserOnTime(eIdx)+[v(eIdx).laserDuration]']-trialStartTimes;
-    end
+    if any(e.laserTypeValues==1); inactivationSites = [inactivationSites; [inactivationSites(:,1)*-1 inactivationSites(:,2)]]; end
+    
+    inactivationSites = unique(inactivationSites, 'rows');
 end
 
 if strcmp(n.expType, 'inactivation'); laserOff = inactivation.laserType == 0; else, laserOff = feedbackValues*0+1; end
@@ -239,6 +257,7 @@ mulPerformance = round(mean(feedbackValues(trialClass.coherent & laserOff & resp
 n.performanceAVM = [audPerformance visPerformance mulPerformance];
 n.conditionParametersAV = uniqueDiff;
 n.conditionLabels = uniqueConditionLabels;
+n.inactivationSites = inactivationSites;
 n.trialClass = trialClass; 
 n.timings.trialStartEnd = trialTimes;
 n.timings.stimPeriodStart = stimPeriodStart;
@@ -254,7 +273,8 @@ n.inactivation = inactivation;
 n.outcome.validTrial = vIdx(:);
 n.outcome.feedbackGiven = feedbackValues;
 n.outcome.timeToFeedback = timeToFeedback;
-n.outcome.timeToWheelMove = timeToWheelMove;
+n.outcome.timeToFirstMove = timeToFirstMove;
+n.outcome.timeToLargeMove = timeToLargeMove;
 n.outcome.responseMade = ((responseMade>0)+1).*(responseMade~=0);
 n.params = x.oldParams;
 

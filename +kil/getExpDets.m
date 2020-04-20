@@ -28,6 +28,7 @@ if ischar(subject); subject = {subject}; end
 if ischar(expDate); expDate = {expDate}; end
 if ischar(expNum); expNum = {expNum}; end
 if ischar(folder); folder = {folder}; end
+if contains(subject, expDate); subject{1} = subject{1}(1:5); end %Deals with case where date is appended to name for individual processing.
 
 %Load the ephys record, and get cell arrays of the contained subjects, dates, exp numbers, and folders
 ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
