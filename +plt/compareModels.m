@@ -1,6 +1,7 @@
 function compareModels(fileNames, minTrials)
 % if ~exist('fileNames', 'var'); fileNames = {'CrossVal_AudOnly';'CrossVal_VisOnly'; 'CrossVal_AudDom'; 'CrossVal_SimpLog'}; end
-if ~exist('fileNames', 'var'); fileNames = {'CrossVal_ReducedLogCN'}; end
+% if ~exist('fileNames', 'var'); fileNames = {'CrossVal_ReducedLogCN'}; end
+if ~exist('fileNames', 'var'); fileNames = {'simpLog_Cross5';'simpLogSplitA_Cross5';'simpLogSplitV_Cross5'; 'simpLogSplitVSplitA_Cross5'}; end
 if ~exist('minTrials', 'var'); minTrials = 1; end
 plotOpt.yData = cell(length(fileNames),1);
 if any(contains(fileNames, 'Nest')); load FullEmpNestMaxPerformance s;
@@ -24,6 +25,8 @@ end
 expType = arrayfun(@(x) unique(x.exp.expType), s.blks);
 plotOpt.faceColors = {repmat([0 0 0], length(expType), 1)};
 plotOpt.faceColors{1}(strcmp(expType, 'inactivation'),:) = repmat([0 1 1], sum(strcmp(expType, 'inactivation')),1);
+plotOpt.faceColors = repmat(plotOpt.faceColors, length(plotOpt.yData),1);
+% plotOpt.pairs2test = 'all';
 figure;
 plt.jitter(plotOpt.yData, plotOpt); grid('on');
 ylim([90 100])

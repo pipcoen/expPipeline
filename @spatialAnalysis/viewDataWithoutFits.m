@@ -13,7 +13,6 @@ axesOpt.gapBetweenAxes = [100 60];
 axesOpt.numOfRows = ceil(length(obj.blks)/5);
 axesOpt.axesSize = [400 450];
 
-if contains
 
 allR2 = [];
 for i  = 1:length(obj.blks)
@@ -39,7 +38,7 @@ for i  = 1:length(obj.blks)
             gridData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @mean, 1);
             plotOpt.lineStyle = 'none';
             gridData = log((gridData./(1-gridData)));
-            [dataFit] = plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
+            [dataFit] = plt.gridSplitByRows(gridData, (abs(visValues)*100).^0.7.*sign(visValues), audValues, plotOpt);
             maxContrast = max(abs(blk.tri.stim.visDiff))*100;
             xlim([-maxContrast maxContrast]);
             allR2 = [allR2; mean(dataFit.r2)];

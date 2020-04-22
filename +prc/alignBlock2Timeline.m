@@ -15,7 +15,7 @@ function [correctedBlock, aligned] = alignBlock2Timeline(block, timeline, expDef
 %% Get a set of corresponding timeline and block timepoints for interpolation
 inputNames = {timeline.hw.inputs.name}';                      %List of inputs to the timeline file
 timelineTime = timeline.rawDAQTimestamps;                     %Timestamps in the timeline file
-sampleRate = 1/diff(timeline.rawDAQTimestamps(1:2));          %Timeline sample rate
+sR = 1/diff(timeline.rawDAQTimestamps(1:2));          %Timeline sample rate
 
 %Establish whether there is a record in timeline of the audio output
 if contains('audioOut', inputNames); audInput = 'audioOut';
@@ -43,7 +43,7 @@ end
 switch alignType
     case 'wheel' %Get interpolation points using the wheel data
         %Unrap the wheel trace (it is circular) and then smooth it. Smoothing is important because covariance will not work otherwise
-        smthWin = sampleRate/10+1;
+        smthWin = sR/10+1;
         timelinehWeelPosition = timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'));
         timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
         timelinehWeelPositionSmooth = smooth(timelinehWeelPosition,smthWin);
@@ -54,27 +54,27 @@ switch alignType
         blockWheelPosition = smooth(blockWheelPosition,smthWin);
         
         %Find the overall delay with the entire trace. Then reinterpolate, accounting for this delay.
-        baseDelay = finddelay(diff(blockWheelPosition), diff(timelinehWeelPositionSmooth))/sampleRate;
+        baseDelay = finddelay(diff(blockWheelPosition), diff(timelinehWeelPositionSmooth))/sR;
         blockWheelPosition = interp1(block.inputs.wheelTimes+baseDelay, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
         blockWheelPosition = smooth(blockWheelPosition(:),smthWin);
         
         %Get the vectors for 20s sections of the blockWheelVelocity and timelinehWeelVelocity
-        blockWidth = 20*sampleRate;
-        sampleCentres = sampleRate*5:sampleRate*10:length(timelineTime);
+        blockWidth = 20*sR;
+        sampleCentres = sR*5:sR*10:length(timelineTime);
         blockWheelVelocity = diff(blockWheelPosition);
         timelinehWeelVelocity = diff(timelinehWeelPosition);
         samplePoints = arrayfun(@(x) (x-blockWidth):(x+blockWidth), sampleCentres, 'uni', 0);
         samplePoints = cellfun(@(x) x(x>0 & x<length(timelineTime)), samplePoints, 'uni', 0);
         
         %Check that there is enough wheel movement to make the alignement (based on absolute velocity)
-        testIdx = cellfun(@(x) sum(abs(blockWheelVelocity(x))), samplePoints)>(5*blockWidth/sampleRate);
+        testIdx = cellfun(@(x) sum(abs(blockWheelVelocity(x))), samplePoints)>(5*blockWidth/sR);
         if mean(testIdx) < 0.2; error('Not enough movment to synchronize using wheel');
         elseif mean(testIdx) < 0.2; warning('Little movement so timeline alignment with wheel will be unreliable');
         end
         
         %Go through each subsection and detect the offset between block and timline
         samplePoints = samplePoints(testIdx);
-        delayValues = cellfun(@(x) finddelay(blockWheelVelocity(x), timelinehWeelVelocity(x), 1000), samplePoints)./sampleRate;
+        delayValues = cellfun(@(x) finddelay(blockWheelVelocity(x), timelinehWeelVelocity(x), 1000), samplePoints)./sR;
         
         %Use a smoothed median to select the evolving delat values, and use these to calculate the evolving reference points for block and timeline
         timelineRefTimes = timelineTime(sampleCentres);
@@ -146,7 +146,7 @@ fieldList = fieldList(cellfun(@(x) strcmp(x(end-4:end), 'Times'), fieldList));
 for i = 1:length(fieldList); block.events.(fieldList{i}) = interp1(blockRefTimes,timelineRefTimes,block.events.(fieldList{i}),'linear','extrap'); end
 
 %Flatten timeline traces prior to the first trial starting (avoids errneous event idenitification
-cutOff = round(block.events.newTrialTimes(1)*sampleRate-(0.05*sampleRate));
+cutOff = round(block.events.newTrialTimes(1)*sR-(0.05*sR));
 timeline.rawDAQData(1:cutOff,:) = repmat(timeline.rawDAQData(cutOff,:), cutOff, 1);
 
 %% Prepare to extract events from timeline
@@ -283,8 +283,8 @@ end
 if any(contains(fineTune, 'movements'))
     %%
     responseMadeIdx = block.events.feedbackValues ~= 0;
-    stimOnsetIdx = round(stimStartBlock(responseMadeIdx)*sampleRate)';
-    closedLoopPeriodIdx = round(block.events.closedLoopOnOffTimes*sampleRate);
+    stimOnsetIdx = round(stimStartBlock(responseMadeIdx)*sR)';
+    closedLoopPeriodIdx = round(block.events.closedLoopOnOffTimes*sR);
     closedLoopValues = block.events.closedLoopOnOffValues(1:find(block.events.closedLoopOnOffValues==0, 1, 'last'));
     
     if ~exist('timelinehWeelPosition', 'var')
@@ -294,30 +294,30 @@ if any(contains(fineTune, 'movements'))
     wheel = timelinehWeelPosition;
     move4Response = wheel(closedLoopPeriodIdx(closedLoopValues==0)) - wheel(closedLoopPeriodIdx(closedLoopValues==1));
     wheelThresh = median(abs(move4Response(responseMadeIdx)))*0.4;
-    threshCrsIdx = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sampleRate*2)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx);
+    threshCrsIdx = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sR*2)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx);
     threshCrsSign = sign(wheel(threshCrsIdx) - wheel(stimOnsetIdx));
 
-    smthWin = 51;
-    sumWin = 101;
-    velThresh  = 70; %Note: This is somewhat arbitrary. Would be different for different rigs...
-    wheelSmooth = conv(wheel, [zeros(1,smthWin-1) ones(1,smthWin)]./smthWin, 'same');
-    wheelVel = diff([0; wheelSmooth])*sampleRate;
-    posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<=0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same');
-    negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>=0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same');
-
-    moveOnsetIdx = [strfind((posVelScan'>=velThresh), [0,1]) -1*strfind((-1*negVelScan'>=velThresh)>0, [0,1])];
-    [~, srtIdx] = sort(abs(moveOnsetIdx));  
+    sumWin = 51;
+    velThresh  = sR*3/sumWin; %Note: This is somewhat arbitrary. Would be different for different rigs...
+    wheelVel = diff([0; wheel])*sR;
+    posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
+    negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
+    
+    moveOnsetIdx = [strfind((posVelScan'>=velThresh)>0, [0,1]) -1*strfind((-1*negVelScan'>=velThresh)>0, [0,1])];
+    movingIdx = sort([find(posVelScan'>=velThresh) find((-1*negVelScan'>=velThresh))]);
+    [~, srtIdx] = sort(abs(moveOnsetIdx));
     moveOnsetSign = sign(moveOnsetIdx(srtIdx));
     moveOnsetIdx = abs(moveOnsetIdx(srtIdx));
    
     
-    firstMoveTimes =  arrayfun(@(x) max([nan moveOnsetIdx(find(moveOnsetIdx>x, 1))]), stimOnsetIdx)./sampleRate;
-    firstMoveTimes((firstMoveTimes-stimOnsetIdx./sampleRate)>2) = nan;
-
+    firstMoveTimes =  arrayfun(@(x) max([nan moveOnsetIdx(find(moveOnsetIdx>x, 1))]), stimOnsetIdx)./sR;
+    firstMoveTimes((firstMoveTimes-stimOnsetIdx./sR)>1.5) = nan;
+    firstMoveTimes(ismember(stimOnsetIdx, movingIdx)) = nan;
     
     largeMoveTimes =  arrayfun(@(x,y, z) max([nan moveOnsetIdx(find(moveOnsetIdx>x & moveOnsetIdx<y & moveOnsetSign==z, 1))]), ....
-        stimOnsetIdx, threshCrsIdx, threshCrsSign)./sampleRate;
-    largeMoveTimes((largeMoveTimes-stimOnsetIdx./sampleRate)>2) = nan;
+        stimOnsetIdx, threshCrsIdx, threshCrsSign)./sR;
+    largeMoveTimes((largeMoveTimes-stimOnsetIdx./sR)>1.5) = nan;
+    largeMoveTimes(ismember(stimOnsetIdx, movingIdx)) = nan;
 
     aligned.firstMoveTimes = firstMoveTimes;
     aligned.largeMoveTimes = largeMoveTimes;
@@ -329,7 +329,7 @@ if any(contains(fineTune, 'wheelTraceTimeValue'))
         timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
     end
     changePoints = strfind(diff([0,timelinehWeelPosition'])==0, [1 0]);
-    trialStEnIdx = (trialStEnTimes*sampleRate);
+    trialStEnIdx = (trialStEnTimes*sR);
     points2Keep = sort([1 changePoints changePoints+1 length(timelinehWeelPosition) ceil(trialStEnIdx(:,1))'+1, floor(trialStEnIdx(:,2))'-1]);
     aligned.wheelTraceTimeValue = [timelineTime(points2Keep)' timelinehWeelPosition(points2Keep)];
 end

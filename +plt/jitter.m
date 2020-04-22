@@ -41,7 +41,9 @@ for i = 1:length(data)
     end
 end
 if ~isempty(opt.pairs2test)
+    if strcmp(opt.pairs2test, 'all');  opt.pairs2test = num2cell(nchoosek(1:length(data),2),2); end
     [~, significance] = cellfun(@(x) opt.significanceTest(data{x(1)}, data{x(2)}), opt.pairs2test);
+    significance = significance*sqrt(length(opt.pairs2test));
     xPositionOfPairs = cellfun(@(x) opt.xTickLocations(x), opt.pairs2test, 'uni',0);
     plt.sigstar(xPositionOfPairs,significance);
 end

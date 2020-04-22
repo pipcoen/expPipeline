@@ -1,5 +1,0 @@
-function psychoCurve(models2fit, crossVal)
-if ~exist('models2fit', 'var'); models2fit = 
-    
-    
-end

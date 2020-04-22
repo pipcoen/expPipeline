@@ -108,9 +108,12 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.hand.figure = [];
         end
         
-        function viewGLMFit(obj, modelString, cvFolds)
-            if ~exist('modelString', 'var'); modelString = 'ReducedLogCN'; end
+        function viewGLMFit(obj, modelString, cvFolds, plotType)
+            if ~exist('modelString', 'var'); modelString = 'simpLogSplitVSplitA'; end
             if ~exist('cvFolds', 'var'); cvFolds = 0; end
+            if ~exist('plotType', 'var'); plotType = 'normal'; end
+            plotOpt.plotType = plotType;
+            
             figure;
             axesOpt.totalNumOfAxes = length(obj.blks);
             axesOpt.btlrMargins = [80 100 80 40];
@@ -119,37 +122,61 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             axesOpt.figureHWRatio = 1.1;
             obj.glmFit = cell(length(obj.blks),1);
             for i  = 1:length(obj.blks)
-                if contains(lower(modelString), 'nest')
-                    normBlock = spatialAnalysis.getBlockType(obj.blks(i),'norm',0);
-                    normBlock = prc.filtBlock(normBlock, normBlock.timeOutsBeforeResponse == 0);
-                    normBlock.tri.outcome.responseMade(normBlock.responseTime>1.5) = 0;
-                    if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmultiNest(normBlock, modelString); end
-                else
-                    normBlock = spatialAnalysis.getBlockType(obj.blks(i),'norm');
-                    normBlock = prc.filtBlock(normBlock,~isinf(normBlock.tri.stim.audInitialAzimuth));
-                    % galvoIdx = ismember(normBlock.galvoPosition, [1.8, -4;3,-4;3,-3], 'rows');
-                    % galvoIdx = ismember(normBlock.galvoPosition, [4.2, -2;4.2,-3], 'rows');
-                    % galvoIdx = ismember(normBlock.galvoPosition, [0.6, 2; 0.6, 3; 1.8,2], 'rows');
-                    % normBlock = prc.filtBlock(normBlock, normBlock.laserType==1 & galvoIdx);
-                    if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmulti(normBlock, modelString); end
-                end
+                normBlock = spatialAnalysis.getBlockType(obj.blks(i),'norm');
+                normBlock = prc.filtBlock(normBlock,~isinf(normBlock.tri.stim.audInitialAzimuth));
+                if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmulti(normBlock, modelString); end
                 obj.hand.axes = plt.getAxes(axesOpt, i);
-                if ~contains(lower(modelString), 'plot'); obj.glmFit{i}.fit; end
-                obj.glmFit{i}.plotFit;
-                hold on; box off;
-                normBlock.tri.stim.visDiff = normBlock.tri.stim.visDiff./max(abs(normBlock.tri.stim.visDiff));
-                normBlock.exp.conditionParametersAV = cellfun(@(x) [x(:,1) x(:,2)./max(abs(x(:,2)))], normBlock.exp.conditionParametersAV, 'uni', 0);
+                if ~contains(lower(modelString), 'plot')
+                    if ~cvFolds; obj.glmFit{i}.fit; end
+                    if cvFolds; obj.glmFit{i}.fitCV(cvFolds); end
+                end
                 
-                plt.dataWithErrorBars(normBlock,0);
+                params2use = mean(obj.glmFit{i}.prmFits,1);
+                pHatCalculated = obj.glmFit{i}.calculatepHat(params2use,'eval');
+                [grids.visValues, grids.audValues] = meshgrid(unique(obj.glmFit{i}.evalPoints(:,1)),unique(obj.glmFit{i}.evalPoints(:,2)));
+                [~, gridIdx] = ismember(obj.glmFit{i}.evalPoints, [grids.visValues(:), grids.audValues(:)], 'rows');
+                grids.fracRightTurns = grids.visValues;
+                grids.fracRightTurns(gridIdx) = pHatCalculated(:,2);
+                grids.numTrials = grids.fracRightTurns*0+1;
+                plotOpt.lineStyle = '-';
+                plotOpt.Marker = 'none';
+                if strcmp(plotOpt.plotType, 'log')
+                    plotOpt.contrastPower  = params2use(strcmp(obj.glmFit{i}.prmLabels, 'N'));
+                end
+                plt.fracitonRightChoiceData(grids, plotOpt);
+                
+                plotOpt.lineStyle = 'none';
+                plotOpt.Marker = '.';
+                grids = prc.getGridsFromBlock(normBlock);
+                maxContrast = max(abs(grids.visValues(:)));
+                grids.visValues = grids.visValues./maxContrast;
+                plt.fracitonRightChoiceData(grids, plotOpt);
+                
+                xlim([-1 1])
+                if strcmp(plotOpt.plotType, 'log')
+                    maxContrast = ((maxContrast*100).^plotOpt.contrastPower)/100; 
+                    ylim([-6 6])
+                end
+                
+                box off;
+                set(gca, 'xTick', (-1):(1/4):1, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
+                title(obj.blks(i).exp.subject{1});
                 xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
                 yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
                 if length(obj.blks) == 1; set(gcf, 'position', get(gcf, 'position').*[1 0.9 1 1.15]); end
-                if cvFolds; obj.glmFit{i}.fitCV(cvFolds); end
             end
             figureSize = get(gcf, 'position');
             mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
-            plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
-            plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
+            
+            if strcmp(plotOpt.plotType, 'log')
+                plt.suplabel('\fontsize{20} Log(pR/pL)', 'y', mainAxes);
+                plt.suplabel('\fontsize{20} Visual Contrast^N', 'x', mainAxes);
+                plt.suplabel(['\fontsize{20} ' modelString ': log-axes'], 't', mainAxes);
+            else
+                plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
+                plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
+                plt.suplabel(['\fontsize{20} ' modelString], 't', mainAxes);
+            end
             obj.hand.figure = [];
         end
         

@@ -28,7 +28,7 @@ classdef GLMmulti < matlab.mixin.Copyable
         function fit(obj)
             %Non crossvalidated fitting
             if isempty(obj.modelString); error('Set model first'); end
-            options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',10000);
+            options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',10000, 'Display', 'none');
             fittingObjective = @(b) (obj.calculateLogLik(b));
             [obj.prmFits,~,exitflag] = fmincon(fittingObjective, obj.prmInit, [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
             if ~any(exitflag == [1,2])
@@ -43,7 +43,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             if isempty(obj.modelString); error('Set model first'); end
             if ~exist('nFolds', 'var') || isempty(nFolds); nFolds = 10; end
             
-            options = optimoptions('fmincon','UseParallel',0,'MaxFunEvals',100000,'MaxIter',2000);
+            options = optimoptions('fmincon','UseParallel',0,'MaxFunEvals',100000,'MaxIter',2000, 'Display', 'none');
             cvObj = cvpartition(obj.blockData.tri.outcome.responseMade,'KFold',nFolds);
             obj.prmFits = nan(cvObj.NumTestSets,length(obj.prmLabels));
             obj.pHat = [];
