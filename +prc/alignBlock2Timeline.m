@@ -281,7 +281,6 @@ if any(contains(fineTune, 'flashesfine'))
 end
 
 if any(contains(fineTune, 'movements'))
-    %%
     responseMadeIdx = block.events.feedbackValues ~= 0;
     stimOnsetIdx = round(stimStartBlock(responseMadeIdx)*sR)';
     closedLoopPeriodIdx = round(block.events.closedLoopOnOffTimes*sR);
@@ -295,7 +294,6 @@ if any(contains(fineTune, 'movements'))
     move4Response = wheel(closedLoopPeriodIdx(closedLoopValues==0)) - wheel(closedLoopPeriodIdx(closedLoopValues==1));
     wheelThresh = median(abs(move4Response(responseMadeIdx)))*0.4;
     threshCrsIdx = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sR*2)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx);
-    threshCrsSign = sign(wheel(threshCrsIdx) - wheel(stimOnsetIdx));
 
     sumWin = 51;
     velThresh  = sR*3/sumWin; %Note: This is somewhat arbitrary. Would be different for different rigs...
@@ -303,24 +301,39 @@ if any(contains(fineTune, 'movements'))
     posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
     negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
     
-    moveOnsetIdx = [strfind((posVelScan'>=velThresh)>0, [0,1]) -1*strfind((-1*negVelScan'>=velThresh)>0, [0,1])];
+    moveOnsetIdx = [strfind((posVelScan'>=velThresh), [0,1]) -1*strfind((-1*negVelScan'>=velThresh), [0,1])];
     movingIdx = sort([find(posVelScan'>=velThresh) find((-1*negVelScan'>=velThresh))]);
     [~, srtIdx] = sort(abs(moveOnsetIdx));
     moveOnsetSign = sign(moveOnsetIdx(srtIdx));
     moveOnsetIdx = abs(moveOnsetIdx(srtIdx));
-   
     
-    firstMoveTimes =  arrayfun(@(x) max([nan moveOnsetIdx(find(moveOnsetIdx>x, 1))]), stimOnsetIdx)./sR;
-    firstMoveTimes((firstMoveTimes-stimOnsetIdx./sR)>1.5) = nan;
-    firstMoveTimes(ismember(stimOnsetIdx, movingIdx)) = nan;
     
-    largeMoveTimes =  arrayfun(@(x,y, z) max([nan moveOnsetIdx(find(moveOnsetIdx>x & moveOnsetIdx<y & moveOnsetSign==z, 1))]), ....
-        stimOnsetIdx, threshCrsIdx, threshCrsSign)./sR;
-    largeMoveTimes((largeMoveTimes-stimOnsetIdx./sR)>1.5) = nan;
-    largeMoveTimes(ismember(stimOnsetIdx, movingIdx)) = nan;
-
-    aligned.firstMoveTimes = firstMoveTimes;
-    aligned.largeMoveTimes = largeMoveTimes;
+    %"firstMoveTimes" are the first onsets occuring after stimOnsetIdx. "largeMoveTimes" are the first onsets occuring after stimOnsetIdx that match the
+    %sign of the threshold crossing defined earlier. Eliminate any that are longer than 1.5s, as these would be timeouts. Also, remove onsets when the
+    %mouse was aready moving at the time of the stimulus onset (impossible to get an accurate movement onset time in this case)
+    firstMoveIdx =  arrayfun(@(x) max([nan moveOnsetIdx(find(moveOnsetIdx>x, 1))]), stimOnsetIdx);
+    firstMoveIdx((firstMoveIdx-stimOnsetIdx)>1.5*sR) = nan;
+    firstMoveIdx(ismember(stimOnsetIdx, movingIdx)) = nan;
+    firstMoveDir = arrayfun(@(x) max([nan moveOnsetSign(find(moveOnsetIdx>x, 1))]), stimOnsetIdx);
+    firstMoveDir(isnan(firstMoveIdx)) = nan;
+    firstMoveDir = ((firstMoveDir==-1)+1).*(abs(firstMoveDir));
+    
+    preThreshOnsets = arrayfun(@(x,y) moveOnsetIdx(moveOnsetIdx>=x & moveOnsetIdx<=y), stimOnsetIdx, threshCrsIdx, 'uni', 0);
+    preThreshDirs = arrayfun(@(x,y) moveOnsetSign(moveOnsetIdx>=x & moveOnsetIdx<=y), stimOnsetIdx, threshCrsIdx, 'uni', 0);
+    reliableMoves = firstMoveDir;
+    reliableMoves(~isnan(reliableMoves)) = cellfun(@(x) max(diff([x(1);x(:)]))<50, preThreshOnsets(~isnan(reliableMoves))) &  ...
+        cellfun(@(x) length(unique(x))==1, preThreshDirs(~isnan(reliableMoves)));    
+    
+    %SANITY CHECK
+    responseMade = double(block.events.correctResponseValues(1:length(block.events.feedbackValues))).*(block.events.feedbackValues ~= 0);
+    responseMade(block.events.feedbackValues<0) = -1*(responseMade(block.events.feedbackValues<0));
+    responseMade = responseMade(block.events.feedbackValues ~= 0)';
+    responseMade = ((responseMade>0)+1).*(responseMade~=0);
+    if mean(firstMoveDir(reliableMoves==1) == responseMade(reliableMoves==1)) < 0.65 && sum(reliableMoves==1) > 25
+        warning('Why are most of the movements not in the same direction as the response?!?')
+        keyboard
+    end
+    aligned.firstMoveTimesDirReliable = [firstMoveIdx./sR firstMoveDir reliableMoves];
 end
 
 if any(contains(fineTune, 'wheelTraceTimeValue'))
@@ -346,14 +359,21 @@ for i = 1:length(rawFields)
         aligned.(currField)(emptyIdx) = {nan*ones(1,nColumns)};
         aligned.(currField) = cellfun(@single,aligned.(currField), 'uni', 0);
     end
-    if any(strcmp(currField, {'audStimPeriodOnOff'; 'visStimPeriodOnOff'; 'firstMoveTimes';'largeMoveTimes'}))
+    if any(strcmp(currField, {'audStimPeriodOnOff'; 'visStimPeriodOnOff'; 'firstMoveTimesDirReliable'}))
         nColumns = max(cellfun(@(x) size(x,2), aligned.(currField)));
         aligned.(currField)(emptyIdx) = {nan*ones(1, nColumns)};
         aligned.(currField) = single(cell2mat(aligned.(currField)));
     end
 end
+if isfield(aligned, 'firstMoveTimesDirReliable')
+    aligned.firstMoveTimes = aligned.firstMoveTimesDirReliable(:,1);
+    aligned.firstMoveDirection = aligned.firstMoveTimesDirReliable(:,2);
+    aligned.firstMoveReliable = aligned.firstMoveTimesDirReliable(:,3);
+    aligned = rmfield(aligned, 'firstMoveTimesDirReliable');
+end
+
 requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff';'firstMoveTimes';...
-                  'rewardTimes';'wheelTraceTimeValue'};
+                  'firstMoveDirection'; 'firstMoveReliable'; 'rewardTimes';'wheelTraceTimeValue'};
 for i = 1:length(requiredFields)
     if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
 end

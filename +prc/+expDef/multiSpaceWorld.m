@@ -156,7 +156,6 @@ wheelPos = interp1(x.standardizedBlock.inputs.wheelTimes, x.standardizedBlock.in
 %crossed this threshold after stimulus onset ("threshCrsIdx") and the "sign" of that crossing (based on the difference in position from onset)
 wheelThresh = median(abs(wheelPos(round(feedbackTimes(~timeOuts)*sR))-wheelPos(round(closedLoopStart(~timeOuts)*sR))))*0.4;
 threshCrsIdx = arrayfun(@(x,y) max([nan find(abs(wheelPos(x:y)-wheelPos(x))>wheelThresh,1)+x]), stimOnsetIdx, feedbackIdx);
-threshCrsSign = sign(wheelPos(threshCrsIdx) - wheelPos(stimOnsetIdx))';
 
 %Define a summation window (sumWin--51ms) and velocity threshhold. sR*3/sumWin means the wheel will need to move at least 3 "units" in 50ms for this
 %to count as a movement initiation. Obviously, the physical distance of a "unit" depends on the rotary encoder. 3 seems to work well for 360 and 1024 
@@ -174,7 +173,7 @@ posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<0)*1e6, [ones(1
 negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
 
 %Identify onsets in borth directions that exceed "velThresh", sort them, and record their sign. Also, extract all times the mouse is "moving"
-moveOnsetIdx = [strfind((posVelScan'>=velThresh)>0, [0,1]) -1*strfind((-1*negVelScan'>=velThresh)>0, [0,1])];
+moveOnsetIdx = [strfind((posVelScan'>=velThresh), [0,1]) -1*strfind((-1*negVelScan'>=velThresh), [0,1])];
 movingIdx = sort([find(posVelScan'>=velThresh) find((-1*negVelScan'>=velThresh))]);
 [~, srtIdx] = sort(abs(moveOnsetIdx));
 moveOnsetSign = sign(moveOnsetIdx(srtIdx));
@@ -183,26 +182,41 @@ moveOnsetIdx = abs(moveOnsetIdx(srtIdx));
 %"firstMoveTimes" are the first onsets occuring after stimOnsetIdx. "largeMoveTimes" are the first onsets occuring after stimOnsetIdx that match the 
 %sign of the threshold crossing defined earlier. Eliminate any that are longer than 1.5s, as these would be timeouts. Also, remove onsets when the 
 %mouse was aready moving at the time of the stimulus onset (impossible to get an accurate movement onset time in this case)
-firstMoveTimes =  arrayfun(@(x) max([nan moveOnsetIdx(find(moveOnsetIdx>x, 1))]), stimOnsetIdx)./sR;
-firstMoveTimes((firstMoveTimes-stimOnsetIdx./sR)>1.5) = nan;
-firstMoveTimes(ismember(stimOnsetIdx, movingIdx)) = nan;
+firstMoveIdx =  arrayfun(@(x) max([nan moveOnsetIdx(find(moveOnsetIdx>x, 1))]), stimOnsetIdx);
+firstMoveIdx((firstMoveIdx-stimOnsetIdx)>1.5*sR) = nan;
+firstMoveIdx(ismember(stimOnsetIdx, movingIdx)) = nan;
+firstMoveIdx(firstMoveIdx>threshCrsIdx) = nan;
+firstMoveDir = arrayfun(@(x) max([nan moveOnsetSign(find(moveOnsetIdx>x, 1))]), stimOnsetIdx);
+firstMoveDir(isnan(firstMoveIdx)) = nan;
+if p.wheelGain<0; firstMoveDir = firstMoveDir*-1; warning('Wheel connected in reverse... adjusting.'); end
+firstMoveDir = ((firstMoveDir==-1)+1).*(abs(firstMoveDir));
 
-largeMoveTimes =  arrayfun(@(x,y, z) max([nan moveOnsetIdx(find(moveOnsetIdx>x & moveOnsetIdx<y & moveOnsetSign==z, 1))]), ....
-    stimOnsetIdx, threshCrsIdx, threshCrsSign)./sR;
-largeMoveTimes((largeMoveTimes-stimOnsetIdx./sR)>1.5) = nan;
-largeMoveTimes(ismember(stimOnsetIdx, movingIdx)) = nan;
+preThreshOnsets = arrayfun(@(x,y) moveOnsetIdx(moveOnsetIdx>=x & moveOnsetIdx<=y), stimOnsetIdx, threshCrsIdx, 'uni', 0);
+preThreshDirs = arrayfun(@(x,y) moveOnsetSign(moveOnsetIdx>=x & moveOnsetIdx<=y), stimOnsetIdx, threshCrsIdx, 'uni', 0);
+reliableMoves = firstMoveDir;
+reliableMoves(~isnan(reliableMoves)) = cellfun(@(x) max(diff([x(1);x(:)]))<50, preThreshOnsets(~isnan(reliableMoves))) &  ...
+    cellfun(@(x) length(unique(x))==1, preThreshDirs(~isnan(reliableMoves)));
+
+[firstMoveTime, firstMoveDirection, firstMoveRealiable] = deal(feedbackValues*nan);
+firstMoveTime(~timeOuts) = (firstMoveIdx - stimOnsetIdx)/sR;
+firstMoveDirection(~timeOuts) = firstMoveDir;
+firstMoveRealiable(~timeOuts) = reliableMoves;
 
 %%
-timeToFirstMove = feedbackValues;
-timeToLargeMove = feedbackValues;
-timeToFirstMove(~timeOuts) = firstMoveTimes - stimOnsetIdx/sR;
-timeToLargeMove(~timeOuts) = largeMoveTimes - stimOnsetIdx/sR;
-
 %Get the response the mouse made on each trial based on the correct response and then taking the opposite for incorrect trials. NOTE: this will not
 %work for a task with more than two response options.
-%%
+
 responseMade = double(correctResponse).*~timeOuts;
 responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
+responseMade = ((responseMade>0)+1).*(responseMade~=0);
+
+testIdx = firstMoveRealiable==1 & timeToFeedback<1.5;
+if mean(firstMoveDirection(testIdx) == responseMade(testIdx)) < 0.7 && sum(testIdx==1) >= 50
+    warning('Unreliable Movements');
+elseif mean(firstMoveDirection(testIdx) == responseMade(testIdx)) < 0.50 && sum(testIdx==1) >= 50
+    warning('Why are most of the movements not in the same direction as the response?!?');
+    keyboard;
+end
 
 %allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, and the
 %initial azimuth of aud and vis stimuli.
@@ -291,9 +305,10 @@ n.inactivation = inactivation;
 n.outcome.validTrial = vIdx(:);
 n.outcome.feedbackGiven = feedbackValues;
 n.outcome.timeToFeedback = timeToFeedback;
-n.outcome.timeToFirstMove = timeToFirstMove;
-n.outcome.timeToLargeMove = timeToLargeMove;
-n.outcome.responseMade = ((responseMade>0)+1).*(responseMade~=0);
+n.outcome.timeToFirstMove = firstMoveTime;
+n.outcome.firstMoveDirection = firstMoveDirection;
+n.outcome.firstMoveRealiable = firstMoveRealiable;
+n.outcome.responseMade = responseMade;
 n.params = x.oldParams;
 
 x.newBlock = n;
