@@ -18,6 +18,24 @@ function dateRange = keyDates(subjectID, dataTag)
 %%
 switch lower(dataTag{1})
     
+        case {'learning'}
+        switch subjectID{1}
+            case 'PC022'; dateRange = {'first35'}; 
+            case 'PC027'; dateRange = {'first35'}; 
+            case 'PC029'; dateRange = {'first35'}; 
+            case 'PC030'; dateRange = {'first35'}; 
+            case 'PC031'; dateRange = {'first35'}; 
+            case 'PC032'; dateRange = {'first35'}; 
+            case 'PC034'; dateRange = {'first35'}; 
+            case 'PC043'; dateRange = {'first35'}; 
+            case 'PC045'; dateRange = {'first35'}; 
+            case 'PC046'; dateRange = {'first35'}; 
+            case 'PC050'; dateRange = {'first35'}; 
+            case 'PC051'; dateRange = {'first35'}; 
+%             case 'DJ010'; dateRange = {'first35'}; %missing data before 208-05-22...???
+            otherwise, dateRange = [];
+        end
+        
     %These are dates to use for behavioral analysis. Some are dates when mice where inactivated, and in this case, the inactivation trials should be
     %removed before doing further analysis.
     case {'behavior'; 'behaviour'}

@@ -92,6 +92,8 @@ end
 
 %Check whether there are new files, the whole list is being rebuilt etc. If the whole list is being rebuilt, the create an empty "epxList" to append
 %experiments to. Otherwise, only process identified files that are not already part of the expList.
+oddNameCorrection = strcmp({expList.expDef}', 'multiSpaceWorldNewNames');
+if any(oddNameCorrection); [expList(oddNameCorrection).expDef] = deal('multiSpaceWorld'); save(prc.pathFinder('expList'), 'expList'); end
 if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return;
 elseif ~rebuildList, tLoc = prc.updatePaths(expList); processList = processList(~contains(processList,{tLoc.serverFolder}'));
 end

@@ -1,3 +1,4 @@
+
 function viewDataWithoutFits(obj, plotType)
 %% A method for the spatialAnalysis class to plot data without any fit for a all the blocks.
 % INPUTS(default values)
@@ -23,7 +24,7 @@ for i  = 1:length(obj.blks)
     visValues = unique(blk.exp.conditionParametersAV{1}(:,2));
     switch plotType(1:3)
         case 'rea'
-            gridData = prc.makeGrid(blk, round(blk.tri.outcome.timeToFirstMove*1e3), @median, 1);
+            gridData = prc.makeGrid(blk, round(blk.tri.outcome.threshMoveTime*1e3), @nanmedian, 1);
             plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
         case 'res'
             gridData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @mean, 1);
@@ -38,10 +39,9 @@ for i  = 1:length(obj.blks)
             gridData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @mean, 1);
             plotOpt.lineStyle = 'none';
             gridData = log((gridData./(1-gridData)));
-            [dataFit] = plt.gridSplitByRows(gridData, (abs(visValues)*100).^0.7.*sign(visValues), audValues, plotOpt);
+            plt.gridSplitByRows(gridData, (abs(visValues)*100).^0.7.*sign(visValues), audValues, plotOpt);
             maxContrast = max(abs(blk.tri.stim.visDiff))*100;
-            xlim([-maxContrast maxContrast]);
-            allR2 = [allR2; mean(dataFit.r2)];
+            xlim([-maxContrast^0.7 maxContrast^0.7]);
         case 'pro'
             gridData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @mean, 1);
             plotOpt.lineStyle = 'none';

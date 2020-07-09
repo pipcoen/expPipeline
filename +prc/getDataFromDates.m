@@ -28,6 +28,8 @@ if ~iscell(requestedDates); requestedDates = {requestedDates}; end
 if ~iscell(subject); subject = {subject}; end
 load(prc.pathFinder('expList'), 'expList');
 
+%
+
 %Get list of available experiments for selected subject, update the paths, convert dates to datenums
 availableExps = expList(strcmp({expList.subject}', subject) & strcmp({expList.expDef}', expDef));
 availableExps = prc.updatePaths(availableExps);
@@ -71,8 +73,7 @@ blk = [blk{:}]'; blk = [blk(:).blk]';
 %If raw data is requested, load it, and add it to the concatenated blocks (in a "raw" field)
 if contains(lower(extraData), {'raw'; 'all'})
     raw = cellfun(@(x) load(x, 'raw'), selectedFiles, 'uni', 0);
-    raw = [raw{:}]'; raw = [raw(:).raw]';
-    [blk.raw] = deal(raw);
+    for i = 1:length(raw); blk(i).raw = raw{i}.raw; end
 end
 
 %If eph data is requested, load the "eph" (spikes) and "tim" (timeline) data and add it to the concatenated blocks (as "tim" and "eph" fields

@@ -281,8 +281,16 @@ if any(contains(fineTune, 'flashesfine'))
 end
 
 if any(contains(fineTune, 'movements'))
-    responseMadeIdx = block.events.feedbackValues ~= 0;
-    stimOnsetIdx = round(stimStartBlock(responseMadeIdx)*sR)';
+    responseMadeIdx = block.events.feedbackValues(1:size(trialStEnTimes,1)) ~= 0;
+    
+    timelineVisOnset = prc.indexByTrial(trialStEnTimes, aligned.visStimPeriodOnOff(:,1), aligned.visStimPeriodOnOff(:,1));
+    timelineVisOnset(cellfun(@isempty, timelineVisOnset)) = deal({nan});
+    timelineAudOnset = prc.indexByTrial(trialStEnTimes, aligned.audStimPeriodOnOff(:,1), aligned.audStimPeriodOnOff(:,1));
+    timelineAudOnset(cellfun(@isempty, timelineAudOnset)) = deal({nan});
+    timelineStimOnset = nanmin(cell2mat([timelineVisOnset timelineAudOnset]), [],2);
+    timelineStimOnsetIdx = round(timelineStimOnset(responseMadeIdx)*sR)-100;  %We want to know if movements were initiatied 100ms preceding stim onset
+    %%
+    stimOnsetIdx = timelineStimOnsetIdx;
     closedLoopPeriodIdx = round(block.events.closedLoopOnOffTimes*sR);
     closedLoopValues = block.events.closedLoopOnOffValues(1:find(block.events.closedLoopOnOffValues==0, 1, 'last'));
     
@@ -334,6 +342,7 @@ if any(contains(fineTune, 'movements'))
         keyboard
     end
     aligned.firstMoveTimesDirReliable = [firstMoveIdx./sR firstMoveDir reliableMoves];
+    %%
 end
 
 if any(contains(fineTune, 'wheelTraceTimeValue'))

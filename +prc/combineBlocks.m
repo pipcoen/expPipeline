@@ -130,7 +130,7 @@ end
 catBlks = prc.catStructs(blks);
 
 %Add "trialFields" from the newly concatenated "blks" to "comBlks"
-trialFields = {'trialClass', 'timings', 'timeline', 'stim', 'inactivation', 'outcome'};
+trialFields = {'trialType', 'timings', 'timeline', 'stim', 'inactivation', 'outcome', 'raw'};
 for i = trialFields
     if isfield(blks, i{1}); comBlks.tri.(i{1}) = catBlks.(i{1}); end
 end

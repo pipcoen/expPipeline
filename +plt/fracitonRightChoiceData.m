@@ -10,12 +10,14 @@ function fracitonRightChoiceData(grids, plotOpt)
 
 if ~exist('plotOpt', 'var'); plotOpt = struct; end
 if ~isfield(plotOpt, 'errorBars'); plotOpt.errorBars = 0; end
+if ~isfield(plotOpt, 'errorType'); plotOpt.errorType = 'patch'; end
 if ~isfield(plotOpt, 'plotType'); plotOpt.plotType = 'normal'; end
 if ~isfield(plotOpt, 'lineStyle'); plotOpt.lineStyle = 'none'; end
 if ~isfield(plotOpt, 'lineWidth'); plotOpt.lineWidth = 2; end
-if ~isfield(plotOpt, 'Marker'); plotOpt.Marker = '.'; end
-if ~isfield(plotOpt, 'MarkerSize'); plotOpt.MarkerSize = 20; end
+if ~isfield(plotOpt, 'Marker'); plotOpt.marker = '.'; end
+if ~isfield(plotOpt, 'MarkerSize'); plotOpt.markerSize = 20; end
 if ~isfield(plotOpt, 'contrastPower'); plotOpt.contrastPower = 0.7; end
+if ~isfield(grids, 'numTrials'); grids.numTrials = ~isnan(grids.fracRightTurns); end
 
 uniAud = unique(grids.audValues(:));
 selectedColors = plt.selectRedBlueColors(uniAud);
@@ -31,17 +33,21 @@ for i = uniAud'
     idx = find(grids.audValues==i & grids.numTrials>0);
     
     lineOpt.lineStyle = plotOpt.lineStyle;
-    lineOpt.MarkerSize = plotOpt.MarkerSize;
+    lineOpt.MarkerSize = plotOpt.markerSize;
     lineOpt.Color = selectedColors(uniAud==i,:);
-    lineOpt.Marker = plotOpt.Marker;
+    lineOpt.Marker = plotOpt.marker;
     lineOpt.lineWidth = plotOpt.lineWidth;
     plot(grids.visValues(idx),grids.fracRightTurns(idx),lineOpt);
 
-    if plotOpt.errorBars
+    if plotOpt.errorBars && strcmpi(plotOpt.errorType, 'patch')
+        patchY = [grids.fracRightTurnsHighBound(idx); grids.fracRightTurnsLowBound(flipud(idx(:))); grids.fracRightTurnsHighBound(idx(1))];
+        patchX = [grids.visValues(idx); grids.visValues(flipud(idx(:))); grids.visValues(idx(1))];
+        patch(patchX, patchY, lineOpt.Color, 'FaceAlpha', 1, 'EdgeColor', 'none')
+    elseif plotOpt.errorBars && strcmpi(plotOpt.errorType, 'line')
         lineOpt.Marker = 'none';
         lineOpt.lineStyle = '-';
         lineOpt.lineWidth = 2;
-        arrayfun(@(x) plot(grids.visValues(x)*[1 1], [grids.fracRightTurnsLowBound(x) grids.fracRightTurnsHighBound(x)], lineOpt), idx)
+        arrayfun(@(x) plot(grids.visValues(x)*[1 1], [grids.fracRightTurnsLowBound(x) grids.fracRightTurnsHighBound(x)], lineOpt), idx)        
     end
     
     hold on;

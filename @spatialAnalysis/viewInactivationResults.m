@@ -2,25 +2,20 @@ function viewInactivationResults(obj, plotType, nShuffles)
 if ~exist('plotType', 'var'); plotType = 'unires'; end
 if ~exist('nShuffles', 'var'); nShuffles = 0; end
 plotType = lower(plotType);
-if ~isempty(obj.expDate)
-    if contains(plotType, 'dif')
-        subsets = {'VL', 'AL', 'CohL','ConL'};
-    else
-        subsets = {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'};
-    end
-    runMouseReplicate(copy(obj), subsets, ['viewInactivationResults(''' plotType ''',' num2str(nShuffles) ')']);
-    return;
+if contains(plotType, 'dif'); subsets = {'VL', 'AL', 'CohL','ConL'};
+else, subsets = {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'};
 end
+
 figure;
-axesOpt.totalNumOfAxes = length(obj.subjects);
+axesOpt.totalNumOfAxes = length(subsets);
 axesOpt.btlrMargins =  [50 100 10 10];
 axesOpt.gapBetweenAxes = [40 0];
 axesOpt.figureHWRatio = 0.8;
 axesOpt.figureSize = 400;
 %%
-initBlock = prc.filtStruct(obj.blocks{1}, obj.blocks{1}.galvoPosition(:,2)~=4.5);
-initBlock = prc.filtStruct(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | initBlock.laserType==0);
-initBlock = prc.filtStruct(initBlock, initBlock.timeOutsBeforeResponse==0);
+initBlock = prc.filtBlock(obj.blks, obj.blks.tri.inactivation.galvoPosition(:,2)~=4.5);
+initBlock = prc.filtBlock(initBlock, ~ismember(abs(initBlock.tri.inactivation.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | initBlock.laserType==0);
+initBlock = prc.filtBlock(initBlock, initBlock.tri.stim. & initBlock.tri.outcome.);
 
 op2Use = @mean;
 
@@ -31,11 +26,11 @@ if contains(plotType, 'grp')
 %     galvoGrps = {[1.8, -3; 1.8 -4; 1.8 -2; 3, -4; 3, -3; 3, -2; 4.2, -4; 4.2, -3; 4.2, -2;];[0.6 2; 1.8, 2; 0.6, 3]};%;[4.2 -2; 4.2, -3]};
     galvoGrps = {[1.8 -4; 3, -4; 3, -3];[0.6 2; 1.8, 2; 0.6, 3]};%;[4.2 -2; 4.2, -3]};
     galvoGrps = [galvoGrps; cellfun(@(x) [-x(:,1) x(:,2)], galvoGrps, 'uni', 0)];
-    groupedBlock = cellfun(@(x) prc.filtStruct(initBlock, ismember(initBlock.galvoPosition, x, 'rows') & initBlock.laserType~=0), galvoGrps);
+    groupedBlock = cellfun(@(x) prc.filtBlock(initBlock, ismember(initBlock.galvoPosition, x, 'rows') & initBlock.laserType~=0), galvoGrps);
     meanPositions = cellfun(@mean, galvoGrps, 'uni', 0);
     meanPositions = cellfun(@(x,y) x*0+repmat(y, size(x,1),1), {groupedBlock.galvoPosition}', meanPositions, 'uni', 0);
     [groupedBlock.galvoPosition] = deal(meanPositions{:});
-    initBlock = prc.combineBlocks([groupedBlock; prc.filtStruct(initBlock, initBlock.laserType==0)]);
+    initBlock = prc.combineBlocks([groupedBlock; prc.filtBlock(initBlock, initBlock.laserType==0)]);
 end
 
 if contains(plotType, 'dif')
@@ -43,14 +38,14 @@ if contains(plotType, 'dif')
 end
 %%
 if contains(plotType, 'res')
-    initBlock = prc.filtStruct(initBlock, initBlock.responseMade~=0);
+    initBlock = prc.filtBlock(initBlock, initBlock.responseMade~=0);
     initBlock.data2Use = initBlock.responseMade==2;
     scanPlot.colorBarLimits = [-0.8 0.8];
 elseif contains(plotType, 'tim')
     initBlock.data2Use = (initBlock.responseMade==0);
     scanPlot.colorBarLimits = [-0.25 0.25];
 elseif contains(plotType, 'rea')
-    initBlock = prc.filtStruct(initBlock, initBlock.responseMade~=0);
+    initBlock = prc.filtBlock(initBlock, initBlock.responseMade~=0);
     reactionTimes = initBlock.timeToWheelMove;
     reactionTimes(initBlock.laserType~=0) = nan;
     [tDat1,tDat2] = meshgrid(subjectIndexes,condLabels);
@@ -62,9 +57,9 @@ elseif contains(plotType, 'rea')
     op2Use = @median;
     scanPlot.colorBarLimits = [-0.2 0.2];
 end
-normBlock = prc.filtStruct(initBlock, initBlock.laserType==0);
-uniBlock = prc.filtStruct(initBlock, initBlock.laserType==1);
-bilBlock = prc.filtStruct(initBlock, initBlock.laserType==2);
+normBlock = prc.filtBlock(initBlock, initBlock.laserType==0);
+uniBlock = prc.filtBlock(initBlock, initBlock.laserType==1);
+bilBlock = prc.filtBlock(initBlock, initBlock.laserType==2);
 
 for i  = 1:length(obj.subjects)
     if ~contains(plotType, {'sig'})
@@ -87,7 +82,7 @@ for i  = 1:length(obj.subjects)
         
         inactiveGrid = cell(nShuffles,1);
         for j =1:nShuffles
-            subTestBlock = prc.filtStruct(testBlock, uniformLaserFilters{j});
+            subTestBlock = prc.filtBlock(testBlock, uniformLaserFilters{j});
             [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(subTestBlock, subTestBlock.data2Use, op2Use, 'galvouni');
         end
         scanPlot.data = mean(cat(3,inactiveGrid{:}),3)-contData;
@@ -112,8 +107,8 @@ for i  = 1:length(obj.subjects)
         uniformLaserFilters = cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0);
         
         for j = 1:(totalLoops)
-            subTestBlock = prc.filtStruct(testBlock, uniformLaserFilters{j});
-            subContBlock = prc.filtStruct(contBlock, prc.makeFreqUniform(contBlock.subjectIdx));
+            subTestBlock = prc.filtBlock(testBlock, uniformLaserFilters{j});
+            subContBlock = prc.filtBlock(contBlock, prc.makeFreqUniform(contBlock.subjectIdx));
             
             randomBlock = prc.combineBlocks([subTestBlock;subContBlock]);
             if j > normEstRepeats
@@ -121,8 +116,8 @@ for i  = 1:length(obj.subjects)
                 randomBlock.galvoPosition = randomBlock.galvoPosition(randperm(length(randomBlock.laserType)),:);
             end
             
-            subContBlock = prc.filtStruct(randomBlock, randomBlock.laserType==0);
-            subTestBlock = prc.filtStruct(randomBlock, randomBlock.laserType==1);
+            subContBlock = prc.filtBlock(randomBlock, randomBlock.laserType==0);
+            subTestBlock = prc.filtBlock(randomBlock, randomBlock.laserType==1);
             [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(subTestBlock, subTestBlock.data2Use, op2Use, 'galvouni');
             inactiveGrid{j} = inactiveGrid{j} - op2Use(subContBlock.data2Use);
         end

@@ -70,7 +70,7 @@ for i = 1:size(subject,1)
         elseif datNum{i} < 737612; expInfo = expInfo{1}; %'2019-07-06'
         elseif datNum{i} > 737612 && datNum{i} <= 737739; expInfo = expInfo{2}; %'2019-07-06'
         elseif datNum{i} > 737739; expInfo = expInfo{3}; %'2019-11-10'
-        else, expInfo = expInfo{2};
+        else, expInfo = expInfo{2};g
         end
     end
     

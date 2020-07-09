@@ -31,8 +31,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
     
     %%METHODS (there are other methods contained in separate .m files)
     methods
+        %% Central function that loads the requested mouse data into a spatial analysis object
         function obj = spatialAnalysis(subjects, expDate, combineMode, modalParams, extraTag, expDef)
-            %% Central function that loads the requested mouse data into a spatial analysis object
             
             %Initialize fields with default values if no vaules are provided.
             if ~exist('subjects', 'var'); error('Must specify which subject to load data from'); end
@@ -63,8 +63,8 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj = changeMouse(obj, subjects, expDate, combineMode, modalParams, expDef, extraTag);
         end
         
+        %% This function uses the curated inputs to actually load and combine the data as requested
         function obj = changeMouse(obj, subjects, expDate, combineMode, modalParams, extraTag, expDef)
-            %% This function uses the curated inputs to actually load and combine the data as requested
             
             %INPUTS are defined above, but some defaults be redefined here in case this method is called for an existing object
             if ~exist('combineMode', 'var'); combineMode = 0; end
@@ -107,261 +107,25 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             obj.hand.axes = [];
             obj.hand.figure = [];
         end
-        
-        function viewGLMFit(obj, modelString, cvFolds, plotType)
-            if ~exist('modelString', 'var'); modelString = 'simpLogSplitVSplitA'; end
-            if ~exist('cvFolds', 'var'); cvFolds = 0; end
-            if ~exist('plotType', 'var'); plotType = 'normal'; end
-            plotOpt.plotType = plotType;
-            
-            figure;
-            axesOpt.totalNumOfAxes = length(obj.blks);
-            axesOpt.btlrMargins = [80 100 80 40];
-            axesOpt.gapBetweenAxes = [100 60];
-            axesOpt.numOfRows = 4;
-            axesOpt.figureHWRatio = 1.1;
-            obj.glmFit = cell(length(obj.blks),1);
-            for i  = 1:length(obj.blks)
-                normBlock = spatialAnalysis.getBlockType(obj.blks(i),'norm');
-                normBlock = prc.filtBlock(normBlock,~isinf(normBlock.tri.stim.audInitialAzimuth));
-                if ~contains(lower(modelString), 'plot'); obj.glmFit{i} = fit.GLMmulti(normBlock, modelString); end
-                obj.hand.axes = plt.getAxes(axesOpt, i);
-                if ~contains(lower(modelString), 'plot')
-                    if ~cvFolds; obj.glmFit{i}.fit; end
-                    if cvFolds; obj.glmFit{i}.fitCV(cvFolds); end
-                end
-                
-                params2use = mean(obj.glmFit{i}.prmFits,1);
-                pHatCalculated = obj.glmFit{i}.calculatepHat(params2use,'eval');
-                [grids.visValues, grids.audValues] = meshgrid(unique(obj.glmFit{i}.evalPoints(:,1)),unique(obj.glmFit{i}.evalPoints(:,2)));
-                [~, gridIdx] = ismember(obj.glmFit{i}.evalPoints, [grids.visValues(:), grids.audValues(:)], 'rows');
-                grids.fracRightTurns = grids.visValues;
-                grids.fracRightTurns(gridIdx) = pHatCalculated(:,2);
-                grids.numTrials = grids.fracRightTurns*0+1;
-                plotOpt.lineStyle = '-';
-                plotOpt.Marker = 'none';
-                if strcmp(plotOpt.plotType, 'log')
-                    plotOpt.contrastPower  = params2use(strcmp(obj.glmFit{i}.prmLabels, 'N'));
-                end
-                plt.fracitonRightChoiceData(grids, plotOpt);
-                
-                plotOpt.lineStyle = 'none';
-                plotOpt.Marker = '.';
-                grids = prc.getGridsFromBlock(normBlock);
-                maxContrast = max(abs(grids.visValues(:)));
-                grids.visValues = grids.visValues./maxContrast;
-                plt.fracitonRightChoiceData(grids, plotOpt);
-                
-                xlim([-1 1])
-                if strcmp(plotOpt.plotType, 'log')
-                    maxContrast = ((maxContrast*100).^plotOpt.contrastPower)/100; 
-                    ylim([-6 6])
-                end
-                
-                box off;
-                set(gca, 'xTick', (-1):(1/4):1, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
-                title(obj.blks(i).exp.subject{1});
-                xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
-                yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
-                if length(obj.blks) == 1; set(gcf, 'position', get(gcf, 'position').*[1 0.9 1 1.15]); end
-            end
-            figureSize = get(gcf, 'position');
-            mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
-            
-            if strcmp(plotOpt.plotType, 'log')
-                plt.suplabel('\fontsize{20} Log(pR/pL)', 'y', mainAxes);
-                plt.suplabel('\fontsize{20} Visual Contrast^N', 'x', mainAxes);
-                plt.suplabel(['\fontsize{20} ' modelString ': log-axes'], 't', mainAxes);
-            else
-                plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
-                plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
-                plt.suplabel(['\fontsize{20} ' modelString], 't', mainAxes);
-            end
-            obj.hand.figure = [];
-        end
-        
-        
-        function getGLMPerturbations(obj, modelString)
-            if ~exist('modelString', 'var'); modelString = 'ReducedLogCN'; end
-            
-            figure;
-            initBlock = prc.filtBlock(obj.blks{1}, obj.blks{1}.galvoPosition(:,2)~=4.5);
-            initBlock = prc.filtBlock(initBlock, ~ismember(abs(initBlock.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | initBlock.laserType==0);
-            initBlock = prc.filtBlock(initBlock, initBlock.timeOutsBeforeResponse==0);
-            
-            normBlock = spatialAnalysis.getBlockType(initBlock,'norm',1);
-            laserBlock = spatialAnalysis.getBlockType(initBlock,'las',1);
-            
-            obj.glmFit = fit.GLMmulti(normBlock);
-            obj.glmFit.GLMMultiModels(modelString);
-            obj.glmFit.fit;
-            [galvoblks, scanPlot.gridXY] = prc.makeGrid(laserBlock, laserBlock, [], 'galvouni', 3);
-            scanPlot.data = nan(size(galvoblks));
-            numTrials = zeros(size(galvoblks));
-            for j = find(~cellfun(@isempty, galvoblks))'
-                if length(galvoblks{j}.responseMade)<500; continue; end
-                subGLM = fit.GLMmulti(galvoblks{j});
-                subGLM.GLMMultiModels(modelString);
-                subGLM.prmInit = obj.glmFit.prmFits;
-                subGLM.blockData.freeP = [];
-                subGLM.fit;
-                minLL = subGLM.calculateLogLik(subGLM.prmFits);
-                subGLM.blockData.freeP = 1:length(subGLM.prmFits);%(obj.glmFit.prmFits);
-                subGLM.fit;
-                maxLL = subGLM.calculateLogLik(subGLM.prmFits);
-                
-                [xIdx, yIdx] = ind2sub(size(galvoblks), j);
-                scanPlot.data(xIdx, yIdx) = maxLL-minLL;
-                prmChange(xIdx, yIdx,:) = subGLM.prmFits;
-                numTrials(xIdx, yIdx, 1) = length(galvoblks{j}.responseMade);
-            end
-            %%
-            axesOpt = struct('totalNumOfAxes', length(subGLM.prmFits), 'btlrMargins', [50 100 10 10], 'gapBetweenAxes', [40 0], ...
-                'numOfRows', 2, 'figureHWRatio', 0.8, 'figureSize', 400);
-            for j  = 1:length(subGLM.prmFits)
-                hold on; box off;
-                scanPlot.data = prmChange(:,:,j);
-                scanPlot.title = subGLM.prmLabels{j};
-                obj.hand.axes = plt.getAxes(axesOpt, j);
-                scanPlot.colorBarLimits = max(abs(scanPlot.data(:)))*[-1 1];
-                plt.scanningBrainEffects(scanPlot);
-            end
-            %             for i  = 1:length(obj.blks)
-            %                 hold on; box off;
-            %                 obj.hand.axes = plt.getAxes(axesOpt, i);
-            %                 scanPlot.colorBarLimits = [-0.1 0.1];
-            %                 plt.scanningBrainEffects(scanPlot);
-            %             end
-        end
-        
-        function scatterData(obj,plotType)
-            if ~exist('plotType', 'var'); plotType = 'rea'; end
-            figure;
-            switch plotType(1:3)
-                case 'rea'
-                    scatterData = zeros(length(obj.blks),2);
-                    for i  = 1:length(obj.blks)
-                        nBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm');
-                        timeGrid = prc.makeGrid(nBlk, round((nBlk.tri.outcome.timeToFirstMove-nBlk.tri.timings.stimPeriodStart)*1e3), @nanmean, 'abscondition');
-                        trialType = nBlk.tri.trialClass;
-                        trialType = trialType.blank*0+trialType.auditory + 2*trialType.visual+3*trialType.coherent+4*trialType.conflict;
-                        trialGrid = prc.makeGrid(nBlk, trialType, @mean, 'abscondition');
-                        tkIdx = trialGrid.*fliplr(trialGrid)==12;
-                        scatterData(i,:) = [mean(timeGrid(tkIdx & trialGrid==3)), mean(timeGrid(tkIdx & fliplr(trialGrid)==3))];
-                        scatterData(i,:) = scatterData(i,:) - mean(timeGrid(trialGrid==2 | trialGrid==2));
-                    end
-                    limVal = 100;
-                    xLimits = ([-limVal limVal/2]);
-                    yLimits = ([-limVal limVal/2]);
-                    xlabel2Use = '\fontsize{20} Coherent reaction time (ms)';
-                    ylabel2Use = '\fontsize{20} Conflict reaction time (ms)';
-                case 'coh'
-                    scatterData = zeros(length(obj.blks),2);
-                    for i  = 1:length(obj.blks)
-                        nBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm');
-                        nBlk = prc.filtBlock(nBlk, ~nBlk.tri.trialClass.conflict & ~nBlk.tri.trialClass.blank);
-                        perfGrid = prc.makeGrid(nBlk, round(nBlk.tri.outcome.feedbackGiven), @mean, 'abscondition');
-                        trialType = nBlk.tri.trialClass;
-                        trialType = trialType.blank*0+trialType.auditory + 2*trialType.visual+3*trialType.coherent+4*trialType.conflict;
-                        trialGrid = prc.makeGrid(nBlk, trialType, @mean, 'abscondition');
-                        columns2use = find(sum(trialGrid == 2 | trialGrid==3)==2);
-                        maxUnimodalPer = max([columns2use*0+perfGrid(trialGrid==1); perfGrid(2,columns2use)]);
-                        multimodalPer = perfGrid(3,columns2use);
-                        scatterData(i,:) = round([mean(maxUnimodalPer) mean(multimodalPer)]*100);
-                    end
-                    xLimits = ([50 100]);
-                    yLimits = ([50 100]);
-                    ylabel2Use = '\fontsize{20} Coherent perf (%)';
-                    xlabel2Use = '\fontsize{20} Best unimodal perf (%)';
-            end
-            scatter(scatterData(:,1), scatterData(:,2), 'k', 'markerfacecolor', 'k');
-            [~, pVal] = ttest(scatterData(:,1), scatterData(:,2));
-            disp(pVal);
-            axis equal; axis square;
-            xlim(xLimits);
-            ylim(yLimits);
-            hold on
-            plot(xLimits, yLimits, '--k')
-            xlabel(xlabel2Use);
-            ylabel(ylabel2Use);
-        end
-        
-        
-        function viewJitterPlot(obj, plotType)
-            if ~exist('plotType', 'var'); plotType = 'coh'; end
-            figure;
-            axesOpt.totalNumOfAxes = length(obj.blks);
-            axesOpt.btlrMargins = [100 100 100 20];
-            axesOpt.gapBetweenAxes = [100 80];
-            axesOpt.figureSize = 500;
-            for i  = 1:length(obj.blks)
-                axesOpt.idx = i;
-                switch lower(plotType)
-                    case {'coh'; 'con'}
-                        plotOpt = prc.getMultiTriplets(normBlock, strcmpi(plotType, 'coh'));
-                        plotOpt.figureSize = 400;
-                        if strcmpi(plotType, 'coh')
-                            plotOpt.mainTitle = '\fontsize{20} Fraction correct by condition';
-                            plotOpt.mainYLabel = '\fontsize{20} Fraction correct';
-                            plotOpt.yLimits = [0 1.2];
-                        else
-                            plotOpt.mainTitle = '\fontsize{20} Fraction of unisensory choices in conflict';
-                            plotOpt.mainYLabel = '\fontsize{20} Fraction choices in unisensory direction';
-                            plotOpt.yLimits = [0 1.2];
-                        end
-                    case 'whe'
-                        normBlock = spatialAnalysis.getBlockType(obj.blks(i),'norm',0);
-                        plotOpt = prc.getCoherentConflictPairs(normBlock);
-                        plotOpt.mainXLabel = '\fontsize{20} Condition';
-                        plotOpt.mainTitle = '\fontsize{20} Difference in reation times for coherent/conflict conditions (ms)';
-                        plotOpt.mainYLabel = '\fontsize{20} Time to wheel movement (ms)';
-                end
-                obj.hand.axes = plt.getAxes(axesOpt);
-                plt.jitter(plotOpt.yData, plotOpt); grid('on');
-                title(sprintf('%s: n = %d', obj.subjects{i}, obj.blks(i).nSessions));
-                xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
-            end
-            figureSize = get(gcf, 'position');
-            mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
-            plt.suplabel(plotOpt.mainTitle, 't', mainAxes);
-            plt.suplabel(plotOpt.mainYLabel, 'y', mainAxes);
-            plt.suplabel(plotOpt.mainXLabel, 'x', mainAxes);
-        end
-        
-        
-        function runMouseReplicate(obj, subjectNames, funString)
-            for i = 1:length(obj.blks)
-                replicatedObj = copy(obj);
-                replicatedObj.subjects = subjectNames;
-                replicatedObj.blks = repmat(replicatedObj.blks(i), length(replicatedObj.subjects),1);
-                replicatedObj.expDate = [];
-                eval(['replicatedObj.' funString ';']);
-                plt.suplabel(obj.subjects{i}, 't');
-            end
-        end
     end
     
     methods (Static)
-        function filteredBlock = getBlockType(block, tag, removeTimeouts)
+        %% Fucntion to filter blocks based on some predefined tags
+        function filteredBlk = getBlockType(blk, tag, removeTimeouts)
             if ~exist('tag', 'var'); error('Must specificy tag'); end
             if ~exist('removeTimeouts', 'var'); removeTimeouts = 1; end
-            outcome = block.tri.outcome;
-            inact = block.tri.inactivation;
-            if removeTimeouts; timeOutFilter =  outcome.responseMade~=0; else, timeOutFilter =  outcome.responseMade*0+1; end
-            laserOff = prc.filtBlock(block, (inact.laserType==0 | isnan(inact.laserType)) & timeOutFilter & outcome.validTrial, 'tri');
-            laserOn = prc.filtBlock(block, (inact.laserType~=0 & ~isnan(inact.laserType)) & timeOutFilter & outcome.validTrial, 'tri');
+            validTrials = blk.tri.outcome.validTrial;                                            %Trials that weren't repeats of an incorrect decision
+            timeOuts = blk.tri.outcome.responseMade==0 | blk.tri.outcome.timeToFeedback > 1.5;   %Timout trials (timeouts, or response > 1.5s)
+            laserType = blk.tri.inactivation.laserType;                                          %Lasertype used on each trial.   
+            if ~removeTimeouts; timeOuts = timeOuts*0; end                                       %If not removing timeouts, filter becomes all zeros
+            
+            regBlk = prc.filtBlock(blk, (laserType==0 | isnan(laserType)) & ~timeOuts & validTrials, 'tri');
+            lasBlk = prc.filtBlock(blk, (laserType~=0 & ~isnan(laserType)) & ~timeOuts & validTrials, 'tri');
+            
             switch lower(tag(1:3))
-                case 'nor'; filteredBlock = laserOff;
-                case 'las'; filteredBlock = laserOn;
+                case 'nor'; filteredBlk = regBlk;
+                case 'las'; filteredBlk = lasBlk;
             end
-        end
-        
-        function block = removePoorAuditoryDays(block)
-            audblks = prc.filtBlock(block, block.trialType==1 & block.laserType == 0 & block.tri.outcome.responseMade~=0);
-            sessList = unique(audblks.sessionIdx);
-            audPerfomance = arrayfun(@(x) mean(audblks.feedback(audblks.sessionIdx == x)==1), sessList);
-            audTrials = arrayfun(@(x) length(audblks.feedback(audblks.sessionIdx == x)==1), sessList);
-            block = prc.filtBlock(block, ismember(block.sessionIdx, sessList(audPerfomance>0.7 & audTrials > 50)));
         end
         
         function alterFigure(currentFigureHandle, ~)

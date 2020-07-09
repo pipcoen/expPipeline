@@ -3,7 +3,9 @@ if ~exist('addText', 'var'); addText = 1; end
 if ~isfield(boxPlot, 'plotLabels'); boxPlot.plotLabels = boxPlot.plotData; end
 if iscell(boxPlot.subject); boxPlot.subject = boxPlot.subject{1}; end
 plotData = boxPlot.plotData;
-imsc(plotData, boxPlot.axisLimits, boxPlot.colorMap, 'k'); 
+% imsc(plotData, boxPlot.axisLimits, boxPlot.colorMap, 'k'); 
+imagesc(plotData);
+colormap(boxPlot.colorMap); 
 daspect([1 1 1]); axis xy;
 [xPnts, yPnts] = meshgrid(1:size(plotData,2), 1:size(plotData,1));
 if addText
