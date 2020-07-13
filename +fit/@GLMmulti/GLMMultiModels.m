@@ -14,7 +14,6 @@ repAud = repmat({audDiff},1,length(uniA));
 repVis = repmat({visDiff},1,length(uniV));
 audTags = arrayfun(@(x) [num2str(x) 'Aud'], uniA, 'uni', 0);
 
-% mkPrm = @(allPrms, idx) (allPrms(2,idx)*allPrms(3,idx)+allPrms(1,idx));
 modChoose = lower(obj.modelString);
 switch modChoose
     case lower({'biasOnly'; 'visOnly'; 'audOnly'; 'simpLog'; 'simpLogSplitV'; 'simpLogSplitA'; 'simpLogSplitVSplitA'})

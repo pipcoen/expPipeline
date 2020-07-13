@@ -114,7 +114,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
         function filteredBlk = getBlockType(blk, tag, removeTimeouts)
             if ~exist('tag', 'var'); error('Must specificy tag'); end
             if ~exist('removeTimeouts', 'var'); removeTimeouts = 1; end
-            validTrials = blk.tri.outcome.validTrial;                                            %Trials that weren't repeats of an incorrect decision
+            validTrials = blk.tri.trialType.validTrial;                                          %Trials that weren't repeats of an incorrect decision
             timeOuts = blk.tri.outcome.responseMade==0 | blk.tri.outcome.timeToFeedback > 1.5;   %Timout trials (timeouts, or response > 1.5s)
             laserType = blk.tri.inactivation.laserType;                                          %Lasertype used on each trial.   
             if ~removeTimeouts; timeOuts = timeOuts*0; end                                       %If not removing timeouts, filter becomes all zeros
