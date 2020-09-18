@@ -11,13 +11,13 @@ moveDatAVC = cell(4,1);
 for i  = 1:length(obj.blks)
     bigBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm',1);
     bigBlk = prc.filtBlock(bigBlk, ~isnan(bigBlk.tri.outcome.timeToFirstMove) & bigBlk.tri.outcome.timeToFirstMove<max(xDat));
-%     contast2Use = max(abs(bigBlk.tri.stim.visContrast(bigBlk.tri.trialClass.visual)));
-%     bigBlk = prc.filtBlock(bigBlk, (abs(bigBlk.tri.stim.visContrast) == contast2Use) | bigBlk.tri.trialClass.auditory);
+%     contast2Use = max(abs(bigBlk.tri.stim.visContrast(bigBlk.tri.trialType.visual)));
+%     bigBlk = prc.filtBlock(bigBlk, (abs(bigBlk.tri.stim.visContrast) == contast2Use) | bigBlk.tri.trialType.auditory);
     
     bigBlk.tri.wheelPos = cellfun(@(x) interp1(x(:,1), x(:,2), xDat, 'nearest', 'extrap'), bigBlk.tri.raw.wheelTimeValue, 'uni', 0);
-    bigBlk.tri.right = (bigBlk.tri.stim.visInitialAzimuth>0 & bigBlk.tri.trialClass.visual) | bigBlk.tri.stim.audInitialAzimuth > 0;
-    bigBlk.tri.left = (bigBlk.tri.stim.visInitialAzimuth<0 & bigBlk.tri.trialClass.visual) | bigBlk.tri.stim.audInitialAzimuth < 0;
-    filtIdx = {bigBlk.tri.trialClass.auditory; bigBlk.tri.trialClass.visual; bigBlk.tri.trialClass.conflict};
+    bigBlk.tri.right = (bigBlk.tri.stim.visInitialAzimuth>0 & bigBlk.tri.trialType.visual) | bigBlk.tri.stim.audInitialAzimuth > 0;
+    bigBlk.tri.left = (bigBlk.tri.stim.visInitialAzimuth<0 & bigBlk.tri.trialType.visual) | bigBlk.tri.stim.audInitialAzimuth < 0;
+    filtIdx = {bigBlk.tri.trialType.auditory; bigBlk.tri.trialType.visual; bigBlk.tri.trialType.conflict};
     
     for j = 1:3
         blk = prc.filtBlock(bigBlk, filtIdx{j});
@@ -53,7 +53,7 @@ plotOpt.Marker = 'none';
 colors = [1 0 1; 0 1 1; 0 0 0];
 plt.rowsOfGrid(xDat, plotData(:,:,:), colors, plotOpt);
 for i = 1:length(testDat)
-    plot(xDat(sigTest(i,:)>0), sigTest(i,sigTest(i,:)>0)+0.1*i, '.', 'color', colors(i,:))
+    plot(xDat(sigTest(i,:)>0), sigTest(i,sigTest(i,:)>0)-0.05*i, '.', 'color', colors(i,:))
 end
 
 end

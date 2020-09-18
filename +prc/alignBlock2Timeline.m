@@ -166,7 +166,7 @@ if contains('reward', fineTune) && contains('rewardEcho',inputNames)
 end
 if contains('reward', fineTune) && ~contains('rewardEcho',inputNames); warning('No reward input echo... skipping'); end
 
-%% Extract reward clicks (these are pretty reliable, so can extract every click)
+%% Extract audio clicks (these are pretty reliable, so can extract every click)
 if any(contains(fineTune, 'clicks')) && ischar(audInput)
     %Detrend timeline trace, threshold using kmeans, detect onsets and offsets of sound, estimate duration from this.
     timelineClickTrace = [0;diff(detrend(timeline.rawDAQData(:,strcmp(inputNames, audInput))))];

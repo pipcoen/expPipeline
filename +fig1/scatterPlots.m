@@ -1,9 +1,8 @@
 function scatterPlots
 %%
-if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'behavior', 0, 1); end
-
-%%
-[perAud, perHighVis, perLowVis, perHighMul, perLowMul, perMaxVis, threshTimeAV, conPer] = deal(nan*ones(length(behBlks.blks), 1));
+if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'behavior', 0, 1, 'raw'); end
+[perAud, perHighVis, perLowVis, perHighMul, perLowMul, perMaxVis] = deal(nan*ones(length(behBlks.blks), 1));
+[threshTimeAV, threshTimeCohCon] = deal(nan*ones(length(behBlks.blks), 2));
 [timeToThreshMove, timeToFirstMove] = deal(cell(length(behBlks.blks), 1));
 
 for i = 1:length(behBlks.blks)
@@ -18,27 +17,39 @@ for i = 1:length(behBlks.blks)
     perLowMul(i) = grds.performance(grds.visValues == min(visValues) & grds.audValues > 0);
     perHighMul(i) = grds.performance(grds.visValues == max(visValues) & grds.audValues > 0);
     perMaxVis(i) = max(grds.performance(grds.audValues == 0)); 
-    
+       
     avDiffPer = grds.performance(grds.visValues > 0 & grds.audValues == 0)-perAud(i);
     selectedVis = grds.visValues(grds.visValues > 0 & grds.audValues == 0);
     closestVis = selectedVis(abs(avDiffPer) == min(abs(avDiffPer)));
     
-    if min(abs(avDiffPer))<0.02
-        conPer(i) = grds.performance(grds.visValues == closestVis*-1 & grds.audValues >0);
-    end
-    
+  
     threshTimeAV(i,1) = mean(grds.timeToThreshMove(grds.visValues == 0 & grds.audValues ~= 0));
     threshTimeAV(i,2) = mean(grds.timeToThreshMove(abs(grds.visValues) == closestVis & grds.audValues == 0));
     timeToFirstMove{i,1} = nBlk.tri.outcome.timeToFirstMove;
     timeToThreshMove{i,1} = nBlk.tri.outcome.threshMoveTime;
+    
+    cohIdx = grds.visValues.*grds.audValues > 0 &~isnan(grds.timeToThreshMove);
+    conIdx = grds.visValues.*grds.audValues < 0 &~isnan(grds.timeToThreshMove) & flipud(cohIdx);
+    threshTimeCohCon(i,:) = [mean(grds.timeToThreshMove(cohIdx)) mean(grds.timeToThreshMove(conIdx))];
+        
 end
 
 %%
 figure;
-numRow = 1; numCol = 10;
-axesHandle = plt.tightSubplot(numRow,numCol,1:2,0.05,[0.15 0.15],[0.05 0.05]);
-set(gcf, 'position', get(gcf, 'position').*[2 1 0 0] + [0 0 numCol*150 300]);
+axHeight = 250;
+axWidth = 250;
+nCols = 3;
+nRows = 2;
+figHeight = nRows*axHeight;
+figWidth = nCols*axWidth;
 
+axesGap = [50/figHeight 50/figWidth];
+botTopMarg = [40, 40]/figHeight;
+lftRgtMarg = [40, 40]/figWidth;
+set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
+
+
+axesHandle = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg);
 scatter(axesHandle, perAud, perMaxVis, 25, 'k', 'filled', 'MarkerEdgeColor', 'none');
 xlim([0.7 1]);
 ylim([0.7 1]);
@@ -48,8 +59,8 @@ plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
 box off;
 
 
-axesHandle = plt.tightSubplot(numRow,numCol,3:4,0.05,[0.15 0.15],[0.05 0.05]);
-scatter(axesHandle, max([perAud perHighVis], [], 2), perHighMul, 25, 'k', 'filled', 'MarkerEdgeColor', 'none');
+axesHandle = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg);
+scatter(axesHandle, perHighMul, perHighVis, 25, 'k', 'filled', 'MarkerEdgeColor', 'none');
 xlim([0.7 1]);
 ylim([0.7 1]);
 axis square; 
@@ -58,13 +69,13 @@ plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
 box off;
 
 
-axesHandle = plt.tightSubplot(numRow,numCol,5:6,0.05,[0.15 0.15],[0.05 0.05]);
+axesHandle = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg);
 histogram(cell2mat(timeToThreshMove),100, 'FaceColor', 'k', 'EdgeColor', 'none', 'FaceAlpha', 1)
 xlim([0 1.5]);
 axis square; 
 box off;
 
-axesHandle = plt.tightSubplot(numRow,numCol,7:8,0.05,[0.15 0.15],[0.05 0.05]);
+axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg);
 scatter(axesHandle, threshTimeAV(:,1), threshTimeAV(:,2), 25, 'k', 'filled', 'MarkerEdgeColor', 'none');
 axis square; 
 hold on
@@ -72,4 +83,21 @@ xlim([0.25 0.45])
 ylim([0.25 0.45])
 plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
 box off;
+
+
+axesHandle = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg);
+scatter(axesHandle, threshTimeCohCon(:,1), threshTimeCohCon(:,2), 25, 'k', 'filled', 'MarkerEdgeColor', 'none');
+axis square; 
+hold on
+xlim([0.25 0.45])
+ylim([0.25 0.45])
+plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
+box off;
+
+axesHandle = plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg);
+behBlks.viewRightLeftWheelSeparationOverTime;
+axis square; 
+xlim([0 0.25]);
+
+export_fig('D:\Dropbox (Personal)\TalksAndApps\Papers\Coen_2020\1_scatterPlots', '-pdf', '-painters');
 end

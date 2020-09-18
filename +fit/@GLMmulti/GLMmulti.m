@@ -35,7 +35,7 @@ classdef GLMmulti < matlab.mixin.Copyable
                 obj.prmFits = nan(1,length(obj.prmLabels));
             end
             obj.pHat = obj.calculatepHat(obj.prmFits);
-            obj.logLik = obj.calculateLogLik(obj.prmFits);%./length(obj.blockData.tri.outcome.responseMade);
+            obj.logLik = obj.calculateLogLik(obj.prmFits);
         end
         
         function fitCV(obj,nFolds)
@@ -78,9 +78,10 @@ classdef GLMmulti < matlab.mixin.Copyable
             highBound = cell2mat(cellfun(@(x) permute(x(:,2), [3,2,1]), confInterval, 'uni', 0));
             
             for audVal = audValues(:)'
-                idx = find(sign(obj.blockData.grids.audValues)==audVal & numTrials>0);
+                grds = prc.getGridsFromBlock(obj.blockData);
+                idx = find(sign(grds.audValues)==audVal & numTrials>0);
                 err = [prob(idx)-lowBound(idx), highBound(idx) - prob(idx)];
-                errorbar(obj.blockData.grids.visValues(idx),prob(idx),err(:,1),err(:,2),'.','MarkerSize',20, 'Color', colorChoices(audValues==audVal,:));
+                errorbar(grds.visValues(idx),prob(idx),err(:,1),err(:,2),'.','MarkerSize',20, 'Color', colorChoices(audValues==audVal,:));
                 hold on;
             end
             xlabel('Contrast');

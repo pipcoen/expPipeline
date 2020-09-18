@@ -9,16 +9,16 @@ MLCoord = scanPlot.gridXY{1}(:);
 APCoord = scanPlot.gridXY{2}(:);
 pVals = scanPlot.pVals(:);
 minSig = min(pVals);
-if ~any(scanPlot.pVals(:)) || minSig > min(scanPlot.sigLevels)
-    warning(['Pvals do not exist or are all > ' num2str(min(scanPlot.sigLevels))]);
+if ~any(scanPlot.pVals(:)) || minSig > max(scanPlot.sigLevels)
+    warning(['Pvals do not exist or are all > ' num2str(max(scanPlot.sigLevels))]);
     spotSize = APCoord*0+200;
 else
-    spotSize = sum(cell2mat(arrayfun(@(x) (pVals<x)*1.5, scanPlot.sigLevels, 'uni', 0)'),2);
+    spotSize = sum(cell2mat(arrayfun(@(x) (pVals<x), scanPlot.sigLevels, 'uni', 0)'),2);
     legendRef = scanPlot.sigLevels(scanPlot.sigLevels>minSig);
-    lengendSizes = (1:sum(scanPlot.sigLevels>minSig))'.*(200./max(spotSize(:)));
+    lengendSizes = (1:sum(scanPlot.sigLevels>minSig))'.*(200./(length(scanPlot.sigLevels)*1.5));
     spotSize(spotSize==0) = 0.2;
-    spotSize = spotSize*(200./max(spotSize(:)));
-    legendRef = [legendRef, legendRef*0+4, legendRef*0+6-(0:length(legendRef)-1)' lengendSizes];
+    spotSize = spotSize*(200./(length(scanPlot.sigLevels)*1.5));
+    legendRef = [legendRef, legendRef*0+4, legendRef*0+(3+length(legendRef))-(0:length(legendRef)-1)' lengendSizes];
 end
 sigIdx = spotSize~=min(spotSize);
 h1 = scatter(MLCoord(sigIdx), APCoord(sigIdx), spotSize(sigIdx), plotData(sigIdx), 'o', 'filled'); axis equal; drawnow
@@ -36,7 +36,7 @@ box off; set(gca, 'ycolor', 'w', 'xcolor', 'w', 'xTick', -5:1:5, 'yTick', -5:4, 
 colormap(plt.redBlueMap(64));
 if isfield(scanPlot, 'colorBarLimits'); caxis(scanPlot.colorBarLimits); else, caxis([-0.7 0.7]); end
 
-if isfield(scanPlot, 'title'); title(scanPlot.title); end
+if isfield(scanPlot, 'title'); title(scanPlot.title, 'Position', [0, 4, 0], 'HorizontalAlignment', 'center'); end
 if scanPlot.addTrialNumber
     nTrials = scanPlot.nTrials(:);
     vIdx = nTrials(:)>0;

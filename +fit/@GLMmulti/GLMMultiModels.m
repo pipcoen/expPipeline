@@ -14,6 +14,8 @@ repAud = repmat({audDiff},1,length(uniA));
 repVis = repmat({visDiff},1,length(uniV));
 audTags = arrayfun(@(x) [num2str(x) 'Aud'], uniA, 'uni', 0);
 
+mkPrm = @(allPrms, idx) (allPrms(2,idx)*allPrms(3,idx)+allPrms(1,idx));
+
 modChoose = lower(obj.modelString);
 switch modChoose
     case lower({'biasOnly'; 'visOnly'; 'audOnly'; 'simpLog'; 'simpLogSplitV'; 'simpLogSplitA'; 'simpLogSplitVSplitA'})
@@ -29,15 +31,22 @@ switch modChoose
         else, obj.prmLabels = [obj.prmLabels;'audScaleR';'audScaleL'];
         end
         
+        freeP = zeros(1,length(obj.prmLabels));
+        if ~isfield(obj.blockData, 'freeP'); freeP = freeP+1; elseif ~isempty(obj.blockData.freeP); freeP(obj.blockData.freeP) = 1; end
+        
         if exist('P', 'var')
-            if ~splitV; visContributionLR = P(2)*(abs(visDiff).^P(3)).*sign(visDiff);
-            else, visContributionLR = P(2)*(abs(visDiff.*(visDiff>0)).^P(4)) - P(3)*(abs(visDiff.*(visDiff<0)).^P(4));
+            pOld = obj.prmInit;
+            allPrms = [pOld; P; freeP];
+            if ~splitV; visContributionLR =  mkPrm(allPrms,2)*(abs(visDiff).^ mkPrm(allPrms,3)).*sign(visDiff);
+            else, visContributionLR =  mkPrm(allPrms,2)*(abs(visDiff.*(visDiff>0)).^(mkPrm(allPrms,4))) -  ...
+                    mkPrm(allPrms,3)*(abs(visDiff.*(visDiff<0)).^(mkPrm(allPrms,4)));
             end
-            if ~splitA; audContributionLR = P(end).*sign(audDiff);
-            else, audContributionLR = P(end-1)*(abs(audDiff.*(audDiff>0))) - P(end)*(abs(audDiff.*(audDiff<0)));
+            nParams = length(obj.prmLabels);
+            if ~splitA; audContributionLR =  mkPrm(allPrms,nParams).*sign(audDiff);
+            else, audContributionLR =  mkPrm(allPrms,nParams-1)*(abs(audDiff.*(audDiff>0))) -  mkPrm(allPrms,nParams)*(abs(audDiff.*(audDiff<0)));
             end
             
-            logOddsLR = P(1)+visContributionLR*notBOnly*notAOnly + audContributionLR*notBOnly*notVOnly;           
+            logOddsLR = mkPrm(allPrms,1)+visContributionLR*notBOnly*notAOnly + audContributionLR*notBOnly*notVOnly;           
         end
         obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
         obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
@@ -74,7 +83,7 @@ end
 if any(strcmpi(obj.prmLabels, 'N')); obj.prmBounds(:, strcmp(obj.prmLabels, 'N')) = [0;3]; end
 
 if isempty(obj.prmInit)
-    obj.prmInit = zeros(1,size(obj.prmBounds,2))+0.01;
+    obj.prmInit = zeros(1,size(obj.prmBounds,2))+0.0001;
 end
 
 

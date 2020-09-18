@@ -16,10 +16,12 @@ clusterOffsets = repmat(scaleFactors.*(probLength-clusterDepths),1,3);
 clusterLocations.position = round(bsxfun(@minus, tipLocations,(clusterOffsets.*probeVectors)/10));
 clusterLocations.areaIdx = arrayfun(@(x,y,z) av(x,y,z), clusterLocations.position(:,3),clusterLocations.position(:,2),clusterLocations.position(:,1));
 clusterLocations.areaName = st.acronym(clusterLocations.areaIdx);
-parentIdx = st.parent_structure_id(clusterLocations.areaIdx);
-parentIdx(parentIdx==0) = 997;
-[~,parentIdx] = ismember(parentIdx,st.id);
-clusterLocations.parent = st.acronym(parentIdx);
+clusterLocations.parent = kil.getNameFromAreaIndex(clusterLocations.areaIdx, st);
+
+% parentIdx = st.parent_structure_id(clusterLocations.areaIdx);
+% parentIdx(parentIdx==0) = 997;
+% [~,parentIdx] = ismember(parentIdx,st.id);
+% clusterLocations.parent = st.acronym(parentIdx);
 
 if blkInput
     fieldNames = fields(clusterLocations);

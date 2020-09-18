@@ -18,7 +18,7 @@ function blk = getDefinedSubset(blk, subsetTag, minMaxVis)
 %blk-------------Filtered block
 
 if ~exist('minMaxVis', 'var'); minMaxVis = [0 1]; end
-if ~any(strcmpi(subsetTag, {'blnk';'al';'av'}))
+if ~any(strcmpi(subsetTag, {'blnk';'al';'ar'}))
     blk = prc.filtBlock(blk, blk.tri.stim.visContrast>=minMaxVis(1) & blk.tri.stim.visContrast<minMaxVis(2));
 end
 
