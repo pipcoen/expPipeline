@@ -91,8 +91,8 @@ end
 %% Process information for the "exp" field
 %Add hardcoded set of fields from the blks to the exp field, including performanceAVM only on non-passive trials
 comBlks.exp.subjectRef = expBySubject;
-perExpFields = {'subject', 'expDate', 'expNum', 'rigName', 'expType', 'expDef', 'conditionParametersAV', 'inactivationSites', 'conditionLabels'};
-if ~any(contains({blks.expDef}', 'Passive')); perExpFields = [perExpFields, 'performanceAVM']; end
+perExpFields = {'subject', 'expDate', 'expNum', 'rigName', 'expType', 'expDef', 'conditionParametersAV', 'conditionLabels'};
+if ~any(contains({blks.expDef}', 'Passive')); perExpFields = [perExpFields, 'performanceAVM', 'inactivationSites']; end
 for i = perExpFields; comBlks.exp.(i{1}) = {blks.(i{1})}'; end
 comBlks.exp.numOfTrials = numOfTrials;
 
@@ -130,7 +130,7 @@ end
 catBlks = prc.catStructs(blks);
 
 %Add "trialFields" from the newly concatenated "blks" to "comBlks"
-trialFields = {'trialType', 'timings', 'timeline', 'stim', 'inactivation', 'outcome', 'raw'};
+trialFields = {'trialType','trialClass', 'timings', 'timeline', 'stim', 'inactivation', 'outcome', 'raw'};
 for i = trialFields
     if isfield(blks, i{1}); comBlks.tri.(i{1}) = catBlks.(i{1}); end
 end
