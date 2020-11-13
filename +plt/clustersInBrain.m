@@ -1,7 +1,7 @@
 function clustersInBrain(clusterLocations, colorLables, sameAxis)
 if ~exist('colorLables', 'var'); colorLables = repmat([0 0 1], length(clusterLocations.areaIdx),1); end
 if ~exist('clusterLocations', 'var'); error('clusterLocations must be provided'); end
-if ~exist('sameAxis', 'var') || sameAxis == 0;
+if ~exist('sameAxis', 'var') || sameAxis == 0
     plotBrainGrid;
     hold on;
     axis vis3d equal off manual

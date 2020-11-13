@@ -52,13 +52,19 @@ for i  = 1:length(obj.blks)
     
     plotOpt.lineStyle = 'none';
     plotOpt.Marker = '.';
-    grids = prc.getGridsFromBlock(normBlock);
-    maxContrast = max(abs(grids.visValues(1,:)));
-    visValues = abs(grids.visValues(1,:)).^contrastPower.*sign(grids.visValues(1,:))./maxContrast;
+    
+    visDiff = normBlock.tri.stim.visDiff;
+    audDiff = normBlock.tri.stim.audDiff;
+    responseMade = normBlock.tri.outcome.responseMade;
+    [visGrid, audGrid] = meshgrid(unique(visDiff),unique(audDiff));
+    maxContrast = max(abs(visGrid(1,:)));
+    fracRightTurns = arrayfun(@(x,y) mean(responseMade(ismember([visDiff,audDiff],[x,y],'rows'))==2), visGrid, audGrid);
+    
+    visValues = abs(visGrid(1,:)).^contrastPower.*sign(visGrid(1,:))./maxContrast;
     if strcmp(plotType, 'log')
-        grids.fracRightTurns = log(grids.fracRightTurns./(1-grids.fracRightTurns));
+        fracRightTurns = log(fracRightTurns./(1-fracRightTurns));
     end
-    plt.rowsOfGrid(visValues, grids.fracRightTurns, lineColors, plotOpt);
+    plt.rowsOfGrid(visValues, fracRightTurns, lineColors, plotOpt);
     
     xlim([-1 1])
     midPoint = 0.5;

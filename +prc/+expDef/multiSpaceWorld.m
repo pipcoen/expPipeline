@@ -47,7 +47,7 @@ function x = multiSpaceWorld(x)
 
     %.outcome---------------Structure containing information about the outcome of each trial
         %.timeToWheelMove------Time between the stimulus onset and significant wheel movement
-        %.responseMade---------[on off] times for the laser, relative to trial start.       
+        %.responseRecorded---------[on off] times for the laser, relative to trial start.       
         
     %.params----------------The parameters from signals. Basically never used, but saved for completion.
         
@@ -73,8 +73,8 @@ if sum(vIdx) > 150
     vIdx = double(vIdx);
     stimStartTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
     quickResponses = (e.feedbackTimes(1:length(vIdx)) - stimStartTimes(1:length(vIdx)))<1.5;
-    vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 5, 'first'))) = -1;
-    vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 5, 'last')):end) = -1;
+    vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 3, 'first'))) = -1;
+    vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 3, 'last')):end) = -1;
     
     %Invalidate trials where laser "trasitionTimes" are more than 90% of the time until the TTL pulse that activates the laser. Otherwise, cannot
     %be confident that the laser was ready to receive the pulse.
@@ -132,7 +132,7 @@ r.visStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.visStimOnOffTimes', [e
 r.audStimOnOffTTimeValue = prc.indexByTrial(trialTimes, e.audStimOnOffTimes', [e.audStimOnOffTimes' e.audStimOnOffValues'], times2Subtract);
 r.wheelTimeValue = prc.indexByTrial(trialTimes, n.rawWheelTimeValue(:,1), [n.rawWheelTimeValue(:,1) n.rawWheelTimeValue(:,2)], times2Subtract);
 r.wheelTimeValue(cellfun(@isempty, r.wheelTimeValue)) = deal({[0 0]});
-r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)-x(find([x(1:end-1,1);1]>0,1),2)], r.wheelTimeValue, 'uni', 0);
+r.wheelTimeValue = cellfun(@(x) single([x(:,1) x(:,2)-x(find([x(1:end-1,1);1]>0,1),2)]), r.wheelTimeValue, 'uni', 0);
 n = rmfield(n, 'rawWheelTimeValue');
 
 %As above, but for the auditory and visual azimuth.
@@ -143,94 +143,102 @@ r.audAzimuthTimeValue = prc.indexByTrial(trialTimes, e.audAzimuthTimes', [e.audA
 %Calculate an approximate time to the first wheel movement. This is different from the "timeToFeedback" in that it is based on wheel movement, rather
 %than the time when the threshold was reached. WheelMove is an interpolation of the wheel movement (to get it's nearest position at every ms).
 
-%Define a sample rate (sR--used the same as timeline) and resample wheelValues at that rate using 'pchip' and 'extrap' to get wheelPos. Get the 
+%Define a sample rate (sR--used the same as timeline) and resample wheelValues at that rate using 'pchip' and 'extrap' to get rawWheel. Get the 
 %indices for stimOnset and feedback based on event times and sR.  
 sR = 1000;
+
+wheelTV = r.wheelTimeValue;
+visAzi = r.visAzimuthTimeValue;
+absVisAzi =  cellfun(@(x) abs(x(:,2)-x(1,2)), visAzi, 'uni', 0);
+aziSampTV = cellfun(@(x,y) x(y>5 & y<55,:), visAzi, absVisAzi, 'uni', 0);
+idxV = cellfun(@length, aziSampTV)>2;
+corrWheel = cellfun(@(x,y) interp1(x(:,1), x(:,2), y(:,1), 'nearest', 'extrap'), wheelTV(idxV), aziSampTV(idxV), 'uni', 0);
+
+visAziDiff = cell2mat(cellfun(@(x) diff(x(:,2)), aziSampTV(idxV), 'uni', 0));
+corrWheelDiff = cell2mat(cellfun(@(x) diff(x), corrWheel, 'uni', 0));
+idxZ = visAziDiff==0 | corrWheelDiff==0;
+
+decisionThreshold = abs(round(median(corrWheelDiff(~idxZ)./visAziDiff(~idxZ))*60));
+if (decisionThreshold~=round(x.standardizedBlock.wheel2DegRatio*60))
+    warning('Detected difference in two wheel ratio calculations'); keyboard; 
+end
+fprintf('WheelThresh is %d \n', round(decisionThreshold));
+
+
+wheelTime = 1/sR:1/sR:x.standardizedBlock.inputs.wheelTimes(end);
+rawWheel = interp1(x.standardizedBlock.inputs.wheelTimes, x.standardizedBlock.inputs.wheelValues', wheelTime', 'pchip', 'extrap')';
+rawWheel = rawWheel-rawWheel(1);
+
+if p.wheelGain<0
+    r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)*-1], r.wheelTimeValue, 'uni', 0);
+    rawWheel = rawWheel*-1;
+    warning('Wheel connected in reverse... adjusting.');
+end
 stimOnsetIdx = round(stimPeriodStart(~timeOuts)*sR);
-feedbackIdx = round(feedbackTimes(~timeOuts)*sR);
-wheelTime = 1/sR:1/sR:max(x.standardizedBlock.inputs.wheelTimes);
-wheelPos = interp1(x.standardizedBlock.inputs.wheelTimes, x.standardizedBlock.inputs.wheelValues', wheelTime', 'pchip', 'extrap')';
+reactBound = num2cell([stimOnsetIdx round((feedbackTimes(~timeOuts)+0.25)*sR)],2);
 
 %Caluculate "wheelThresh" based on 30% of the median difference in wheel position between closed loop onset and feedback time (30% is a bit arbitrary
 %but it seemed to work well). We eliminate trials when the mouse timed out (timeOuts) and didn't move for this. We find the first time that the wheel
 %crossed this threshold after stimulus onset ("threshCrsIdx") and the "sign" of that crossing (based on the difference in position from onset)
-wheelThresh = median(abs(wheelPos(round(feedbackTimes(~timeOuts)*sR))-wheelPos(round(closedLoopStart(~timeOuts)*sR))))*0.3;
-threshCrsIdx = arrayfun(@(x,y) max([nan find(abs(wheelPos(x:y)-wheelPos(x))>wheelThresh,1)+x]), stimOnsetIdx, feedbackIdx);
+% wheelThresh = median(abs(rawWheel(round(feedbackTimes(~timeOuts)*sR))-rawWheel(round(closedLoopStart(~timeOuts)*sR))))*0.3;
 
+%%
 %Define a summation window (sumWin--51ms) and velocity threshhold. sR*3/sumWin means the wheel will need to move at least 3 "units" in 50ms for this
 %to count as a movement initiation. Obviously, the physical distance of a "unit" depends on the rotary encoder. 3 seems to work well for 360 and 1024 
 %encoders (the only ones I have used). I don't know about 100 encoders. 
 sumWin = 51;
-velThresh  = sR*3/sumWin; 
+velThresh  = sR*(decisionThreshold*0.01)/sumWin; 
 
 %Get wheel velocity ("wheelVel") from the interpolated wheel, and then use "posVelScan" and "negVelScan" to detect continuous velocity for sumWin 
 %movements in either direction. Note, here we use forward smoothing, so we are looking for times when the velocity initiates, and then continues for 
 %the duration of "sumWin". Also note, we introduce huge values whenever the wheel is moving in the opposite direction so that any "sumWin" including a
 %move in the opposite direction is eliminated from the scan. Times when the velocity is zero cannot be movement inititations either, so we multiply by
 %(wheelVel~=0)
-wheelVel = diff([wheelPos(1); wheelPos'])*sR;
-posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
-negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
+wheelVel = diff([rawWheel(1); rawWheel'])*sR;
+posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<0)*1e6, [ones(1,sumWin), zeros(1,sumWin-1),]./sumWin, 'same').*(wheelVel~=0);
+negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>0)*1e6, [ones(1,sumWin), zeros(1,sumWin-1),]./sumWin, 'same').*(wheelVel~=0);
+movingScan = smooth((posVelScan'>=velThresh) + (-1*negVelScan'>=velThresh),21);
+falseIdx = (movingScan(stimOnsetIdx)~=0); %don't want trials when mouse is moving at stim onset
 
-%Identify onsets in borth directions that exceed "velThresh", sort them, and record their sign. Also, extract all times the mouse is "moving"
-moveOnsetIdx = [strfind((posVelScan'>=velThresh), [0,1]) -1*strfind((-1*negVelScan'>=velThresh), [0,1])];
-movingIdx = sort([find(posVelScan'>=velThresh) find((-1*negVelScan'>=velThresh))]);
-[~, srtIdx] = sort(abs(moveOnsetIdx));
-moveOnsetSign = sign(moveOnsetIdx(srtIdx));
-moveOnsetIdx = abs(moveOnsetIdx(srtIdx));
+%Identify onsets in both directions that exceed "velThresh", sort them, and record their sign. Also, extract all times the mouse is "moving"
 
+
+tstWin = [zeros(1, sumWin-1), 1];
+velThreshPoints = [(strfind((posVelScan'>=velThresh), tstWin)+sumWin-2) -1*(strfind((-1*negVelScan'>=velThresh), tstWin)+sumWin-2)]';
+[~, srtIdx] = sort(abs(velThreshPoints));
+moveOnsetIdx = abs(velThreshPoints(srtIdx));
+moveOnsetSign = sign(velThreshPoints(srtIdx))';
+moveOnsetDir = (((moveOnsetSign==-1)+1).*(abs(moveOnsetSign)))';
+onsetsByTrial = prc.indexByTrial(cell2mat(reactBound)/sR, moveOnsetIdx/sR, [moveOnsetIdx/sR moveOnsetDir], [stimOnsetIdx/sR stimOnsetIdx*0]);
+timeToThresh = (cellfun(@(x) max([nan find(abs(rawWheel(x(1):x(2))-rawWheel(x(1)))>decisionThreshold,1)+x(1)]), reactBound)-stimOnsetIdx)/sR;
+
+badIdx = cellfun(@isempty, onsetsByTrial) | falseIdx | isnan(timeToThresh);
+onsetsByTrial(badIdx) = deal({[nan nan]});
+timeToThresh(badIdx) = nan;
+
+%%
 %"firstMoveTimes" are the first onsets occuring after stimOnsetIdx. Eliminate any that are longer than 1.5s, as these would be timeouts. Also, remove 
 %onsets when the mouse was aready moving at the time of the stimulus onset (impossible to get an accurate movement onset time in this case)
-firstMoveIdx =  arrayfun(@(x) max([nan moveOnsetIdx(find(moveOnsetIdx>x, 1))]), stimOnsetIdx);
-errorDetect = (firstMoveIdx-stimOnsetIdx)>1.5*sR | ismember(stimOnsetIdx, movingIdx) | firstMoveIdx>threshCrsIdx;
-firstMoveIdx(errorDetect) = nan;
+moveOnsetsTimeDir = repmat({[nan, nan]}, length(feedbackValues),1);
+moveOnsetsTimeDir(~timeOuts) = onsetsByTrial;
+timeToFirstMove = cell2mat(cellfun(@(x) x(1,1), moveOnsetsTimeDir, 'uni', 0));
+timeToResponseThresh = nan*timeToFirstMove;
+timeToResponseThresh(~timeOuts) = timeToThresh;
+reactionTime = arrayfun(@(x,y) max([nan x{1}(find(x{1}(:,1)<y, 1, 'last'),1)]), moveOnsetsTimeDir, timeToResponseThresh);
+responseDir = arrayfun(@(x,y) max([nan x{1}(find(x{1}(:,1)<y, 1, 'last'),2)]), moveOnsetsTimeDir, timeToResponseThresh);
 
-firstMoveDir = arrayfun(@(x) max([nan moveOnsetSign(find(moveOnsetIdx>x, 1))]), stimOnsetIdx);
-firstMoveDir(isnan(firstMoveIdx)) = nan;
-
-if p.wheelGain<0
-    firstMoveDir = firstMoveDir*-1; 
-    r.wheelTimeValue = cellfun(@(x) [x(:,1) x(:,2)*-1], r.wheelTimeValue, 'uni', 0);
-    warning('Wheel connected in reverse... adjusting.'); 
-end
-firstMoveDir = ((firstMoveDir==-1)+1).*(abs(firstMoveDir));
-
-preThreshOnsets = arrayfun(@(x,y) moveOnsetIdx(moveOnsetIdx>=x & moveOnsetIdx<=y), stimOnsetIdx, threshCrsIdx, 'uni', 0);
-preThreshDirs = arrayfun(@(x,y) moveOnsetSign(moveOnsetIdx>=x & moveOnsetIdx<=y), stimOnsetIdx, threshCrsIdx, 'uni', 0);
-noNAN = ~isnan(firstMoveDir);
-
-reliableMoves = firstMoveDir;
-reliableMoves(noNAN) = cellfun(@(x) max(diff([x(1);x(:)]))<50, preThreshOnsets(noNAN)) & cellfun(@(x) length(unique(x))==1, preThreshDirs(noNAN));
-
-theshDirection  = arrayfun(@(x) max([nan moveOnsetSign(find(moveOnsetIdx<x, 1, 'last'))]), threshCrsIdx);
-if p.wheelGain<0; theshDirection = theshDirection*-1; warning('Wheel connected in reverse... adjusting.'); end
-theshDirection = ((theshDirection==-1)+1).*(abs(theshDirection));
-threshReliable = firstMoveDir;
-threshReliable(noNAN) = (threshCrsIdx(noNAN)-firstMoveIdx(noNAN))<250;
-
-[firstMoveTime, firstMoveDirection, firstMoveReliable, threshMoveDirection, threshMoveReliable, threshMoveTime] = deal(feedbackValues*nan);
-firstMoveTime(~timeOuts) = (firstMoveIdx - stimOnsetIdx)/sR;
-firstMoveDirection(~timeOuts) = firstMoveDir;
-firstMoveReliable(~timeOuts) = reliableMoves;
-threshMoveTime(~timeOuts) = (threshCrsIdx - stimOnsetIdx)/sR;
-threshMoveDirection(~timeOuts) = theshDirection;
-threshMoveReliable(~timeOuts) = threshReliable;
-%%
 %Get the response the mouse made on each trial based on the correct response and then taking the opposite for incorrect trials. NOTE: this will not
 %work for a task with more than two response options.
 
-responseMade = double(correctResponse).*~timeOuts;
-responseMade(feedbackValues<0) = -1*(responseMade(feedbackValues<0));
-responseMade = ((responseMade>0)+1).*(responseMade~=0);
+responseRecorded = double(correctResponse).*~timeOuts;
+responseRecorded(feedbackValues<0) = -1*(responseRecorded(feedbackValues<0));
+responseRecorded = ((responseRecorded>0)+1).*(responseRecorded~=0);
 
-testIdx = firstMoveReliable==1 & timeToFeedback<1.5;
-if mean(firstMoveDirection(testIdx) == responseMade(testIdx)) < 0.7 && sum(testIdx==1) >= 50
-    warning('Unreliable Movements');
-elseif mean(firstMoveDirection(testIdx) == responseMade(testIdx)) < 0.50 && sum(testIdx==1) >= 50
+if mean(responseDir(~isnan(responseDir)) == responseRecorded(~isnan(responseDir))) < 0.50 && sum(~isnan(responseDir)) >= 50
     warning('Why are most of the movements not in the same direction as the response?!?');
     keyboard;
 end
-
+%%
 %allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, and the
 %initial azimuth of aud and vis stimuli.
 %Unique conditions is based on the parameter set, and includes all possible conditions that the mouse could have experienced. We repeat audAmplitude
@@ -295,11 +303,12 @@ if strcmp(n.expType, 'inactivation')
 end
 
 if strcmp(n.expType, 'inactivation'); laserOff = inactivation.laserType == 0; else, laserOff = feedbackValues*0+1; end
-audPerformance = round(mean(feedbackValues(trialType.auditory & laserOff & responseMade~=0 & vIdx(:))>0)*100);
-visPerformance = round(mean(feedbackValues(trialType.visual & laserOff & responseMade~=0 & vIdx(:))>0)*100);
-mulPerformance = round(mean(feedbackValues(trialType.coherent & laserOff & responseMade~=0 & vIdx(:))>0)*100);
+audPerformance = round(mean(feedbackValues(trialType.auditory & laserOff & responseRecorded~=0 & vIdx(:))>0)*100);
+visPerformance = round(mean(feedbackValues(trialType.visual & laserOff & responseRecorded~=0 & vIdx(:))>0)*100);
+mulPerformance = round(mean(feedbackValues(trialType.coherent & laserOff & responseRecorded~=0 & vIdx(:))>0)*100);
 
 %Populate n with all fields;
+n.wheelTicksToDecision = decisionThreshold;
 n.performanceAVM = [audPerformance visPerformance mulPerformance];
 n.conditionParametersAV = uniqueDiff;
 n.conditionLabels = uniqueConditionLabels;
@@ -317,17 +326,30 @@ n.stim.visInitialAzimuth = visInitialAzimuth;
 n.stim.visDiff = visDiff;
 n.stim.conditionLabel = conditionLabel; 
 n.inactivation = inactivation;
+n.outcome.reactionTime = reactionTime;
+n.outcome.responseDir = responseDir;
+n.outcome.responseRecorded = responseRecorded;
 n.outcome.feedbackGiven = feedbackValues;
 n.outcome.timeToFeedback = timeToFeedback;
-n.outcome.timeToFirstMove = firstMoveTime;
-n.outcome.firstMoveDirection = firstMoveDirection;
-n.outcome.firstMoveReliable = firstMoveReliable;
-n.outcome.threshMoveDirection = threshMoveDirection;
-n.outcome.threshMoveTime = threshMoveTime;
-n.outcome.threshMoveReliable = threshMoveReliable;
-n.outcome.responseMade = responseMade;
+n.outcome.timeDirAllMoveOnsets = moveOnsetsTimeDir;
+n.outcome.timeToFirstMove = timeToFirstMove;
+n.outcome.timeToResponseThresh = timeToResponseThresh;
 n.params = x.oldParams;
 
+%% tstPlot
+cla;
+hold on;
+diffMove = find(timeToFirstMove ~= reactionTime & ~isnan(reactionTime));
+idx = diffMove(randperm(length(diffMove),1));
+rawWheelTV = r.wheelTimeValue{idx};
+xDat = timeToFirstMove(idx)-0.3:0.001:timeToResponseThresh(idx)+0.3;
+wheelPos = interp1(rawWheelTV(:,1), rawWheelTV(:,2), xDat, 'nearest', 'extrap');
+tIdx = knnsearch(xDat', [timeToFirstMove(idx); reactionTime(idx)]);
+plot(xDat, wheelPos, 'k'); 
+plot(xDat(tIdx(1)), wheelPos(tIdx(1)), '*r'); 
+plot(xDat(tIdx(2)), wheelPos(tIdx(2)), '*b'); 
+drawnow;
+%%
 x.newBlock = n;
 %Remove fields of the raw data where the trial lasts longer than 5s. The data from there trials aren't likely to be useful (since the mouse stayed
 %still for a long time) and can take up a lot of space in the .mat file.

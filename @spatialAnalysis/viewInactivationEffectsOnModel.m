@@ -1,4 +1,4 @@
-function viewInactivationEffectsOnModel(obj, plotType, nShuffles)
+function modelInactivationResults = viewInactivationEffectsOnModel(obj, plotType, nShuffles)
 %% Method for "spatialAnalysis" class. Plots effects of inactivation on behavior. Plots are shown as grids on an outline of cortex.
 
 %INPUTS(default values)
@@ -125,6 +125,13 @@ savePath = [savePath '\data4Plots\ModelPerturbations\ModelPerturbationShuffles' 
 prmLabels = {'Bias'; 'visScaleIpsi'; 'visScaleConta'; 'N'; 'audScaleIpsi'; 'audScaleContra'};
 save(savePath, 'normEstRepeats', 'contParams', 'deltaParams', 'gridXY', 'prmLabels', 'freeP');
 
+modelInactivationResults.gridXY = gridXY;
+modelInactivationResults.normEstRepeats = normEstRepeats;
+modelInactivationResults.contParams = contParams;
+modelInactivationResults.deltaParams = deltaParams;
+modelInactivationResults.prmLabels = prmLabels;
+modelInactivationResults.freeP = freeP;
+
 %%
 %Make the "scanPlot" structure for plotting. Note that "contData" is a constant here, so just subtract from the mean over hte inactivaiton
 %grids for the different subsamples
@@ -151,9 +158,9 @@ for i = find(freeP)
     scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, abs(contData), sortedData,'uni', 0));
     scanPlot.pVals
     scanPlot.colorBarLimits = [-10 10];
-%     sigLevels = (10.^(-2:-1:-10))';
-%     lastSigLevel = find(sigLevels>min(scanPlot.pVals(:)),1,'last');
-    scanPlot.sigLevels = [0.01; 0.001; 0.0001];% sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
+    sigLevels = (10.^(-2:-1:-10))';
+    lastSigLevel = find(sigLevels>min(scanPlot.pVals(:)),1,'last');
+    scanPlot.sigLevels = sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
     plt.scanningBrainEffects(scanPlot);
 end
 end

@@ -1,4 +1,3 @@
-
 function viewDataWithoutFits(obj, plotType)
 %% A method for the spatialAnalysis class to plot data without any fit for a all the blocks.
 % INPUTS(default values)
@@ -22,12 +21,29 @@ for i  = 1:length(obj.blks)
     obj.hand.axes = plt.getAxes(axesOpt, i);
     audValues = unique(blk.exp.conditionParametersAV{1}(:,1));
     visValues = unique(blk.exp.conditionParametersAV{1}(:,2));
+    
+    grids = prc.getGridsFromBlock(blk);
     switch plotType(1:3)
         case 'rea'
-            gridData = prc.makeGrid(blk, round(blk.tri.outcome.threshMoveTime*1e3), @nanmedian, 1);
+            gridData = prc.makeGrid(blk, round(blk.tri.outcome.timeDirFirstMove(:,1)*1e3), @nanmedian, [], 1);
+            gridData = nanmean(gridData,3);
+            plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
+        case 'ken'
+            blk = prc.getKennethResopnseFromBlock(blk);
+            gridData = prc.makeGrid(blk, round(blk.tri.outcome.timeToKenMove*1e3), @nanmedian, [], 1);
+            gridData = nanmean(gridData,3);
             plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
         case 'res'
             gridData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @mean, 1);
+            plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
+            ylim([0 1]);
+            xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
+            maxContrast = max(abs(blk.tri.stim.visDiff))*100;
+            xlim([-maxContrast maxContrast]);
+            set(gca, 'xTick', round(((-maxContrast):(maxContrast/4):maxContrast)), 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)));
+            yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
+        case 'thr'
+            gridData = prc.makeGrid(blk, blk.tri.outcome.threshMoveDirection==2, @mean, 1);
             plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
             ylim([0 1]);
             xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);

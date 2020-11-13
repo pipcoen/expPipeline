@@ -47,7 +47,7 @@ end
 %Check whether the processed files already exist. 
 javaHandles = cellfun(@(x) java.io.File(x), {expList.processedData}', 'uni', 0);
 processedSize = cellfun(@(x) x.length, javaHandles);
-existProcessed = processedSize>100000;
+existProcessed = processedSize>10000;
 
 %If redoTag is 1, then process all files of selected animals and dates, otherwise only process ones that don't exist, or are of the experiment type
 %"fusi" or "ephys" (since these have extra processing stages).
@@ -58,7 +58,7 @@ end
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the middle. Useful if MATLAB crashes
 srtIdx = 0;
-for i = files2Run(files2Run>srtIdx)
+for i = files2Run(files2Run>srtIdx) 
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;
     x.existProcessed = existProcessed(i,:);
@@ -111,7 +111,7 @@ x.oldBlock.galvoLog = x.galvoLog;
 %Find the gross time offset between "experimentStartedTime" and the "events.expStartTimes" because there used to be a bug where this number was huge
 %(long story). Basically, if it is huge, we modify all the timings below for inputs, outputs, and events.
 timeOffset = x.oldBlock.experimentStartedTime-x.oldBlock.events.expStartTimes;
-if timeOffset > 100
+if abs(timeOffset) > 100
     fieldList = fieldnames(x.oldBlock.inputs);
     fieldList = fieldList(cellfun(@(x) ~isempty(strfind(x, 'Times')>0), fieldList));
     for i = 1:length(fieldList); x.oldBlock.inputs.(fieldList{i}) = x.oldBlock.inputs.(fieldList{i}) + timeOffset; end
@@ -127,6 +127,23 @@ end
 
 %This section standardizes the event names etc. for each experiments. Events have changed since early instances of multiSpaceWorld
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
+
+%Calclate the conversion between a tick of wheel movement and changes in visual azimuth
+if isfield(x.standardizedBlock.events, 'visAzimuthTimes')
+    %%
+    wheelTV = [x.standardizedBlock.inputs.wheelTimes' x.standardizedBlock.inputs.wheelValues'];
+    wheelTV(strfind(diff(wheelTV(:,2))', [0 0 0])+1,:) = [];
+    visAziTV = [x.standardizedBlock.events.visAzimuthTimes' x.standardizedBlock.events.visAzimuthValues'];
+    diffIdx = find(abs(diff(abs(visAziTV(:,2))))>0 & abs(diff(abs(visAziTV(:,2))))<30 & diff(abs(visAziTV(:,1)))<0.05);
+    visAziDiffTimes = [visAziTV(diffIdx,1) visAziTV(diffIdx+1,1)];
+    visAziDiffValue = abs(visAziTV(diffIdx+1,2)-visAziTV(diffIdx,2));
+    
+    wheelDiffIdx = [knnsearch(wheelTV(:,1), visAziDiffTimes(:,1)), knnsearch(wheelTV(:,1), visAziDiffTimes(:,2))];
+    wheelDiffValues = abs(wheelTV(wheelDiffIdx(:,2),2) - wheelTV(wheelDiffIdx(:,1),2));
+    
+    x.standardizedBlock.wheel2DegRatio = median(wheelDiffValues./visAziDiffValue);
+    cla; hist(wheelDiffValues(:)./visAziDiffValue(:),20); drawnow;
+end
 
 %If experiment includes a meaningful timeline, then load timeline, align with the signals block, and also extract visual and auditory timings from the
 %timeline, as well as reward and movement onset.
@@ -145,7 +162,7 @@ for i = 1:length(fields2copy); x.standardizedParams.(fields2copy{i}) = x.(fields
 repeatPoints = strfind(diff([-1000,x.standardizedBlock.inputs.wheelValues])==0, [1 1]);
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
-x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
+x.newBlock.rawWheelTimeValue = [wheelTime wheelValue-wheelValue(1)];
 
 %Run the block funciton for the expDef that was used for the mouse. This adds all relevant fields to "newBlock"
 blockFunction = str2func(['prc.expDef.' x.expDef]);

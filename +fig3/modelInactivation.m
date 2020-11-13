@@ -16,8 +16,7 @@ set(gcf, 'position', get(gcf, 'position').*[1 0 0 0] + [0 100 figWidth, figHeigh
 load('D:\Dropbox (Neuropixels)\MouseData\TempFin');
 for i = 1:6
     contData = cellfun(@(x) nanmean(x(1:normEstRepeats,i)),deltaParams);
-    sortedData = arrayfun(@(x,y) sort(abs([x{1}(normEstRepeats+1:end,i);y]),'descend'), deltaParams,contData, 'uni', 0);
-    
+    sortedData = arrayfun(@(x,y) sort(abs([x{1}(normEstRepeats+1:end,i);y]),'descend'), deltaParams,contData, 'uni', 0);  
     obj.hand.axes = plt.getAxes(axesOpt, i);
     scanPlot.title = prmLabels{i};
     scanPlot.data = contData;
@@ -31,8 +30,6 @@ for i = 1:6
     scanPlot.sigLevels = [0.01 0.001 0.0001]';
     plt.scanningBrainEffects(scanPlot);
     axesHandle = plt.tightSubplot(nRows,nCols,i+size(galvoRef,1),axesGap,botTopMarg,lftRgtMarg);
-
-
 end
 
 

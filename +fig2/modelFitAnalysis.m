@@ -16,11 +16,11 @@ set(gcf, 'position', get(gcf, 'position').*[1 0 0 0] + [0 100 figWidth, figHeigh
 axesHandle = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg);
 plotOpt = plt.compareModels({'audOnly_Cross5';'visOnly_Cross5';'simpLogSplitVSplitA_Cross5';'fullEmp_Cross5'}); close;
 
-scatter(axesHandle, plotOpt.yData{4}, plotOpt.yData{5}, 25, 'k', 'filled', 'MarkerEdgeColor', 'none');
+scatter(axesHandle, plotOpt.yData{4}-plotOpt.yData{1}, plotOpt.yData{5}-plotOpt.yData{1}, 25, 'k', 'filled', 'MarkerEdgeColor', 'none');
 axis square; 
 hold on
-xlim([-0.8 -0.5])
-ylim([-0.8 -0.5])
+xlim([0.2 0.5])
+ylim([0.2 0.5])
 plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
 box off
 
@@ -28,5 +28,5 @@ axesHandle = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg);
 logLikDiff = cellfun(@(x) x-plotOpt.yData{5}, plotOpt.yData(1:4), 'uni', 0);
 plt.jitter(logLikDiff);
 
-export_fig('D:\Dropbox (Personal)\TalksAndApps\Papers\Coen_2020\2_modelFitAnalysis', '-pdf', '-painters');
+export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\2_modelFitAnalysis', '-pdf', '-painters');
 end

@@ -66,8 +66,8 @@ classdef GLMmulti < matlab.mixin.Copyable
         
         function h = plotblockData(obj)
             %%
-            numTrials = prc.makeGrid(obj.blockData, obj.blockData.tri.outcome.responseMade~=0, @length, 1);
-            numRightTurns = prc.makeGrid(obj.blockData, obj.blockData.tri.outcome.responseMade==2, @sum, 1);
+            numTrials = prc.makeGrid(obj.blockData, obj.blockData.tri.outcome.responseMade~=0, @length, 1, 0, 1);
+            numRightTurns = prc.makeGrid(obj.blockData, obj.blockData.tri.outcome.responseMade==2, @sum, 1, 0, 1);
             
             audValues = [obj.blockData.audValues]./abs(max(obj.blockData.audValues));
             colorChoices = plt.selectRedBlueColors(audValues);

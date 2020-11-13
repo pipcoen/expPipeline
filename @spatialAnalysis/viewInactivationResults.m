@@ -1,4 +1,4 @@
-function viewInactivationResults(obj, plotType, nShuffles, subsets)
+function inactivationResults = viewInactivationResults(obj, plotType, nShuffles, subsets, groups)
 %% Method for "spatialAnalysis" class. Plots effects of inactivation on behavior. Plots are shown as grids on an outline of cortex.
 
 %INPUTS(default values)
@@ -12,8 +12,10 @@ function viewInactivationResults(obj, plotType, nShuffles, subsets)
 
 %Set up defaults for the input values. "op2use" is "mean" as default for responses, but changes below depending on the type data being used
 plotType = lower(plotType);
+if exist('subsets', 'var') && isempty(subsets); clear subsets; end
 if ~exist('plotType', 'var'); plotType = 'res'; end
 if ~exist('nShuffles', 'var'); nShuffles = 0; end
+if ~exist('groups', 'var'); useGroups = 0; else; useGroups = 1; end
 if ~contains(plotType, 'dif') && ~exist('subsets', 'var');subsets = {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'}; end
 if contains(plotType, 'dif') && ~exist('subsets', 'var'); subsets = {'VL', 'AL', 'CohL', 'ConL'}; end
 if ~iscell(subsets); subsets = {subsets}; end
@@ -34,10 +36,13 @@ for mIdx = 1:numOfMice
     
     %Conditional to optionally group inactivaiton sites together (e.g. if you want to combine all V1 sites). We "reflect" these groups, so only one
     %hemisphere needs to be defined. We find all trials with galvoPositions belonging to those groups in iBlk and replace with the mean group position
-    if contains(plotType, 'grp')
-        %         galvoGrps = {[1.8 -4; 3,-4; 3,-3; 1.8,-3; 4.2,-4; 4.2,-3; 1.8,-2; 3,-2; 4.2,-2];[0.6 2; 1.8, 2; 0.6, 3]};
-                galvoGrps = {[1.8 -4; 3,-4; 3,-3;]; [4.2,-3; 4.2,-2];[0.6 2; 1.8, 2; 0.6, 3]};
-%         galvoGrps = {[1.8 -4; 3,-4; 3,-3];[0.6 2; 1.8, 2; 0.6, 3]};
+    if useGroups
+        galvoGrps = {};
+        groups = lower(groups);
+        if contains(groups, 'v1'); galvoGrps = [galvoGrps; [1.8 -4; 3,-4; 3,-3]]; end
+        if contains(groups, 'a1'); galvoGrps = [galvoGrps; [4.2,-2; 4.2,-3; 4.2,-4]]; end
+        if contains(groups, 'mos'); galvoGrps = [galvoGrps; [0.6 2; 1.8, 2; 0.6, 3]]; end
+        if contains(groups, 'av'); galvoGrps = [galvoGrps; [1.8 -4; 3,-4; 4.2,-4; 1.8,-3; 3,-3; 4.2,-3; 1.8,-2; 3,-2; 4.2,-2]]; end
         galvoGrps = [galvoGrps; cellfun(@(x) [x(:,1)*-1, x(:,2)], galvoGrps, 'uni', 0)];
         grpNum = length(galvoGrps);
         grpIdx = cellfun(@(x,y) ismember(iBlk.tri.inactivation.galvoPosition, x, 'rows').*y, galvoGrps, num2cell(1:grpNum)', 'uni', 0);
@@ -63,7 +68,7 @@ for mIdx = 1:numOfMice
         %Changes in the fraction of rightward choices
         iBlk = prc.filtBlock(iBlk, iBlk.tri.outcome.responseMade~=0);
         iBlk.tri.inactivation.data2Use = iBlk.tri.outcome.responseMade==2;
-        scanPlot.colorBarLimits = [-0.7 0.7];
+        scanPlot.colorBarLimits = [-0.6 0.6];
         op2Use = @mean;
     elseif contains(plotType, 'tim')
         %Changes in the number of timeout trials
@@ -73,14 +78,14 @@ for mIdx = 1:numOfMice
     elseif contains(plotType, 'rea')
         %Changes in the median reaction time
         iBlk = prc.filtBlock(iBlk, iBlk.tri.outcome.responseMade~=0 & ~isnan(iBlk.tri.outcome.threshMoveTime));
-        data2Use = iBlk.tri.outcome.threshMoveTime;
-        scanPlot.colorBarLimits = [-0.01 0.01];
-        for i = 1:iBlk.tot.subjects
-            subIdx = iBlk.tri.subjectRef==i;
-%             data2Use(subIdx) = (data2Use(subIdx)-median(data2Use(subIdx)))./mad(data2Use(subIdx),1);
-            data2Use(subIdx) = (data2Use(subIdx)/median(data2Use(subIdx)));
-            scanPlot.colorBarLimits = [-0.1 0.1];
-        end
+        data2Use = iBlk.tri.outcome.threshMoveTime*1000;
+        scanPlot.colorBarLimits = [-10 10];
+%         for i = 1:iBlk.tot.subjects
+%             subIdx = iBlk.tri.subjectRef==i;
+% %             data2Use(subIdx) = (data2Use(subIdx)-median(data2Use(subIdx)))./mad(data2Use(subIdx),1);
+%             data2Use(subIdx) = (data2Use(subIdx)/median(data2Use(subIdx)));
+%             scanPlot.colorBarLimits = [-0.1 0.1];
+%         end
         iBlk.tri.inactivation.data2Use = data2Use;
         op2Use = @median;
     end
@@ -89,6 +94,7 @@ for mIdx = 1:numOfMice
     normBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==0);
     uniBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==1);
     
+    inactivationResults.subsets = subsets;
     for i  = 1:length(subsets)
         %Get subset of trials based on tag. e.g. 'vl' for visual left for both normBlk (contBlk) and uniBlk (testBlk). We need these irrespective of 'sig'
         contBlk = prc.getDefinedSubset(normBlk, subsets{i});
@@ -98,17 +104,18 @@ for mIdx = 1:numOfMice
         %subsamples of the subjetcs. Total loops is the sum of shuffle and control loops. We randomly assign galvoPositions to the contBlk from the
         %galvoPositions in the testBlock (for shuffling purposes)
         if ~nShuffles; nShuffles = 15000; end
-        normEstRepeats = min([round(nShuffles/10) 500]);
+        normEstRepeats = round(nShuffles/10);
+        nShuffles = normEstRepeats*10;
         totalLoops = nShuffles + normEstRepeats;
-        contBlk.tri.inactivation.galvoPosition = testBlk.tri.inactivation.galvoPosition(randi(testBlk.tot.trials, contBlk.tot.trials,1),:);
         
         %Use some matrix tricks to create "uniformLaserFilters" which is a filter for each shuffle that equalizes the frequency of subjects
         %contributing to each point in the grid of galvo positions.
         trialIdx = (1:testBlk.tot.trials)';
         nonUniformLaser = prc.makeGrid(testBlk, [double(testBlk.tri.subjectRef) trialIdx], [], 'galvouni',2);
-        laserShuffles = cellfun(@(x) double(prc.makeFreqUniform(x(:,1),totalLoops,x(:,2))), nonUniformLaser, 'uni', 0);
+        laserShuffles = cellfun(@(x) double(prc.makeFreqUniform(x(:,1),normEstRepeats,x(:,2))), nonUniformLaser, 'uni', 0);
         laserShuffles = num2cell(cell2mat(laserShuffles(:)),1);
-        uniformLaserFilters = cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0);
+        uniformLaserFilters = repmat(cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0),11,1);
+        uniformControlFilters = repmat(num2cell(prc.makeFreqUniform(contBlk.tri.subjectRef,normEstRepeats),1)',11,1);
         
         %Removing these excess fields makes "filtBlock" run significantly faster in the subsequent loop
         testBlk.tri = rmfield(testBlk.tri, {'trialType', 'timings', 'outcome', 'stim'});
@@ -118,10 +125,11 @@ for mIdx = 1:numOfMice
         
         %This is the same loop as above, to generate "inactiveGrid" but with some extra steps to deal with the shuffles
         inactiveGrid = cell(nShuffles+normEstRepeats, 1);
+        controlGrid = cell(nShuffles+normEstRepeats, 1);
         for j = 1:(totalLoops)
             %Filter both blks to make contributions from each subject equal at each galvoPosition and across control trials.
             subTestBlk = prc.filtBlock(testBlk, uniformLaserFilters{j});
-            subContBlk = prc.filtBlock(contBlk, prc.makeFreqUniform(contBlk.tri.subjectRef));
+            subContBlk = prc.filtBlock(contBlk, uniformControlFilters{j});
             subContBlk.tri.inactivation.galvoPosition = subTestBlk.tri.inactivation.galvoPosition(randi(subTestBlk.tot.trials, subContBlk.tot.trials,1),:);
             
             %Generate "randomBlk" by concatenating control and test blocks. If the repeat number is outside the "normEstRepeats" range then we shuffle
@@ -137,9 +145,10 @@ for mIdx = 1:numOfMice
             subContBlk = prc.filtBlock(randomBlk, randomBlk.tri.inactivation.laserType==0);
             subTestBlk = prc.filtBlock(randomBlk, randomBlk.tri.inactivation.laserType==1);
             [inactiveGrid{j}, scanPlot.gridXY] = prc.makeGrid(subTestBlk, subTestBlk.tri.inactivation.data2Use, op2Use, 'galvouni',[],1);
-            inactiveGrid{j} = inactiveGrid{j} - op2Use(subContBlk.tri.inactivation.data2Use);
+            controlGrid{j} = op2Use(subContBlk.tri.inactivation.data2Use);
+            inactiveGrid{j} = inactiveGrid{j} - controlGrid{j};
         end
-        
+       
         %"contData" is the result from the "normEstRepeats" loops, and "shuffleData" is from the shuffled loops. We then sort these shuffled loops and
         %see where the control data appears in the shuffled data. This goes into the "scanPlot" plotting structure, along with the results.
         contData = mean(cat(3,inactiveGrid{1:normEstRepeats}),3);
@@ -151,7 +160,6 @@ for mIdx = 1:numOfMice
         sigLevels = (10.^(-2:-1:-10))';
         lastSigLevel = find(sigLevels>min(scanPlot.pVals(:)),1,'last');
         scanPlot.sigLevels = sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
-        scanPlot.sigLevels = [0.05; 0.01; 0.001];
         
         %%Plot the data in the "scanPlot" structure.
         axesOpt.numOfRows = 1;%min([4 length(subsets)]);
@@ -159,6 +167,14 @@ for mIdx = 1:numOfMice
         obj.hand.axes = plt.getAxes(axesOpt, ((i-1)*numOfMice)+mIdx);
         scanPlot.title = subsets{i};
         plt.scanningBrainEffects(scanPlot);
+        
+        inactivationResults.gridXY = scanPlot.gridXY;
+        inactivationResults.laserOffData{i,1} = controlGrid{1:normEstRepeats};
+        inactivationResults.laserOnData{i,1} = inactiveGrid{1:normEstRepeats};
+        inactivationResults.meanContData{i,1} = contData;
+        inactivationResults.shuffLaserOnData{i,1} = inactiveGrid{normEstRepeats+1:end};
+        inactivationResults.shuffLaserOffData{i,1} = controlGrid{normEstRepeats+1:end};
+        inactivationResults.pVals{i,1} = scanPlot.pVals;    
     end
 end
 end

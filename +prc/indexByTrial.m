@@ -11,7 +11,7 @@ function sortedByTrial = indexByTrial(trialTimes, prmTimes, prmValues, timesToSu
 
 %%
 %Set default values
-if ~exist('prmValues', 'var'); prmValues = prmTimes; end
+if ~exist('prmValues', 'var') || isempty(prmValues); prmValues = prmTimes; end
 
 %Use histcounts to find all the times that fall between trial start and end times--this is a computationally fast way to do this. We remove indices
 %with 0 values because these are out of bounds. 
