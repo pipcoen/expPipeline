@@ -1,6 +1,6 @@
 function modelExamples
 %% This function plots the data panels for figure one of the ms
-mice2Plot = {'PC011'; 'PC022'};
+mice2Plot = {'PC051'; 'PC022'};
 
 figure;
 axHeight = 250;
@@ -17,6 +17,7 @@ set(gcf, 'position', get(gcf, 'position').*[1 0 0 0] + [0 200 figWidth, figHeigh
 
 for i = 1:length(mice2Plot)
     behBlks = spatialAnalysis(mice2Plot(i), 'behavior', 0, 1);
+    behBlks.blks = prc.filtBlock(behBlks.blks, behBlks.blks.tri.stim.visContrast ~= 0.06);
     axesHandle = plt.tightSubplot(nRows,nCols,i,axesGap,botTopMarg,lftRgtMarg);
     behBlks.viewGLMFits('simpLogSplitVSplitA', [], [], 1)
     axis square;

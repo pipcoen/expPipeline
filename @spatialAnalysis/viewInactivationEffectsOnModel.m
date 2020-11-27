@@ -1,4 +1,4 @@
-function modelInactivationResults = viewInactivationEffectsOnModel(obj, plotType, nShuffles)
+function inactResultsForModel = viewInactivationEffectsOnModel(obj, plotType, nShuffles, groups)
 %% Method for "spatialAnalysis" class. Plots effects of inactivation on behavior. Plots are shown as grids on an outline of cortex.
 
 %INPUTS(default values)
@@ -13,6 +13,7 @@ function modelInactivationResults = viewInactivationEffectsOnModel(obj, plotType
 %Set up defaults for the input values. "op2use" is "mean" as default for responses, but changes below depending on the type data being used
 numOfMice = length(obj.blks);
 if numOfMice > 1; error('Only coded to handle one mouse atm'); end
+if ~exist('groups', 'var'); useGroups = 0; else; useGroups = 1; end
 if ~exist('nShuffles', 'var'); nShuffles = 0; end
 if ~exist('plotType', 'var'); plotType = 'grp'; end
 
@@ -20,13 +21,19 @@ if ~exist('plotType', 'var'); plotType = 'grp'; end
 iBlk = prc.filtBlock(obj.blks, obj.blks.tri.inactivation.galvoPosition(:,2)~=4.5);
 iBlk = prc.filtBlock(iBlk, ~ismember(abs(iBlk.tri.inactivation.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | iBlk.tri.inactivation.laserType==0);
 iBlk = prc.filtBlock(iBlk, iBlk.tri.trialType.repeatNum==1 & iBlk.tri.trialType.validTrial);
-iBlk = prc.filtBlock(iBlk, iBlk.tri.outcome.responseMade~=0);
+iBlk = prc.filtBlock(iBlk, ~isnan(iBlk.tri.outcome.responseCalc));
+iBlk = prc.filtBlock(iBlk, iBlk.tri.stim.visContrast~=0.06);
 
 %Conditional to optionally group inactivaiton sites together (e.g. if you want to combine all V1 sites). We "reflect" these groups, so only one
 %hemisphere needs to be defined. We find all trials with galvoPositions belonging to those groups in iBlk and replace with the mean group position
-if contains(plotType, 'grp')
-    galvoGrps = {[1.8 -4; 3,-4; 3,-3];[0.6 2; 1.8, 2; 0.6, 3]; [4.2 -4; 4.2 -3; 4.2 -2]};
-%     galvoGrps = {[1.8 -4; 3,-4; 3,-3];[0.6 2; 1.8, 2; 0.6, 3]};
+if useGroups
+    galvoGrps = {};
+    groups = lower(groups);
+    if contains(groups, 'v1'); galvoGrps = [galvoGrps; [1.8 -4; 3,-4; 3,-3]]; end
+    if contains(groups, 'a1'); galvoGrps = [galvoGrps; [4.2,-2; 4.2,-3; 4.2,-4]]; end
+    if contains(groups, 'mos'); galvoGrps = [galvoGrps; [0.6 2; 1.8, 2; 0.6, 3]]; end
+    if contains(groups, 'av'); galvoGrps = [galvoGrps; [1.8 -4; 3,-4; 4.2,-4; 1.8,-3; 3,-3; 4.2,-3; 1.8,-2; 3,-2; 4.2,-2]]; end
+    
     galvoGrps = [galvoGrps; cellfun(@(x) [x(:,1)*-1, x(:,2)], galvoGrps, 'uni', 0)];
     grpNum = length(galvoGrps);
     grpIdx = cellfun(@(x,y) ismember(iBlk.tri.inactivation.galvoPosition, x, 'rows').*y, galvoGrps, num2cell(1:grpNum)', 'uni', 0);
@@ -36,22 +43,21 @@ if contains(plotType, 'grp')
     iBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==0 | grpIdx>0);
 end
 
-
-if contains(plotType, 'dif')
-    %If plotType contains 'dif' then we want to switch the responseMade, vis and aud paramters such that all "left" trials are flipped (vis left trials in
-    %the case of conflict trials). Now, inactivations on the right hemisphere are contralateral, and left hemisphere is ipsilateral
-    idx2Flip = iBlk.tri.inactivation.galvoPosition(:,1)<0;
-    iBlk.tri.outcome.responseMade(idx2Flip) = (iBlk.tri.outcome.responseMade(idx2Flip)*-1+3).*(iBlk.tri.outcome.responseMade(idx2Flip)>0);
-    iBlk.tri.inactivation.galvoPosition(idx2Flip,1) = -1*iBlk.tri.inactivation.galvoPosition(idx2Flip,1);
-    iBlk.tri.stim.audDiff(idx2Flip) = -1*iBlk.tri.stim.audDiff(idx2Flip);
-    iBlk.tri.stim.visDiff(idx2Flip) = -1*iBlk.tri.stim.visDiff(idx2Flip);
-    iBlk.tri.stim.conditionLabel(idx2Flip) = -1*iBlk.tri.stim.conditionLabel(idx2Flip);
-end
-
-
 contBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType == 0);
 uniBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType == 1);
-[~, gridXY] = prc.makeGrid(uniBlk, uniBlk.tri.outcome.responseMade, [], 'galvouni',2);
+
+if contains(plotType, 'dif')
+    %If plotType contains 'dif' then we want to switch the responseCalc, vis and aud paramters such that all "left" trials are flipped (vis left trials in
+    %the case of conflict trials). Now, inactivations on the right hemisphere are contralateral, and left hemisphere is ipsilateral
+    idx2Flip = uniBlk.tri.inactivation.galvoPosition(:,1)<0;
+    uniBlk.tri.outcome.responseCalc(idx2Flip) = (uniBlk.tri.outcome.responseCalc(idx2Flip)*-1+3).*(uniBlk.tri.outcome.responseCalc(idx2Flip)>0);
+    uniBlk.tri.inactivation.galvoPosition(idx2Flip,1) = -1*uniBlk.tri.inactivation.galvoPosition(idx2Flip,1);
+    uniBlk.tri.stim.audDiff(idx2Flip) = -1*uniBlk.tri.stim.audDiff(idx2Flip);
+    uniBlk.tri.stim.visDiff(idx2Flip) = -1*uniBlk.tri.stim.visDiff(idx2Flip);
+    uniBlk.tri.stim.conditionLabel(idx2Flip) = -1*uniBlk.tri.stim.conditionLabel(idx2Flip);
+end
+
+[~, gridXY] = prc.makeGrid(uniBlk, uniBlk.tri.outcome.responseCalc, [], 'galvouni',2);
 freeP = [1 1 1 0 1 1]>0;
 
 %Define number of suffles, and the number of times to estimate the control (default is 10% or 500) since this will change with different
@@ -71,7 +77,7 @@ uniformLaserFilters = repmat(cellfun(@(x) ismember(trialIdx, x), laserShuffles, 
 uniformControlFilters = repmat(num2cell(prc.makeFreqUniform(contBlk.tri.subjectRef,normEstRepeats),1)',11,1);
 
 exampleUniform = prc.filtBlock(uniBlk, uniformLaserFilters{1});
-totalLaserTrials = prc.makeGrid(exampleUniform, exampleUniform.tri.outcome.responseMade, @length, 'galvouni');
+totalLaserTrials = prc.makeGrid(exampleUniform, exampleUniform.tri.outcome.responseCalc, @length, 'galvouni');
 
 %Removing these excess fields makes "filtBlock" run significantly faster in the subsequent loop
 uniBlk.tri = rmfield(uniBlk.tri, {'trialType', 'timings'});
@@ -125,17 +131,19 @@ savePath = [savePath '\data4Plots\ModelPerturbations\ModelPerturbationShuffles' 
 prmLabels = {'Bias'; 'visScaleIpsi'; 'visScaleConta'; 'N'; 'audScaleIpsi'; 'audScaleContra'};
 save(savePath, 'normEstRepeats', 'contParams', 'deltaParams', 'gridXY', 'prmLabels', 'freeP');
 
-modelInactivationResults.gridXY = gridXY;
-modelInactivationResults.normEstRepeats = normEstRepeats;
-modelInactivationResults.contParams = contParams;
-modelInactivationResults.deltaParams = deltaParams;
-modelInactivationResults.prmLabels = prmLabels;
-modelInactivationResults.freeP = freeP;
+inactResultsForModel.gridXY = gridXY;
+inactResultsForModel.normEstRepeats = normEstRepeats;
+inactResultsForModel.contParams = contParams;
+inactResultsForModel.deltaParams = deltaParams;
+inactResultsForModel.prmLabels = prmLabels;
+inactResultsForModel.freeP = freeP;
 
 %%
 %Make the "scanPlot" structure for plotting. Note that "contData" is a constant here, so just subtract from the mean over hte inactivaiton
 %grids for the different subsamples
 %Set up plotting axes arrangement on figrure
+
+
 axesOpt.btlrMargins =  [10 30 10 10];
 axesOpt.gapBetweenAxes = [10 0];
 axesOpt.axesSize = [200 200];
@@ -160,7 +168,7 @@ for i = find(freeP)
     scanPlot.colorBarLimits = [-10 10];
     sigLevels = (10.^(-2:-1:-10))';
     lastSigLevel = find(sigLevels>min(scanPlot.pVals(:)),1,'last');
-    scanPlot.sigLevels = sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
+    scanPlot.sigLevels = [0.01; 0.001; 0.0001];%sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
     plt.scanningBrainEffects(scanPlot);
 end
 end

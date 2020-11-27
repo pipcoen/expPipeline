@@ -40,10 +40,10 @@ switch lower(dataTag{1})
     %removed before doing further analysis.
     case {'behavior'; 'behaviour'}
         switch subjectID{1}
-            case 'PC011'; dateRange = {'2017-06-14:2017-08-16'};                            %No inactivation
-            case 'PC012'; dateRange = {'2017-09-06:2017-10-17'};                            %Regular trials within inactivation
-            case 'PC013'; dateRange = {'2017-09-05:2017-10-17'};                            %Regular trials within inactivation
-            case 'PC015'; dateRange = {'2017-09-25:2017-10-17'};                            %No inactivation
+%             case 'PC011'; dateRange = {'2017-06-14:2017-08-16'};                            %No inactivation
+%             case 'PC012'; dateRange = {'2017-09-06:2017-10-17'};                            %Regular trials within inactivation
+%             case 'PC013'; dateRange = {'2017-09-05:2017-10-17'};                            %Regular trials within inactivation
+%             case 'PC015'; dateRange = {'2017-09-25:2017-10-17'};                            %No inactivation
             case 'PC022'; dateRange = {'2018-02-20:2018-05-28'; '2018-05-31:2018-07-30'};   %Regular trials within inactivation
             case 'PC027'; dateRange = {'2018-02-05:2018-04-12'; '2018-04-14:2018-04-26';... %Regular trials within inactivation
                     '2018-04-30:2018-05-15'};                          
@@ -73,6 +73,7 @@ switch lower(dataTag{1})
         
     case 'uniscan'
         switch subjectID{1}
+%             case 'PC022'; dattwo eRange = {'2018-02-20:2018-05-28'};
             case 'PC027'; dateRange = {'2018-02-05:2018-03-21'}; %Power was only 1.5mW
             case 'PC029'; dateRange = {'2018-06-12:2018-07-17'};
             case 'DJ008'; dateRange = {'2018-06-12:2018-07-17'};
@@ -112,6 +113,16 @@ switch lower(dataTag{1})
             case 'PC046'; dateRange = {'2019-08-27:2019-09-06'};
             case 'PC048'; dateRange = {'2019-09-17:2019-09-26'};
             case 'PC050'; dateRange = {'2019-09-17:2019-09-26'};
+            otherwise, dateRange = [];
+        end
+        
+    case 'm2ephysmod'
+        switch subjectID{1}
+            case 'PC043'; dateRange = {'2019-05-07:2019-05-07'; '2019-05-09:2019-05-09'; '2019-05-14:2019-05-14'};
+            case 'PC045'; dateRange = {'2019-08-27:2019-09-06'};
+            case 'PC046'; dateRange = {'2019-08-27:2019-09-04'};
+            case 'PC048'; dateRange = {'2019-09-17:2019-09-20'};
+            case 'PC050'; dateRange = {'2019-09-17:2019-09-21'; '2019-09-24:2019-09-24'};
             otherwise, dateRange = [];
         end
         

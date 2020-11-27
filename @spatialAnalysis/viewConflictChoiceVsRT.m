@@ -6,20 +6,19 @@ function viewConflictChoiceVsRT(obj, plotTag)
 %	'rea'--------------------timeToFirstMove vs fration of rightward choices
 
 if ~exist('plotTag', 'var'); plotTag = 'kss'; end
-xDat = 0:0.01:0.5;
+xDat = 0.05:0.01:0.5;
 [choiceDat] = deal(nan*ones(length(obj.blks), length(xDat)-1));
 [histCountsAud, histCountsVis] = deal(nan*ones(length(obj.blks), length(xDat)));
 for i  = 1:length(obj.blks)
     blk = spatialAnalysis.getBlockType(obj.blks(i),'norm',1);
-    blk = prc.filtBlock(blk, ~isnan(blk.tri.outcome.timeToFirstMove) & blk.tri.outcome.timeToFirstMove<max(xDat));
+    blk = prc.filtBlock(blk, ~isnan(blk.tri.outcome.responseCalc));
     blk = prc.filtBlock(blk, blk.tri.trialType.conflict);
-%     blk = prc.filtBlock(blk, abs(blk.tri.stim.visContrast)==0.4);
     minTrials = 5;
     
     audSide = (blk.tri.stim.audInitialAzimuth>0)+1;
-    threshDir = blk.tri.outcome.threshMoveDirection;
-    time2Move = blk.tri.outcome.timeToFirstMove;
-    audChosen = audSide == threshDir;
+    responseCalc = blk.tri.outcome.responseCalc;
+    time2Move = blk.tri.outcome.reactionTime;
+    audChosen = audSide == responseCalc;
     [binCounts, ~, binIdx] = histcounts(time2Move, xDat);
     audChosenForEachRT = arrayfun(@(x) mean(audChosen(binIdx==x)), 1:length(xDat)-1);
     choiceDat(i,binCounts>minTrials) = audChosenForEachRT(binCounts>minTrials);

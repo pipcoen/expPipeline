@@ -20,9 +20,9 @@ else
     spotSize = spotSize*(200./(length(scanPlot.sigLevels)*1.5));
     legendRef = [legendRef, legendRef*0+4, legendRef*0+(3+length(legendRef))-(0:length(legendRef)-1)' lengendSizes];
 end
-sigIdx = spotSize~=min(spotSize);
+sigIdx = pVals<=max(scanPlot.sigLevels);
 h1 = scatter(MLCoord(sigIdx), APCoord(sigIdx), spotSize(sigIdx), plotData(sigIdx), 'o', 'filled'); axis equal; drawnow
-set(h1, 'MArkerEdgeColor', 'k');
+set(h1, 'MarkerEdgeColor', 'k');
 scatter(MLCoord(~sigIdx), APCoord(~sigIdx), spotSize(~sigIdx), plotData(~sigIdx), 'o', 'filled'); axis equal; drawnow
 if exist('legendRef', 'var')
     scatter(legendRef(:,2), legendRef(:,3), legendRef(:,4), 'k', 'o', 'filled'); axis equal; drawnow

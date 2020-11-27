@@ -225,7 +225,7 @@ timeToFirstMove = cell2mat(cellfun(@(x) x(1,1), moveOnsetsTimeDir, 'uni', 0));
 timeToResponseThresh = nan*timeToFirstMove;
 timeToResponseThresh(~timeOuts) = timeToThresh;
 reactionTime = arrayfun(@(x,y) max([nan x{1}(find(x{1}(:,1)<y, 1, 'last'),1)]), moveOnsetsTimeDir, timeToResponseThresh);
-responseDir = arrayfun(@(x,y) max([nan x{1}(find(x{1}(:,1)<y, 1, 'last'),2)]), moveOnsetsTimeDir, timeToResponseThresh);
+responseCalc = arrayfun(@(x,y) max([nan x{1}(find(x{1}(:,1)<y, 1, 'last'),2)]), moveOnsetsTimeDir, timeToResponseThresh);
 
 %Get the response the mouse made on each trial based on the correct response and then taking the opposite for incorrect trials. NOTE: this will not
 %work for a task with more than two response options.
@@ -233,8 +233,9 @@ responseDir = arrayfun(@(x,y) max([nan x{1}(find(x{1}(:,1)<y, 1, 'last'),2)]), m
 responseRecorded = double(correctResponse).*~timeOuts;
 responseRecorded(feedbackValues<0) = -1*(responseRecorded(feedbackValues<0));
 responseRecorded = ((responseRecorded>0)+1).*(responseRecorded~=0);
+correctResponse = ((correctResponse>0)+1).*(correctResponse~=0);
 
-if mean(responseDir(~isnan(responseDir)) == responseRecorded(~isnan(responseDir))) < 0.50 && sum(~isnan(responseDir)) >= 50
+if mean(responseCalc(~isnan(responseCalc)) == responseRecorded(~isnan(responseCalc))) < 0.50 && sum(~isnan(responseCalc)) >= 50
     warning('Why are most of the movements not in the same direction as the response?!?');
     keyboard;
 end
@@ -318,6 +319,7 @@ n.trialType.validTrial = vIdx(:);
 n.timings.trialStartEnd = trialTimes;
 n.timings.stimPeriodStart = stimPeriodStart;
 n.timings.closedLoopStart = closedLoopStart;
+n.stim.correctResponse = correctResponse;
 n.stim.audAmplitude = audAmplitude;
 n.stim.audInitialAzimuth = audInitialAzimuth;
 n.stim.audDiff = audDiff;
@@ -327,7 +329,7 @@ n.stim.visDiff = visDiff;
 n.stim.conditionLabel = conditionLabel; 
 n.inactivation = inactivation;
 n.outcome.reactionTime = reactionTime;
-n.outcome.responseDir = responseDir;
+n.outcome.responseCalc = responseCalc;
 n.outcome.responseRecorded = responseRecorded;
 n.outcome.feedbackGiven = feedbackValues;
 n.outcome.timeToFeedback = timeToFeedback;

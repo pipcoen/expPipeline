@@ -24,13 +24,14 @@ behBlks.viewRightLeftWheelSeparationOverTime;
 axis square; 
 xlim([0 0.3]);
 box off;
-
+%%
+cla
 axesHandle = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg);
 behBlks.viewConflictChoiceVsRT('kss');
 axis square; 
 xlim([0 0.3]);
 box off;
-
+%%
 axesHandle = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg);
 behBlks.viewConflictChoiceVsRT('ksm');
 axis square; 
@@ -44,5 +45,5 @@ xlim([0 0.3]);
 ylim([0.3 0.7]);
 box off;
 
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_movementPlots', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_movementPlots', '-pdf', '-painters');
 end

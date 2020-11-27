@@ -1,27 +1,29 @@
 function grids = getGridsFromBlock(blk)
-grids = prc.makeGrid(blk);
+%% Function to extract useful "grids" from a block, arranged with aud/vis values in rows/columns
 
-grids.conditions = prc.makeGrid(blk, blk.tri.stim.conditionLabel, @mean);
-grids.performance = prc.makeGrid(blk, blk.tri.outcome.feedbackGiven==1, @mean,'abscondition');
-grids.numTrials = prc.makeGrid(blk, blk.tri.outcome.responseMade==1, @length);
-grids.numRightTurns = prc.makeGrid(blk, blk.tri.outcome.timeDirFirstMove(:,2)==2, @sum);
-grids.fracRightTurns = prc.makeGrid(blk, blk.tri.outcome.timeDirFirstMove(:,2)==2, @nanmean);
+outC = blk.tri.outcome;
+responseCorrect = blk.tri.stim.correctResponse==outC.responseCalc;
 
-[~,confInterval] = arrayfun(@(x,z) binofit(x, z, 0.05), grids.numRightTurns, grids.numTrials, 'uni', 0);
-grids.fracRightTurnsLowBound = cell2mat(cellfun(@(x) permute(x(:,1), [3,2,1]), confInterval, 'uni', 0));
-grids.fracRightTurnsHighBound = cell2mat(cellfun(@(x) permute(x(:,2), [3,2,1]), confInterval, 'uni', 0));
-grids.fracRightTurnsLowBound(isnan(grids.fracRightTurns)) = nan;
-grids.fracRightTurnsHighBound(isnan(grids.fracRightTurns)) = nan;
+grids = prc.makeGrid(blk);                                                       %Grids of aud/vis values and the condition labels
+grids.performance = prc.makeGrid(blk, responseCorrect==1, @mean,'abscondition'); %Grid of performance
+grids.numTrials = prc.makeGrid(blk, outC.responseCalc==1, @length);              %Grid of trial numbers
 
-grids.timeToFirstMove = prc.makeGrid(blk, blk.tri.outcome.timeDirFirstMove(:,1), @nanmedian, [], 1);
-grids.timeToFirstMoveSE = nanstd(grids.timeToFirstMove,[],3)./sqrt(size(grids.timeToFirstMove,3));
-grids.timeToFirstMove = nanmean(grids.timeToFirstMove, 3);
+%Get grid of fraction of right turns for each session, then calculate the SE across sessions. Mean of these sessions is the overall fration
+grids.fracRightTurns = prc.makeGrid(blk, outC.responseCalc==2, @nanmean, [], 1);
+grids.fracRightTurnsSE = nanstd(grids.fracRightTurns,[],3)./sqrt(size(grids.fracRightTurns,3));
+grids.fracRightTurns = nanmean(grids.fracRightTurns, 3);
 
-grids.timeChoiceCross = prc.makeGrid(blk, blk.tri.outcome.timeDirChoiceCross(:,1), @nanmedian, [], 1);
-grids.timeChoiceCrossSE = nanstd(grids.timeChoiceCross,[],3)./sqrt(size(grids.timeChoiceCross,3));
-grids.timeChoiceCross = nanmean(grids.timeChoiceCross, 3);
+%Get confidence binomial intervals for fraction of right turns (more appropriate for combined mice)
+numRightTurns = prc.makeGrid(blk, blk.tri.outcome.responseCalc==2, @sum);
+[~,confInterval] = arrayfun(@(x,z) binofit(x, z, 0.05), numRightTurns, grids.numTrials, 'uni', 0);
+grids.fracRightTurnsLowBound = cell2mat(cellfun(@(x) permute(x(:,1), [3,2,1]), confInterval, 'uni', 0)).*(grids.fracRightTurns*0+1);
+grids.fracRightTurnsHighBound = cell2mat(cellfun(@(x) permute(x(:,2), [3,2,1]), confInterval, 'uni', 0)).*(grids.fracRightTurns*0+1);
 
-grids.timeToChoiceInit = prc.makeGrid(blk, blk.tri.outcome.timeDirChoiceInit(:,1), @nanmedian, [], 1);
-grids.timeToChoiceInitSE = nanstd(grids.timeToChoiceInit,[],3)./sqrt(size(grids.timeToChoiceInit,3));
-grids.timeToChoiceInit = nanmean(grids.timeToChoiceInit, 3);
+
+%Get grid of meadian reaction times for each session, then calculate the SE across sessions. Mean of these sessions is the overall reaction time
+grids.reactionTime = prc.makeGrid(blk, outC.reactionTime, @nanmedian, [], 1);
+grids.reactionTimeSE = nanstd(grids.reactionTime,[],3)./sqrt(size(grids.reactionTime,3));
+grids.reactionTime = nanmean(grids.reactionTime, 3);
+grids.reactionTimeComb = prc.makeGrid(blk, outC.reactionTime, @nanmedian);
+grids.timeToResponseThreshComb = prc.makeGrid(blk, outC.timeToResponseThresh, @nanmedian);
 end

@@ -111,16 +111,20 @@ classdef spatialAnalysis < matlab.mixin.Copyable
     
     methods (Static)
         %% Fucntion to filter blocks based on some predefined tags
-        function filteredBlk = getBlockType(blk, tag, removeTimeouts)
+        function filteredBlk = getBlockType(blk, tag, removeTimeouts, removeRespNans)
             if ~exist('tag', 'var'); error('Must specificy tag'); end
             if ~exist('removeTimeouts', 'var'); removeTimeouts = 1; end
+            if ~exist('removeRespNans', 'var'); removeRespNans = 1; end
             validTrials = blk.tri.trialType.validTrial;                                          %Trials that weren't repeats of an incorrect decision
-            timeOuts = blk.tri.outcome.responseMade==0 | blk.tri.outcome.timeToFeedback > 1.5;   %Timout trials (timeouts, or response > 1.5s)
+            timeOuts = blk.tri.outcome.responseRecorded==0 | blk.tri.outcome.timeToFeedback > 1.5;   %Timout trials (timeouts, or response > 1.5s)
             laserType = blk.tri.inactivation.laserType;                                          %Lasertype used on each trial.   
-            if ~removeTimeouts; timeOuts = timeOuts*0; end                                       %If not removing timeouts, filter becomes all zeros
+            responseNans = isnan(blk.tri.outcome.responseCalc);
+            removeIdx = timeOuts*0;
+            if removeTimeouts; timeOuts = timeOuts*0; end                                        %If not removing timeouts, filter becomes all zeros
+            if removeRespNans; removeIdx(responseNans & ~timeOuts) = 1; end                      %If not removing responseNans, filter becomes all zeros
             
-            regBlk = prc.filtBlock(blk, (laserType==0 | isnan(laserType)) & ~timeOuts & validTrials, 'tri');
-            lasBlk = prc.filtBlock(blk, (laserType~=0 & ~isnan(laserType)) & ~timeOuts & validTrials, 'tri');
+            regBlk = prc.filtBlock(blk, (laserType==0 | isnan(laserType)) & ~removeIdx & validTrials, 'tri');
+            lasBlk = prc.filtBlock(blk, (laserType~=0 & ~isnan(laserType)) & ~removeIdx & validTrials, 'tri');
             
             switch lower(tag(1:3))
                 case 'nor'; filteredBlk = regBlk;

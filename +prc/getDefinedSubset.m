@@ -24,7 +24,9 @@ end
 
 triType = blk.tri.trialType;
 stim = blk.tri.stim;
-switch lower(subsetTag)
+outcome = blk.tri.outcome;
+blk.tri.outcome.audChosen = (stim.audInitialAzimuth>0 & outcome.responseCalc == 2) | (stim.audInitialAzimuth<0 & outcome.responseCalc == 1);
+switch lower(subsetTag(1:min([length(subsetTag), 4])))
     case 'blnk'; blk =  prc.filtBlock(blk, triType.blank);
     case 'vl'; blk =  prc.filtBlock(blk, triType.visual & stim.visInitialAzimuth<0);
     case 'vr'; blk =  prc.filtBlock(blk, triType.visual & stim.visInitialAzimuth>0);
@@ -35,4 +37,6 @@ switch lower(subsetTag)
     case 'conl'; blk =  prc.filtBlock(blk, triType.conflict & stim.visInitialAzimuth<0);
     case 'conr'; blk =  prc.filtBlock(blk, triType.conflict & stim.visInitialAzimuth>0);
 end
+if contains(subsetTag, 'ac'); blk =  prc.filtBlock(blk,blk.tri.outcome.audChosen); end
+if contains(subsetTag, 'vc'); blk =  prc.filtBlock(blk,~blk.tri.outcome.audChosen); end
 end

@@ -1,39 +1,39 @@
-function scatterPlots
-%%
-if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'behavior', 0, 1); end
-[perAud, perVis80, perVis40, perMul40] = deal(nan*ones(length(behBlks.blks), 1));
-[threshTimeAV, threshTimeCohCon] = deal(nan*ones(length(behBlks.blks), 2));
-[timeToThreshMove, timeToFirstMove] = deal(cell(length(behBlks.blks), 1));
+function scatterPlots(behBlksOrig)
+%Load the block if it doesn't exist. Remove mice that have different parameter values (4 mice of 21)
+if ~exist('behBlks', 'var'); behBlksOrig = spatialAnalysis('all', 'behavior', 0, 1); end
+blks2Use = behBlksOrig.blks;
+if length(blks2Use) == 21; blks2Use(5:8) = []; end
 
-vis2Use = 0.4;
-exampIdx = zeros(length(behBlks.blks), 1);
-for i = 1:length(behBlks.blks)
-    if strcmp(behBlks.blks(i).exp.subject{1}, 'PC022'); exampIdx(i)  =1; end
-    nBlk = spatialAnalysis.getBlockType(behBlks.blks(i), 'norm');
+%pre-assign performance and reaction structures with nans
+[perf.aud, perf.vis, perf.mul] = deal(nan*ones(length(blks2Use), 1));
+[reac.aud, reac.vis, reac.coh, reac.con] = deal(perf.aud);
+allRTs = cell(length(blks2Use), 1);
+mTri = 1; %Can be uses to set a minimum number of trials per experiment
+
+vis2Use = 0.4; %We use 0.4/40% contrast for comparisons
+eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, blks2Use, 'uni', 0), 'PC022');
+nMice = length(blks2Use);
+for i = 1:nMice
+    %"normalize" block--removes timeouts, laser, and nan-response trials
+    nBlk = spatialAnalysis.getBlockType(blks2Use(i), 'norm');
+    nBlk = prc.filtBlock(nBlk, nBlk.exp.numOfTrials > mTri);    
     grds = prc.getGridsFromBlock(nBlk);
     
-    if ~any(grds.visValues(:) == vis2Use); continue; end
-    perAud(i) = grds.performance(grds.visValues == 0 & grds.audValues > 0);
-    perVis40(i) = grds.performance(grds.visValues == vis2Use & grds.audValues == 0);
-    if any(grds.visValues(:) == 0.8)
-        perVis80(i) = grds.performance(grds.visValues == 0.8 & grds.audValues == 0);
-    end
-    perMul40(i) = grds.performance(grds.visValues == vis2Use & grds.audValues > 0);
-       
-    threshTimeAV(i,1) = mean(grds.timeToThreshMove(grds.visValues == 0 & grds.audValues ~= 0));
-    threshTimeAV(i,2) = mean(grds.timeToThreshMove(abs(grds.visValues) == vis2Use & grds.audValues == 0));
-    timeToThreshMove{i,1} = nBlk.tri.outcome.threshMoveTime;
-    timeToFirstMove{i,1} = nBlk.tri.outcome.timeToFirstMove;
+    perf.aud(i) = grds.performance(grds.visValues == 0 & grds.audValues > 0);
+    perf.vis(i) = grds.performance(grds.visValues == vis2Use & grds.audValues == 0);
+    perf.mul(i) = grds.performance(grds.visValues == vis2Use & grds.audValues > 0);
     
-    cohIdx = grds.visValues.*grds.audValues > 0 &~isnan(grds.timeToThreshMove) & abs(grds.visValues) == vis2Use;
-    conIdx = grds.visValues.*grds.audValues < 0 &~isnan(grds.timeToThreshMove) & flipud(cohIdx) & abs(grds.visValues) == vis2Use;
-    threshTimeCohCon(i,:) = [mean(grds.timeToThreshMove(cohIdx)) mean(grds.timeToThreshMove(conIdx))];
+    reac.aud(i) = mean(grds.reactionTime(grds.visValues == 0 & grds.audValues ~= 0));
+    reac.vis(i) = mean(grds.reactionTime(abs(grds.visValues) == vis2Use & grds.audValues == 0));
+    allRTs{i,1} = nBlk.tri.outcome.reactionTime;
+    
+    cohIdx = grds.visValues.*grds.audValues > 0 &~isnan(grds.reactionTime) & abs(grds.visValues) == vis2Use;
+    conIdx = grds.visValues.*grds.audValues < 0 &~isnan(grds.reactionTime) & flipud(cohIdx) & abs(grds.visValues) == vis2Use;
+    reac.coh(i) = mean(grds.reactionTime(cohIdx));
+    reac.con(i) = mean(grds.reactionTime(conIdx));
 end
+if any(sum(isnan([perf.aud, perf.vis, perf.mul, reac.aud, reac.vis, reac.coh, reac.con]))); error('Why are there nans???'); end
 
-%%
-popIdx = ~any(isnan([perVis40, perAud, perMul40 threshTimeCohCon threshTimeAV]),2) & ~exampIdx;
-exampIdx = exampIdx>0;
-allIdx = (popIdx + exampIdx)>0;
 %%
 figure;
 axHeight = 250;
@@ -48,14 +48,14 @@ botTopMarg = [40, 40]/figHeight;
 lftRgtMarg = [40, 40]/figWidth;
 set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
 
-axesHandle = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg);
+axH = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg);
 hold on
-scatter(axesHandle, perAud(popIdx), perVis40(popIdx), 25, 'k', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, perAud(exampIdx), perVis40(exampIdx), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, mean(perAud(allIdx)), mean(perVis40(allIdx)), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
-[~, pVal] = ttest(perAud, perVis40);
-pVal = round(pVal, 2, 'significant');
-title(['n=' num2str(sum(allIdx)) '   P<' num2str(pVal)]);
+scatter(axH, perf.aud(~eIdx), perf.vis(~eIdx), 25, 'k', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, perf.aud(eIdx), perf.vis(eIdx), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, mean(perf.aud), mean(perf.vis), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
+[~, pVal] = ttest(perf.aud, perf.vis);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
 xlim([0.5 1]);
 ylim([0.5 1]);
 axis square; 
@@ -63,14 +63,14 @@ hold on
 plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
 box off;
 
-
-axesHandle = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg); hold on;
-scatter(axesHandle, perMul40(popIdx), perVis40(popIdx), 25, 'k', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, perMul40(exampIdx), perVis40(exampIdx), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, mean(perMul40(allIdx)), mean(perVis40(allIdx)), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
-[~, pVal] = ttest(perMul40, perVis40);
-pVal = round(pVal, 2, 'significant');
-title(['n=' num2str(sum(allIdx)) '   P<' num2str(pVal)]);
+%%
+axH = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg); hold on;
+scatter(axH, perf.mul(~eIdx), perf.vis(~eIdx), 25, 'k', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, perf.mul(eIdx), perf.vis(eIdx), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, mean(perf.mul), mean(perf.vis), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
+[~, pVal] = ttest(perf.mul, perf.vis);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
 xlim([0.5 1]);
 ylim([0.5 1]);
 axis square; 
@@ -78,63 +78,47 @@ hold on
 plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
 box off;
 
-
-axesHandle = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg); hold on;
-histogram(cell2mat(timeToThreshMove),100, 'FaceColor', 'k', 'EdgeColor', 'none', 'FaceAlpha', 1);
+%%
+axH = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg); hold on;
+histogram(axH, cell2mat(allRTs),100, 'FaceColor', 'k', 'EdgeColor', 'none', 'FaceAlpha', 1);
 xlim([0 1.5]);
 axis square; 
 box off;
-
-axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); hold on;
-scatter(axesHandle, threshTimeAV(popIdx,1), threshTimeAV(popIdx,2), 25, 'k', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, threshTimeAV(exampIdx, 1), threshTimeAV(exampIdx, 2), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, mean(threshTimeAV(allIdx, 1)), mean(threshTimeAV(allIdx, 2)), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
-[~, pVal] = ttest(threshTimeAV(allIdx,1), threshTimeAV(allIdx,2));
-pVal = round(pVal, 2, 'significant');
-title(['n=' num2str(sum(allIdx)) '   P<' num2str(pVal)]);
+%%
+axH = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); hold on;
+scatter(axH, reac.aud(~eIdx,1), reac.vis(~eIdx), 25, 'k', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, reac.aud(eIdx, 1), reac.vis(eIdx), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, mean(reac.aud), mean(reac.vis), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
+[~, pVal] = ttest(reac.aud, reac.vis);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
 axis square; 
-xlim([0.2 0.4])
-ylim([0.2 0.4])
+xlim([0.1 0.35])
+ylim([0.1 0.35])
 plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
 box off;
 
+%%
 
-axesHandle = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); hold on;
-scatter(axesHandle, threshTimeCohCon(popIdx,1), threshTimeCohCon(popIdx,2), 25, 'k', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, threshTimeCohCon(exampIdx, 1), threshTimeCohCon(exampIdx, 2), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, mean(threshTimeCohCon(allIdx, 1)), mean(threshTimeCohCon(allIdx, 2)), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
-[~, pVal] = ttest(threshTimeCohCon(allIdx,1), threshTimeCohCon(allIdx,2));
-pVal = round(pVal, 2, 'significant');
-title(['n=' num2str(sum(allIdx)) '   P<' num2str(pVal)]);
+axH = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); hold on;
+cellfun(@(x,y) plot(x,[y, y], 'k'), num2cell([reac.coh reac.con],2), num2cell(reac.vis));
+plot(mean([reac.coh reac.con]), mean(reac.vis).*[1 1], 'k')
+
+scatter(axH, reac.coh(~eIdx,1), reac.vis(~eIdx),25, 'k', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, reac.con(~eIdx), reac.vis(~eIdx), 25, 'w', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, reac.coh(eIdx), reac.vis(eIdx), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, reac.con(eIdx), reac.vis(eIdx), 50, 'w', 's', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, mean(reac.coh), mean(reac.vis), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
+scatter(axH, mean(reac.con), mean(reac.vis), 25, 'w', '^', 'filled', 'MarkerEdgeColor', 'k');
+
+
+[~, pVal] = ttest(reac.coh, reac.con);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
 axis square; 
 hold on
-xlim([0.2 0.4])
-ylim([0.2 0.4])
-plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
-box off;
-
-
-axesHandle = plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg); hold on;
-cellfun(@(x,y) plot(x,[y, y], 'k'), num2cell(threshTimeCohCon(popIdx,:),2), num2cell(threshTimeAV(popIdx,2)));
-scatter(axesHandle, threshTimeCohCon(popIdx,1),  threshTimeAV(popIdx,2),25, 'k', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, threshTimeCohCon(popIdx,2),threshTimeAV(popIdx,2), 25, 'w', 'filled', 'MarkerEdgeColor', 'k');
-
-plot(threshTimeCohCon(exampIdx, :), threshTimeAV(exampIdx, 2)*[1 1], 'k')
-plot(mean(threshTimeCohCon(allIdx, :)), mean(threshTimeAV(allIdx, 2))*[1 1], 'k')
-scatter(axesHandle, threshTimeCohCon(exampIdx, 1), threshTimeAV(exampIdx, 2), 50, 'k', 's', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, mean(threshTimeCohCon(allIdx, 1)), mean(threshTimeAV(allIdx, 2)), 25, 'k', '^', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, threshTimeCohCon(exampIdx, 2), threshTimeAV(exampIdx, 2), 50, 'w', 's', 'filled', 'MarkerEdgeColor', 'k');
-scatter(axesHandle, mean(threshTimeCohCon(allIdx, 2)), mean(threshTimeAV(allIdx, 2)), 25, 'w', '^', 'filled', 'MarkerEdgeColor', 'k');
-
-
-
-[~, pVal] = ttest(threshTimeCohCon(allIdx,1), threshTimeCohCon(allIdx,2));
-pVal = round(pVal, 2, 'significant');
-title(['n=' num2str(sum(allIdx)) '   P<' num2str(pVal)]);
-axis square; 
-hold on
-xlim([0.2 0.4])
-ylim([0.2 0.4])
+xlim([0.1 0.35])
+ylim([0.1 0.35])
 plot([min(xlim) max(xlim)], [min(ylim) max(ylim)], '--k', 'linewidth', 2);
 box off;
 

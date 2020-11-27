@@ -13,9 +13,7 @@ axesOpt.gapBetweenAxes = [100 60];
 axesOpt.numOfRows = min(length(obj.blks), 4);
 axesOpt.figureHWRatio = 1.1;
 if ~onlyPlt; obj.glmFit = cell(length(obj.blks),1); end
-for i  = 1:length(obj.blks)
-
-    
+for i  = 1:length(obj.blks)   
     if ~onlyPlt
         normBlock = spatialAnalysis.getBlockType(obj.blks(i),'norm');
         normBlock = prc.filtBlock(normBlock,~isinf(normBlock.tri.stim.audInitialAzimuth));
@@ -55,12 +53,12 @@ for i  = 1:length(obj.blks)
     
     visDiff = normBlock.tri.stim.visDiff;
     audDiff = normBlock.tri.stim.audDiff;
-    responseMade = normBlock.tri.outcome.responseMade;
+    responseCalc = normBlock.tri.outcome.responseCalc;
     [visGrid, audGrid] = meshgrid(unique(visDiff),unique(audDiff));
     maxContrast = max(abs(visGrid(1,:)));
-    fracRightTurns = arrayfun(@(x,y) mean(responseMade(ismember([visDiff,audDiff],[x,y],'rows'))==2), visGrid, audGrid);
+    fracRightTurns = arrayfun(@(x,y) mean(responseCalc(ismember([visDiff,audDiff],[x,y],'rows'))==2), visGrid, audGrid);
     
-    visValues = abs(visGrid(1,:)).^contrastPower.*sign(visGrid(1,:))./maxContrast;
+    visValues = abs(visGrid(1,:)).^contrastPower.*sign(visGrid(1,:))./(maxContrast.^contrastPower);
     if strcmp(plotType, 'log')
         fracRightTurns = log(fracRightTurns./(1-fracRightTurns));
     end
@@ -76,6 +74,7 @@ for i  = 1:length(obj.blks)
     
     box off;
     set(gca, 'xTick', (-1):(1/4):1, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
+    %%
     if ~useCurrentAxes; title(obj.blks(i).exp.subject{1}); end
     xL = xlim; hold on; plot(xL,[midPoint midPoint], '--k', 'linewidth', 1.5);
     yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);

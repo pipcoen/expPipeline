@@ -23,6 +23,7 @@ if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 
+if ~zipComp; return; end
 %If running on Pip's lab computer, sync the processed data in dropbox with his shared folder on the server.
 if zipComp; fprintf('Running on Zip so will sync local folder and server... \n');
     prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 2);

@@ -1,9 +1,36 @@
-function meanBehavior(behBlks, axHand)
+
+function meanBehavior(behBlks)
 %% This function plots the data panels for figure one of the ms
 if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'behavior', 0, 1); end
+blks2Use = behBlks.blks;
+if length(blks2Use) == 21; blks2Use(5:8) = []; end
+mTri = 1;
+nMice = length(blks2Use);
+[rTurns, nTrials, reacT, reacTSE, rTurnsSE] = deal(nan*ones(3, 9, nMice));
+visRef = [-1*[0.8, 0.4, 0.2, 0.1] 0 0.1, 0.2, 0.4, 0.8];
+eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, blks2Use, 'uni', 0), 'PC022');
+for i = 1:nMice
+    nBlk = spatialAnalysis.getBlockType(blks2Use(i), 'norm');
+    nBlk = prc.filtBlock(nBlk, nBlk.exp.numOfTrials > mTri);
+    nBlk = prc.filtBlock(nBlk, ismember(nBlk.tri.stim.visDiff, visRef));
+    
+    keepIdx = ismember(nBlk.exp.conditionParametersAV{1}(:,2), visRef);
+    nBlk.exp.conditionParametersAV = cellfun(@(x) x(keepIdx,:), nBlk.exp.conditionParametersAV, 'uni', 0);
+    nBlk.exp.conditionLabels = cellfun(@(x) x(keepIdx,:), nBlk.exp.conditionLabels, 'uni', 0);
+    grds = prc.getGridsFromBlock(nBlk);
+    
+    rTurns(:,:,i) = grds.fracRightTurns;
+    reacT(:,:,i) = grds.reactionTime;
+    nTrials(:,:,i) = grds.numTrials;
+    reacTSE(:,:,i) = grds.reactionTimeSE;
+    rTurnsSE(:,:,i) = grds.fracRightTurnsSE;
+end
+fprintf('Example mouse trials: %d\n', (sum(nansum(nTrials(:,:,eIdx)))));
+fprintf('Total trials: %d\n', (nansum(nTrials(:))));
 
-%INPUTS(default values)
-%specificPanels('fullFigure')---A string which can be used to specifiy specific panels to be plotted if you don't want to plot the whole figure.
+
+
+%%
 figure;
 axHeight = 250;
 axWidth = 250;
@@ -17,119 +44,41 @@ botTopMarg = [40, 40]/figHeight;
 lftRgtMarg = [40, 40]/figWidth;
 set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
 
-
 %%
-mLim = 0.15;
-for i = 1:length(behBlks.blks); if strcmp(behBlks.blks(i).exp.subject{1}, 'PC022'); exampleIdx = i; end; end
-nBlk = spatialAnalysis.getBlockType(behBlks.blks(exampleIdx), 'norm');
-
-nBlk = prc.filtBlock(nBlk, nBlk.tri.outcome.timeDirChoiceInit(:,1) < 0.5);
-moveDiff = nBlk.tri.outcome.timeDirChoiceInit(:,1)-nBlk.tri.outcome.timeDirFirstMove(:,1);
-nBlk = prc.filtBlock(nBlk, moveDiff == 0);
-
-grds = prc.getGridsFromBlock(nBlk);
-
-axesHandle = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg);
-cla; hold on
+axesHandle = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg); cla;
 xlim([-80 80])
 set(gca, 'XTick', [-80 0 80]);
-meanData = grds.fracRightTurns;
-lowBound = grds.fracRightTurnsLowBound;
-upBound = grds.fracRightTurnsHighBound;
-
-plotData = cat(3, meanData, lowBound, upBound);
+plotData = cat(3, rTurns(:,:,eIdx), rTurns(:,:,eIdx)-rTurnsSE(:,:,eIdx), rTurns(:,:,eIdx)+rTurnsSE(:,:,eIdx));
 plt.rowsOfGrid(grds.visValues(1,:)*100, plotData, plt.selectRedBlueColors(grds.audValues(:,1)));
 axis square
 
-%%
-axesHandle = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg);
-cla;
+axesHandle = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg);cla;
+ylim([150 300])
 xlim([-80 80])
 set(gca, 'XTick', [-80 0 80]);
-meanData = grds.timeToChoiceInit;
-lowBound = meanData + grds.timeChoiceCrossSE;
-upBound = meanData - grds.timeChoiceCrossSE;
-plotData = cat(3, meanData, lowBound, upBound);
+plotData = cat(3, reacT(:,:,eIdx), reacT(:,:,eIdx)-reacTSE(:,:,eIdx), reacT(:,:,eIdx)+reacTSE(:,:,eIdx));
 plt.rowsOfGrid(grds.visValues(1,:)*100, plotData*1000, plt.selectRedBlueColors(grds.audValues(:,1)));
 axis square
-
 %%
-numMice = length(behBlks.blks);
-allParametersAV = cell2mat(arrayfun(@(x) x.exp.conditionParametersAV{1}, behBlks.blks, 'uni', 0));
-[uniParametersAV, ~, rowIdx] = unique(allParametersAV, 'rows');
-condFreq = histcounts(rowIdx,1:max(rowIdx)+1)';
-cond2Use = uniParametersAV(condFreq>=15,:);
-
-%%
-[visGrid, audGrid] = meshgrid(unique(cond2Use(:,2)),unique(cond2Use(:,1)));
-condNoNan = double(arrayfun(@(x,y) ismember([x,y], cond2Use, 'rows'),audGrid,visGrid));
-condNoNan(condNoNan==0) = nan;
-[fracRightTurns, numTrials, timeToChoiceInit, firstMoveTime] = deal(nan*ones([size(visGrid), numMice]));
-
-for i = 1:numMice
-    nBlk = spatialAnalysis.getBlockType(behBlks.blks(i), 'norm');
-    nBlk = prc.filtBlock(nBlk, nBlk.tri.outcome.timeDirChoiceInit(:,1) < 0.5);
-
-    grds = prc.getGridsFromBlock(nBlk);
-    fracRightTurns(:,:,i) = arrayfun(@(x, y) max([nan grds.fracRightTurns(grds.visValues==x & grds.audValues==y)]),visGrid,audGrid).*condNoNan;
-    timeToChoiceInit(:,:,i) = arrayfun(@(x,y) max([nan grds.timeToChoiceInit(grds.visValues==x & grds.audValues==y)]),visGrid,audGrid)*1e3.*condNoNan;
-    firstMoveTime(:,:,i) = arrayfun(@(x,y) max([nan grds.timeToFirstMove(grds.visValues==x & grds.audValues==y)]),visGrid,audGrid)*1e3.*condNoNan;
-    numTrials(:,:,i) = arrayfun(@(x,y) max([nan grds.numTrials(grds.visValues==x & grds.audValues==y)]),visGrid,audGrid).*condNoNan;
-end
-disp(nansum(numTrials(:)));
-%%
-axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg);
-hold on
+axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); cla;
 xlim([-80 80])
 set(gca, 'XTick', [-80 0 80]);
-
-meanData = nanmean(fracRightTurns,3);
-stdData = nanstd(fracRightTurns,[],3);
-numMicePerCond = sum(~isnan(fracRightTurns),3);
-
-lowBound = meanData-stdData./sqrt(numMicePerCond);
-upBound = meanData+stdData./sqrt(numMicePerCond);
-
-plotData = cat(3, meanData, lowBound, upBound);
-plt.rowsOfGrid(visGrid(1,:)*100, plotData, plt.selectRedBlueColors(audGrid(:,1)));
+meanData = mean(rTurns,3);
+seData = std(rTurns,[],3)./sqrt(nMice);
+plotData = cat(3, meanData, meanData-seData, meanData+seData);
+plt.rowsOfGrid(visRef(1,:)*100, plotData, plt.selectRedBlueColors([-60 0 60]));
 axis square
 %%
-axesHandle = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg);
-cla;
-hold on
-ylim([170 230])
+axesHandle = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); cla
+ylim([180 260])
 xlim([-80 80])
 set(gca, 'XTick', [-80 0 80]);
-
-meanData = nanmean(timeToChoiceInit,3);
-stdData = nanstd(timeToChoiceInit,[],3);
-numMicePerCond = sum(~isnan(timeToChoiceInit),3);
-
-lowBound = meanData-stdData./sqrt(numMicePerCond);
-upBound = meanData+stdData./sqrt(numMicePerCond);
-
-plotData = cat(3, meanData, lowBound, upBound);
-plt.rowsOfGrid(visGrid(1,:)*100, plotData, plt.selectRedBlueColors(audGrid(:,1)));
+meanData = mean(reacT,3);
+seData = std(reacT,[],3)./sqrt(nMice);
+plotData = cat(3, meanData, meanData-seData, meanData+seData);
+plt.rowsOfGrid(visRef(1,:)*100, plotData*1000, plt.selectRedBlueColors([-60 0 60]));
 axis square
 
-
-%%
-axesHandle = plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg);
-hold on
-ylim([120 180])
-xlim([-80 80])
-set(gca, 'XTick', [-80 0 80]);
-
-meanData = nanmean(firstMoveTime,3);
-stdData = nanstd(firstMoveTime,[],3);
-numMicePerCond = sum(~isnan(firstMoveTime),3);
-
-lowBound = meanData-stdData./sqrt(numMicePerCond);
-upBound = meanData+stdData./sqrt(numMicePerCond);
-
-plotData = cat(3, meanData, lowBound, upBound);
-plt.rowsOfGrid(visGrid(1,:)*100, plotData, plt.selectRedBlueColors(audGrid(:,1)));
-axis square
-%%%%%%%%
-% export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_meanBehavior', '-pdf', '-painters');
+%% %%%%%%
+export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_meanBehavior', '-pdf', '-painters');
 end
