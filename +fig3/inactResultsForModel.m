@@ -1,5 +1,5 @@
 function inactResultsForModel
-load('fig3bModelInactivationResults', 'modelInactivationResults')
+load('fig3eInactResultsForModel', 'inactResultsForModel')
 figure;
 axesOpt.btlrMargins =  [10 30 10 10];
 axesOpt.gapBetweenAxes = [10 0];
@@ -8,11 +8,11 @@ axesOpt.numOfRows = 1;
 axesOpt.numOfCols = 6;
 axesOpt.totalNumOfAxes = 6;
 
-normEstRepeats = modelInactivationResults.normEstRepeats;
-deltaParams = modelInactivationResults.deltaParams;
-contParams = modelInactivationResults.contParams;
+normEstRepeats = inactResultsForModel.normEstRepeats;
+deltaParams = inactResultsForModel.deltaParams;
+contParams = inactResultsForModel.contParams;
 prmLabels = ({'Bias'; 'vIpsi'; 'vContra'; 'y'; 'aIpsi'; 'aContra'});
-for i = find(modelInactivationResults.freeP)
+for i = find(inactResultsForModel.freeP)
     nShuffles = size(deltaParams{1},1) - normEstRepeats;
     contParams(cellfun(@isempty, contParams)) = deal({nan*ones(max(max(cellfun(@length, contParams))),6)});
     contData = cellfun(@(x) nanmean(x(1:normEstRepeats,i)),deltaParams);
@@ -25,7 +25,7 @@ for i = find(modelInactivationResults.freeP)
     scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, abs(contData), sortedData,'uni', 0));
     scanPlot.colorBarLimits = [-10 10];
     scanPlot.sigLevels = [0.01; 0.001; 0.0001];
-    scanPlot.gridXY = modelInactivationResults.gridXY;
+    scanPlot.gridXY = inactResultsForModel.gridXY;
     plt.scanningBrainEffects(scanPlot);
 end
 

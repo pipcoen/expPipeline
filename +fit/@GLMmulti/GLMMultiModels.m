@@ -18,7 +18,7 @@ mkPrm = @(allPrms, idx) (allPrms(2,idx)*allPrms(3,idx)+allPrms(1,idx));
 
 modChoose = lower(obj.modelString);
 switch modChoose
-    case lower({'biasOnly'; 'visOnly'; 'audOnly'; 'simpLog'; 'simpLogSplitV'; 'simpLogSplitA'; 'simpLogSplitVSplitA'})
+    case lower({'biasOnly'; 'visOnly'; 'audOnly'; 'simpLog'; 'simpLogSplitV'; 'simpLogSplitA'; 'simpLogSplitVSplitA'; 'simpLogSplitVSplitAUnisensory'})
         if contains(modChoose, 'biasonly'); notBOnly = 0; else; notBOnly = 1; end
         if contains(modChoose, 'visonly'); notVOnly = 0; else; notVOnly = 1; end
         if contains(modChoose, 'audonly'); notAOnly = 0; else; notAOnly = 1; end

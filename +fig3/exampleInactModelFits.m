@@ -64,10 +64,10 @@ for j = 1:2
         xlim([-1 1])
         midPoint = 0.5;
         if j == 2
-            plotData = log(plotData./(1-plotData));
+            plotData = log10(plotData./(1-plotData));
             contrastPower = mOpt.contParams(4);
-            fracRightTurns = log(fracRightTurns./(1-fracRightTurns));
-            ylim([-5 5])
+            fracRightTurns = log10(fracRightTurns./(1-fracRightTurns));
+            ylim([-2.2 2.2])
             xlim([-1 1])
             midPoint = 0;
         end
@@ -93,22 +93,6 @@ for j = 1:2
         xL = xlim; hold on; plot(xL,[midPoint midPoint], '--k', 'linewidth', 1.5);
         yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
         
-        %     currAxPos = get(gca, 'position');
-        %     axInset = axes;
-        %     set(gca, 'position', [currAxPos(1)+currAxPos(3)-0.06, currAxPos(2:end).*[1.5 0.25 0.25]])
-        %
-        %     if i == 1
-        %         X = categorical({'b'; 'VI'; 'VC'; 'Y'; 'AI'; 'AC'});
-        %         h = bar(X,glm2Plot.prmFits);
-        %     elseif i == 2
-        %         X = categorical({'b'; 'VI'; 'VC'; 'AI'; 'AC'});
-        %         h = bar(X,glm2Plot.prmFits(mOpt.freeP), 'stacked');
-        %     elseif i == 3
-        %         X = categorical({'b'; 'VI'; 'VC'; 'AI'; 'AC'});
-        %         h = bar(X,glm2Plot.prmFits([1,2,3,5,6]));
-        %     end
-        %     box off;
-        %     set(h, 'EdgeColor', 'none');
     end
     
     %"contData" is the result from the "normEstRepeats" loops, and "shuffleData" is from the shuffled loops. We then sort these shuffled loops and

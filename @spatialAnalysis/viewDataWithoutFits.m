@@ -17,25 +17,28 @@ axesOpt.axesSize = [400 450];
 allR2 = [];
 for i  = 1:length(obj.blks)
     blk = spatialAnalysis.getBlockType(obj.blks(i),'norm',1);
+    blk = prc.filtBlock(blk, blk.tri.stim.audAmplitude~=0);
     plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
     obj.hand.axes = plt.getAxes(axesOpt, i);
     audValues = unique(blk.exp.conditionParametersAV{1}(:,1));
     visValues = unique(blk.exp.conditionParametersAV{1}(:,2));
     
-    grids = prc.getGridsFromBlock(blk);
+    grds = prc.getGridsFromBlock(blk);
     switch plotType(1:3)
         case 'rea'
-            gridData = prc.makeGrid(blk, round(blk.tri.outcome.reactionTime*1e3), @nanmedian, [], 1);
-            gridData = nanmean(gridData,3);
-            plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
+            grds.reactionTimeComb(all(isnan(grds.reactionTime),2),:) = [];
+            colors =  plt.selectRedBlueColors(grds.audValues(~isinf(grds.audValues(:,1)),1));
+            plt.rowsOfGrid(grds.visValues(1,:)*100, grds.reactionTimeComb, colors);
         case 'ken'
             blk = prc.getKennethResopnseFromBlock(blk);
             gridData = prc.makeGrid(blk, round(blk.tri.outcome.timeToKenMove*1e3), @nanmedian, [], 1);
             gridData = nanmean(gridData,3);
             plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
         case 'res'
-            gridData = prc.makeGrid(blk, blk.tri.outcome.responseCalc==2, @mean, 1);
-            plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
+%             gridData = prc.makeGrid(blk, blk.tri.outcome.responseCalc==2, @mean, 1);
+            colors =  plt.selectRedBlueColors(grds.audValues(~isinf(grds.audValues(:,1)),1));
+            plt.rowsOfGrid(grds.visValues(1,:)*100, grds.fracRightTurns(1:3,:), colors);
+%             plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
             ylim([0 1]);
             xL = xlim; hold on; plot(xL,[0.5 0.5], '--k', 'linewidth', 1.5);
             maxContrast = max(abs(blk.tri.stim.visDiff))*100;

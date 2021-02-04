@@ -1,0 +1,133 @@
+function scatterAltPlots(behBlksOrig, vis2Use)
+%Load the block if it doesn't exist. Remove mice that have different parameter values (4 mice of 21)
+if ~exist('behBlksOrig', 'var') || isempty(behBlksOrig); behBlksOrig = spatialAnalysis('all', 'behavior', 0, 1); end
+if ~exist('vis2Use', 'var'); vis2Use = 0.4; end %We use 0.4/40% contrast for comparisons
+
+blks2Use = behBlksOrig.blks;
+if length(blks2Use) == 21; blks2Use(5:8) = []; end
+
+%pre-assign performance and reaction structures with nans
+[perf.vis, perf.aud, perf.mul] = deal(nan*ones(length(blks2Use), 1));
+[reac.vis, reac.aud, reac.coh, reac.con] = deal(perf.vis);
+allRTs = cell(length(blks2Use), 1);
+mTri = 1; %Can be uses to set a minimum number of trials per experiment
+
+eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, blks2Use, 'uni', 0), 'PC022');
+nMice = length(blks2Use);
+for i = 1:nMice
+    %"normalize" block--removes timeouts, laser, and nan-response trials
+    nBlk = spatialAnalysis.getBlockType(blks2Use(i), 'norm');
+    nBlk = prc.filtBlock(nBlk, nBlk.exp.numOfTrials > mTri);    
+    grds = prc.getGridsFromBlock(nBlk);
+    
+    perf.aud(i) = grds.performance(grds.visValues == 0 & grds.audValues > 0);
+    perf.vis(i) = grds.performance(grds.visValues == vis2Use & grds.audValues == 0);
+    perf.mul(i) = grds.performance(grds.visValues == vis2Use & grds.audValues > 0);
+    
+    reac.aud(i) = mean(grds.reactionTime(grds.visValues == 0 & grds.audValues ~= 0));
+    reac.vis(i) = mean(grds.reactionTime(abs(grds.visValues) == vis2Use & grds.audValues == 0));
+    allRTs{i,1} = nBlk.tri.outcome.reactionTime;
+    
+    cohIdx = grds.visValues.*grds.audValues > 0 &~isnan(grds.reactionTime) & abs(grds.visValues) == vis2Use;
+    conIdx = grds.visValues.*grds.audValues < 0 &~isnan(grds.reactionTime) & abs(grds.visValues) == vis2Use;
+    reac.coh(i) = mean(grds.reactionTime(cohIdx));
+    reac.con(i) = mean(grds.reactionTime(conIdx));
+end
+if any(sum(isnan([perf.vis, perf.aud, perf.mul, reac.vis, reac.aud, reac.coh, reac.con]))) && vis2Use~=0.8
+    error('Why are there nans???'); 
+end
+
+%%
+figure;
+axHeight = 250;
+axWidth = 250;
+nCols = 3;
+nRows = 2;
+figHeight = nRows*axHeight;
+figWidth = nCols*axWidth;
+
+axesGap = [50/figHeight 50/figWidth];
+botTopMarg = [40, 40]/figHeight;
+lftRgtMarg = [40, 40]/figWidth;
+set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
+
+axH = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg);
+plotAltScatter(perf.aud, perf.vis, eIdx, axH)
+[~, pVal] = ttest(perf.vis, perf.aud);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
+ylim([0.5 1]);
+box off;
+
+%%
+axH = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg); hold on;
+plotAltScatter(perf.aud, perf.mul, eIdx, axH)
+[~, pVal] = ttest(perf.mul, perf.aud);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
+ylim([0.5 1]);
+box off;
+
+%%
+axH = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg); hold on;
+histogram(axH, cell2mat(allRTs),100, 'FaceColor', 'k', 'EdgeColor', 'none', 'FaceAlpha', 1);
+xlim([0 1.5]);
+title([num2str(round(mean(cell2mat(allRTs)>0.5)*1000)/10) '% of tri > 0.5s']);
+axis square; 
+box off;
+%%
+axH = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); hold on;
+plotAltScatter(reac.aud, reac.vis, eIdx, axH)
+[~, pVal] = ttest(reac.vis, reac.aud);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
+ylim([0.1 0.35])
+box off;
+
+%%
+axH = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); hold on;
+plotAltScatter(reac.aud, reac.coh, eIdx, axH)
+[~, pVal] = ttest(reac.aud, reac.coh);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
+ylim([0.1 0.35])
+box off;
+%%
+axH = plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg); hold on;
+plotAltScatter(reac.aud, reac.con, eIdx, axH)
+[~, pVal] = ttest(reac.aud, reac.con);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
+ylim([0.1 0.35])
+box off;
+
+%%
+axH = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg); hold on;
+plotAltScatter(reac.coh, reac.con, eIdx, axH)
+[~, pVal] = ttest(reac.coh, reac.con);
+pVal = round(pVal, 4, 'significant');
+title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
+ylim([0.1 0.35])
+box off;
+
+%%
+export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_scatterAltPlots_AudVer', '-pdf', '-painters');
+end
+
+
+function plotAltScatter(yDat1, yDat2, eIdx, axH)
+yDat = [[yDat1(~eIdx); yDat1(eIdx); mean(yDat1)] [yDat2(~eIdx); yDat2(eIdx); mean(yDat2)]];
+xDat = [yDat(:,1)*0+0.5, yDat(:,1)*0+1.5];
+
+set(axH, 'position', get(axH, 'position').*[1 1 0.5 1]);
+hold on
+cellfun(@(x,y) plot(x,y, 'k','HandleVisibility','off'), num2cell(xDat,2), num2cell(yDat,2));
+
+xDatN = xDat(1:end-2,:);
+yDatN = yDat(1:end-2,:);
+plot(axH, xDatN, yDatN,'ok', 'MarkerEdgeColor', 'k','MarkerFaceColor', 'k', 'MarkerSize',5);
+plot(axH, xDat(end-1,:), yDat(end-1,:),'sc', 'MarkerEdgeColor', 'c','MarkerFaceColor', 'c', 'MarkerSize',6);
+plot(axH, xDat(end,:), yDat(end,:),'^c', 'MarkerEdgeColor', 'c','MarkerFaceColor', 'c', 'MarkerSize',6);
+
+xlim([0 2]);
+end

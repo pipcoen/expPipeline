@@ -26,4 +26,18 @@ grids.reactionTimeSE = nanstd(grids.reactionTime,[],3)./sqrt(size(grids.reaction
 grids.reactionTime = nanmean(grids.reactionTime, 3);
 grids.reactionTimeComb = prc.makeGrid(blk, outC.reactionTime, @nanmedian);
 grids.timeToResponseThreshComb = prc.makeGrid(blk, outC.timeToResponseThresh, @nanmedian);
+
+if isfield(blk.tri, 'timeline') && all(strcmp('ephys', blk.exp.expType))
+    outC = blk.tri.timeline;
+    minStimTime = min([outC.audStimPeriodOnOff(:,1), outC.visStimPeriodOnOff(:,1)], [], 2);
+    outC.reactionTime = outC.choiceInitTimeDir(:,1)-minStimTime;
+    outC.timeToResponseThresh = outC.choiceThreshTimeDir(:,1)-minStimTime;
+    
+    grids.reactionTimeTL = prc.makeGrid(blk, outC.reactionTime, @nanmedian, [], 1);
+    grids.reactionTimeTLSE = nanstd(grids.reactionTime,[],3)./sqrt(size(grids.reactionTime,3));
+    grids.reactionTimeTL = nanmean(grids.reactionTime, 3);
+    grids.reactionTimeCombTL = prc.makeGrid(blk, outC.reactionTime, @nanmedian);
+    grids.timeToResponseThreshCombTL = prc.makeGrid(blk, outC.timeToResponseThresh, @nanmedian);
+end
+
 end

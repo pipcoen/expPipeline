@@ -85,8 +85,8 @@ if ~isfield(mOpt, 'contParams')
 end
 
 %Removing these excess fields makes "filtBlock" run significantly faster in the subsequent loop
-uniBlk.tri = rmfield(uniBlk.tri, {'trialType', 'timings'});
-contBlk.tri = rmfield(contBlk.tri, {'trialType', 'timings'});
+uniBlk.tri = rmfield(uniBlk.tri, {'timings'});
+contBlk.tri = rmfield(contBlk.tri, {'timings'});
 uniBlk.tri.inactivation = rmfield(uniBlk.tri.inactivation, {'laserPower', 'galvoType', 'laserOnsetDelay', 'laserDuration'});
 contBlk.tri.inactivation = rmfield(contBlk.tri.inactivation, {'laserPower', 'galvoType', 'laserOnsetDelay', 'laserDuration'});
 

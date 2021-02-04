@@ -1,6 +1,6 @@
 function inactResultsForChoice
 % load('fig3aInactResultsForChoice', 'inactResultsForChoice')
-load('fig3fInactResultsForRT', 'inactResultsForChoice')
+load('fig3aInactResultsForChoice', 'inactResultsForChoice')
 figure;
 subsets = inactResultsForChoice.subsets;
 nMice = size(inactResultsForChoice.laserOnData,2);
@@ -31,7 +31,7 @@ for i = 1:length(subsets)
     plt.getAxes(axesOpt, ((i-1)*nMice)+j);
     scanPlot.title = subsets{i};
     scanPlot.gridXY = inactResultsForChoice.gridXY{1};
-    scanPlot.colorBarLimits = [-60 60];
+    scanPlot.colorBarLimits = [-0.6 0.6];
     plt.scanningBrainEffects(scanPlot);
     end
 end

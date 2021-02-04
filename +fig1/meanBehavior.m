@@ -1,14 +1,15 @@
-
 function meanBehavior(behBlks)
 %% This function plots the data panels for figure one of the ms
-if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'behavior', 0, 1); end
+if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'm2ephysmod', 0, 1); end
 blks2Use = behBlks.blks;
 if length(blks2Use) == 21; blks2Use(5:8) = []; end
+if length(blks2Use) == 20; blks2Use(5:8) = []; end
 mTri = 1;
 nMice = length(blks2Use);
 [rTurns, nTrials, reacT, reacTSE, rTurnsSE] = deal(nan*ones(3, 9, nMice));
 visRef = [-1*[0.8, 0.4, 0.2, 0.1] 0 0.1, 0.2, 0.4, 0.8];
 eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, blks2Use, 'uni', 0), 'PC022');
+%%
 for i = 1:nMice
     nBlk = spatialAnalysis.getBlockType(blks2Use(i), 'norm');
     nBlk = prc.filtBlock(nBlk, nBlk.exp.numOfTrials > mTri);
@@ -80,5 +81,5 @@ plt.rowsOfGrid(visRef(1,:)*100, plotData*1000, plt.selectRedBlueColors([-60 0 60
 axis square
 
 %% %%%%%%
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_meanBehavior', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_meanBehavior', '-pdf', '-painters');
 end

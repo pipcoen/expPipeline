@@ -22,18 +22,28 @@ classdef GLMmulti < matlab.mixin.Copyable
             obj.blockData.tri.outcome.selectedTrials = ones(size(inputBlockData.tri.stim.audDiff,1),1);
             tab = tabulate(obj.blockData.tri.outcome.responseCalc)/100;
             obj.initGuess = sum(tab(:,3).*log2(tab(:,3)));
-            if exist('modelString', 'var'); obj.GLMMultiModels(modelString); end
+            if exist('modelString', 'var')
+                obj.GLMMultiModels(modelString); 
+            end
         end
         
         function fit(obj)
             %Non crossvalidated fitting
             if isempty(obj.modelString); error('Set model first'); end
             options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',2000, 'Display', 'none');
+            
+            mulIdx = obj.blockData.tri.trialType.coherent | obj.blockData.tri.trialType.conflict;
+            if ~strcmpi(obj.modelString, 'simpLogSplitVSplitAUnisensory'); mulIdx = mulIdx*0; end
+            backUpBlock = obj.blockData;
+            obj.blockData = prc.filtBlock(obj.blockData, ~mulIdx);
+            
             fittingObjective = @(b) (obj.calculateLogLik(b));
             [obj.prmFits,~,exitflag] = fmincon(fittingObjective, obj.prmInit, [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
             if ~any(exitflag == [1,2])
                 obj.prmFits = nan(1,length(obj.prmLabels));
             end
+            
+            obj.blockData = backUpBlock;
             obj.pHat = obj.calculatepHat(obj.prmFits);
             obj.logLik = obj.calculateLogLik(obj.prmFits);
         end
@@ -45,18 +55,23 @@ classdef GLMmulti < matlab.mixin.Copyable
             
             options = optimset('algorithm','interior-point','MaxFunEvals',100000,'MaxIter',2000, 'Display', 'none');
             cvObj = cvpartition(obj.blockData.tri.outcome.responseCalc,'KFold',nFolds);
+            mulIdx = obj.blockData.tri.trialType.coherent | obj.blockData.tri.trialType.conflict;
+            if ~strcmpi(obj.modelString, 'simpLogSplitVSplitAUnisensory'); mulIdx = mulIdx*0; end
+
             obj.prmFits = nan(cvObj.NumTestSets,length(obj.prmLabels));
             obj.pHat = [];
             obj.logLik = nan(cvObj.NumTestSets,1);
             for i = 1:cvObj.NumTestSets
-                cvTrainObj = copy(obj); cvTrainObj.blockData = prc.filtBlock(cvTrainObj.blockData, cvObj.training(i));
+                cvTrainObj = copy(obj); 
+                cvTrainObj.blockData = prc.filtBlock(cvTrainObj.blockData, cvObj.training(i) & ~mulIdx);
                 disp(['Model: ' obj.modelString '. Fold: ' num2str(i) '/' num2str(cvObj.NumTestSets)]);
                 
                 fittingObjective = @(b) (cvTrainObj.calculateLogLik(b));
                 [obj.prmFits(i,:),~,exitflag] = fmincon(fittingObjective, obj.prmInit(), [], [], [], [], obj.prmBounds(1,:), obj.prmBounds(2,:), [], options);
                 if ~any(exitflag == [1,2]); obj.prmFits(i,:) = nan(1,length(obj.prmLabels)); end
                 
-                cvTestObj = copy(obj); cvTestObj.blockData = prc.filtBlock(cvTestObj.blockData, cvObj.test(i));
+                cvTestObj = copy(obj); 
+                cvTestObj.blockData = prc.filtBlock(cvTestObj.blockData, cvObj.test(i));
                 pHatTested = cvTestObj.calculatepHat(obj.prmFits(i,:));
                 obj.pHat(cvObj.test(i)) = pHatTested(sub2ind(size(pHatTested),(1:size(pHatTested,1))', cvTestObj.blockData.tri.outcome.responseCalc));
                 obj.logLik(i) = -mean(log2(obj.pHat(cvObj.test(i))));
@@ -130,6 +145,7 @@ classdef GLMmulti < matlab.mixin.Copyable
             probRight = exp(logOdds)./(1+exp(logOdds));
             pHatCalculated = [1-probRight probRight];
         end
+        
         
         function logLik = calculateLogLik(obj,testParams)
             pHatCalculated = obj.calculatepHat(testParams);

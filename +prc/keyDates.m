@@ -1,3 +1,4 @@
+
 function dateRange = keyDates(subjectID, dataTag)
 %% A funciton to get the "key dates" for a mouse, based on a tag for the type of data requested.
 %NOTE: These are manually defined date ranges (by Pip) based on which mice were used for which experiments, and when they were used.
@@ -136,7 +137,18 @@ switch lower(dataTag{1})
             case 'PC043'; dateRange = {'2019-04-21:2019-05-06'};
             otherwise, dateRange = []; 
         end
-    
+        
+    case 'modbehaviour'
+        switch subjectID{1}
+            case 'PC043'; dateRange = {'2019-03-06:2019-04-30'};                            %No inactivation 
+            case 'PC045'; dateRange = {'2019-07-30:2019-08-26'};                            %No inactivation 
+            case 'PC046'; dateRange = {'2019-07-24:2019-08-26'};                            %No inactivation
+            case 'PC048'; dateRange = {'2019-09-09:2019-09-16'};                            %No inactivation
+            case 'PC050'; dateRange = {'2019-07-24:2019-09-09'};                            %No inactivation
+            otherwise, dateRange = [];
+        end
+        
+        
     case 'learning'
         %%NEED TO ADD ONE HERE FOR MICE THAT WERE ON THE FINAL LEARNING PIPELINE
         

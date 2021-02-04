@@ -1,3 +1,4 @@
+
 function x = multiSpaceWorld(x)
 %% A helper function for multisensoySpaceWorld experimental definition that produces standardised files with useful structures for further analysis.
 
@@ -183,28 +184,28 @@ reactBound = num2cell([stimOnsetIdx round((feedbackTimes(~timeOuts)+0.25)*sR)],2
 % wheelThresh = median(abs(rawWheel(round(feedbackTimes(~timeOuts)*sR))-rawWheel(round(closedLoopStart(~timeOuts)*sR))))*0.3;
 
 %%
-%Define a summation window (sumWin--51ms) and velocity threshhold. sR*3/sumWin means the wheel will need to move at least 3 "units" in 50ms for this
+%Define a summation window (smthW--51ms) and velocity threshhold. sR*3/smthW means the wheel will need to move at least 3 "units" in 50ms for this
 %to count as a movement initiation. Obviously, the physical distance of a "unit" depends on the rotary encoder. 3 seems to work well for 360 and 1024 
 %encoders (the only ones I have used). I don't know about 100 encoders. 
-sumWin = 51;
-velThresh  = sR*(decisionThreshold*0.01)/sumWin; 
+smthW = 51;
+velThresh = decisionThreshold*0.2; 
 
-%Get wheel velocity ("wheelVel") from the interpolated wheel, and then use "posVelScan" and "negVelScan" to detect continuous velocity for sumWin 
+%Get wheel velocity ("wheelVel") from the interpolated wheel, and then use "posVelScan" and "negVelScan" to detect continuous velocity for smthW 
 %movements in either direction. Note, here we use forward smoothing, so we are looking for times when the velocity initiates, and then continues for 
-%the duration of "sumWin". Also note, we introduce huge values whenever the wheel is moving in the opposite direction so that any "sumWin" including a
+%the duration of "smthW". Also note, we introduce huge values whenever the wheel is moving in the opposite direction so that any "smthW" including a
 %move in the opposite direction is eliminated from the scan. Times when the velocity is zero cannot be movement inititations either, so we multiply by
 %(wheelVel~=0)
-wheelVel = diff([rawWheel(1); rawWheel'])*sR;
-posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<0)*1e6, [ones(1,sumWin), zeros(1,sumWin-1),]./sumWin, 'same').*(wheelVel~=0);
-negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>0)*1e6, [ones(1,sumWin), zeros(1,sumWin-1),]./sumWin, 'same').*(wheelVel~=0);
+
+wheelVel = diff([rawWheel(1); rawWheel'])*sR; %In wheel ticks per second
+posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<0)*1e6, [ones(1,smthW), zeros(1,smthW-1),]./smthW, 'same').*(wheelVel~=0);
+negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>0)*1e6, [ones(1,smthW), zeros(1,smthW-1),]./smthW, 'same').*(wheelVel~=0);
 movingScan = smooth((posVelScan'>=velThresh) + (-1*negVelScan'>=velThresh),21);
 falseIdx = (movingScan(stimOnsetIdx)~=0); %don't want trials when mouse is moving at stim onset
 
+
 %Identify onsets in both directions that exceed "velThresh", sort them, and record their sign. Also, extract all times the mouse is "moving"
-
-
-tstWin = [zeros(1, sumWin-1), 1];
-velThreshPoints = [(strfind((posVelScan'>=velThresh), tstWin)+sumWin-2) -1*(strfind((-1*negVelScan'>=velThresh), tstWin)+sumWin-2)]';
+tstWin = [zeros(1, smthW-1), 1];
+velThreshPoints = [(strfind((posVelScan'>=velThresh), tstWin)+smthW-2) -1*(strfind((-1*negVelScan'>=velThresh), tstWin)+smthW-2)]';
 [~, srtIdx] = sort(abs(velThreshPoints));
 moveOnsetIdx = abs(velThreshPoints(srtIdx));
 moveOnsetSign = sign(velThreshPoints(srtIdx))';
@@ -216,7 +217,7 @@ badIdx = cellfun(@isempty, onsetsByTrial) | falseIdx | isnan(timeToThresh);
 onsetsByTrial(badIdx) = deal({[nan nan]});
 timeToThresh(badIdx) = nan;
 
-%%
+
 %"firstMoveTimes" are the first onsets occuring after stimOnsetIdx. Eliminate any that are longer than 1.5s, as these would be timeouts. Also, remove 
 %onsets when the mouse was aready moving at the time of the stimulus onset (impossible to get an accurate movement onset time in this case)
 moveOnsetsTimeDir = repmat({[nan, nan]}, length(feedbackValues),1);
@@ -239,6 +240,10 @@ if mean(responseCalc(~isnan(responseCalc)) == responseRecorded(~isnan(responseCa
     warning('Why are most of the movements not in the same direction as the response?!?');
     keyboard;
 end
+
+tIdx = ~isnan(reactionTime);
+tIdx = round((stimPeriodStart(tIdx)+reactionTime(tIdx))*sR);
+plot(wheelTime(tIdx), rawWheel(tIdx), '*');
 %%
 %allConditions is all the conditions the mouse actually performed, where conditions can be completely defined by audAmplitude, visContrast, and the
 %initial azimuth of aud and vis stimuli.

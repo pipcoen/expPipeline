@@ -15,12 +15,12 @@ axesOpt.figureHWRatio = 1.1;
 if ~onlyPlt; obj.glmFit = cell(length(obj.blks),1); end
 for i  = 1:length(obj.blks)   
     if ~onlyPlt
-        normBlock = spatialAnalysis.getBlockType(obj.blks(i),'norm');
-        normBlock = prc.filtBlock(normBlock,~isinf(normBlock.tri.stim.audInitialAzimuth));
-        disp(normBlock.tot.trials);
-        obj.glmFit{i} = fit.GLMmulti(normBlock, modelString);
+        normBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm');
+        normBlk = prc.filtBlock(normBlk,~isinf(normBlk.tri.stim.audInitialAzimuth));
+        disp(normBlk.tot.trials);
+        obj.glmFit{i} = fit.GLMmulti(normBlk, modelString);
     else
-        normBlock = obj.blks(i);
+        normBlk = obj.blks(i);
     end
     if useCurrentAxes; obj.hand.axes = gca; elseif ~noPlt; obj.hand.axes = plt.getAxes(axesOpt, i); end
     if ~onlyPlt
@@ -29,7 +29,7 @@ for i  = 1:length(obj.blks)
     end
     if noPlt; return; end
     
-    params2use = mean(obj.glmFit{i}.prmFits,1);
+    params2use = mean(obj.glmFit{i}.prmFits,1);   
     pHatCalculated = obj.glmFit{i}.calculatepHat(params2use,'eval');
     [grids.visValues, grids.audValues] = meshgrid(unique(obj.glmFit{i}.evalPoints(:,1)),unique(obj.glmFit{i}.evalPoints(:,2)));
     [~, gridIdx] = ismember(obj.glmFit{i}.evalPoints, [grids.visValues(:), grids.audValues(:)], 'rows');
@@ -40,9 +40,9 @@ for i  = 1:length(obj.blks)
     
     if strcmp(plotType, 'log')
         contrastPower  = params2use(strcmp(obj.glmFit{i}.prmLabels, 'N'));
-        plotData = log(plotData./(1-plotData));
+        plotData = log10(plotData./(1-plotData));
     else
-        contrastPower =1;
+        contrastPower = 1;
     end
     visValues = (abs(grids.visValues(1,:))).^contrastPower.*sign(grids.visValues(1,:));
     lineColors = plt.selectRedBlueColors(grids.audValues(:,1));
@@ -51,16 +51,16 @@ for i  = 1:length(obj.blks)
     plotOpt.lineStyle = 'none';
     plotOpt.Marker = '.';
     
-    visDiff = normBlock.tri.stim.visDiff;
-    audDiff = normBlock.tri.stim.audDiff;
-    responseCalc = normBlock.tri.outcome.responseCalc;
+    visDiff = normBlk.tri.stim.visDiff;
+    audDiff = normBlk.tri.stim.audDiff;
+    responseCalc = normBlk.tri.outcome.responseCalc;
     [visGrid, audGrid] = meshgrid(unique(visDiff),unique(audDiff));
     maxContrast = max(abs(visGrid(1,:)));
     fracRightTurns = arrayfun(@(x,y) mean(responseCalc(ismember([visDiff,audDiff],[x,y],'rows'))==2), visGrid, audGrid);
     
     visValues = abs(visGrid(1,:)).^contrastPower.*sign(visGrid(1,:))./(maxContrast.^contrastPower);
     if strcmp(plotType, 'log')
-        fracRightTurns = log(fracRightTurns./(1-fracRightTurns));
+        fracRightTurns = log10(fracRightTurns./(1-fracRightTurns));
     end
     plt.rowsOfGrid(visValues, fracRightTurns, lineColors, plotOpt);
     
@@ -68,16 +68,16 @@ for i  = 1:length(obj.blks)
     midPoint = 0.5;
     if strcmp(plotType, 'log')
         maxContrast = ((maxContrast*100).^contrastPower)/100;
-        ylim([-6 6])
+        ylim([-2.6 2.6])
         midPoint = 0;
     end
     
     box off;
     set(gca, 'xTick', (-1):(1/4):1, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
     %%
-    if ~useCurrentAxes; title(obj.blks(i).exp.subject{1}); end
+    title([obj.blks(i).exp.subject{1} '    n = ' num2str(normBlk.tot.trials)]);
     xL = xlim; hold on; plot(xL,[midPoint midPoint], '--k', 'linewidth', 1.5);
-    yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
+    yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);  
 end
 if ~useCurrentAxes
     figureSize = get(gcf, 'position');

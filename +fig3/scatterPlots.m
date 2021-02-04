@@ -34,7 +34,7 @@ for i = 1:nMice
             tBlk = prc.filtBlock(iBlk, (iBlk.tri.inactivation.laserType==0 | gIdx) & tTypeIdx{k});
             normBlk = prc.filtBlock(tBlk, tBlk.tri.inactivation.laserType==0);
             lasBlk = prc.filtBlock(tBlk, tBlk.tri.inactivation.laserType==1);
-            lasBlk = prc.filtBlock(lasBlk, lasBlk.tri.stim.visDiff<0 | (lasBlk.tri.stim.visDiff==0 &  lasBlk.tri.stim.audDiff<0));
+            lasBlk = prc.filtBlock(lasBlk, lasBlk.tri.stim.visDiff==-0.4 | (lasBlk.tri.stim.visDiff==0 &  lasBlk.tri.stim.audDiff<0));
             
             normGrds = prc.getGridsFromBlock(normBlk);
             lasGrds = prc.getGridsFromBlock(lasBlk);
@@ -84,5 +84,5 @@ for i = 1:2
     legend('boxoff')
 end
 %%
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\3_scatterPlots', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\3_scatterPlots', '-pdf', '-painters');
 end

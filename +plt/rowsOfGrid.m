@@ -2,7 +2,7 @@ function rowsOfGrid(xData, yData, lineColors, opt)
 
 numLines = size(yData,1);
 yData = sort(yData,3);
-if ~exist('lineColors', 'var') || isempty(lineColors); lineColors = repmat('k', numLines, 1); end
+if ~exist('lineColors', 'var') || isempty(lineColors); lineColors = repmat([0 0 0], numLines, 1); end
 
 if ~exist('opt', 'var'); opt = struct; end
 

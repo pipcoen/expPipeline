@@ -11,6 +11,7 @@ for i = 1:length(sStart.blks)
 end
 
 sStart.blks(end+1) = allBlks.blks;
+allBlks.blks.exp.subject{1} = 'Combined';
 if ~exist('models2fit', 'var'); models2fit = modelSet; end
 if ~exist('crossVal', 'var'); crossVal = 5; end
 if ~exist('maxAndMin', 'var'); maxAndMin = 1; end
