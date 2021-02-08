@@ -19,7 +19,7 @@ for i = 1:nMice
     nBlk = spatialAnalysis.getBlockType(blks2Use(i), 'norm');
     nBlk = prc.filtBlock(nBlk, nBlk.exp.numOfTrials > mTri);    
     grds = prc.getGridsFromBlock(nBlk);
-    
+     
     perf.aud(i) = grds.performance(grds.visValues == 0 & grds.audValues > 0);
     perf.vis(i) = grds.performance(grds.visValues == vis2Use & grds.audValues == 0);
     perf.mul(i) = grds.performance(grds.visValues == vis2Use & grds.audValues > 0);
@@ -36,7 +36,7 @@ end
 if any(sum(isnan([perf.vis, perf.aud, perf.mul, reac.vis, reac.aud, reac.coh, reac.con]))) && vis2Use~=0.8
     error('Why are there nans???'); 
 end
-
+reac.offset = mean([reac.aud reac.vis reac.coh reac.con],2);
 %%
 figure;
 axHeight = 250;
@@ -52,7 +52,7 @@ lftRgtMarg = [40, 40]/figWidth;
 set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
 
 axH = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg);
-plotAltScatter(perf.aud, perf.vis, eIdx, axH)
+plotAltScatter([perf.aud perf.vis perf.mul], perf.vis*0, eIdx, axH)
 [~, pVal] = ttest(perf.vis, perf.aud);
 pVal = round(pVal, 4, 'significant');
 title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
@@ -61,53 +61,11 @@ box off;
 
 %%
 axH = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg); hold on;
-plotAltScatter(perf.aud, perf.mul, eIdx, axH)
-[~, pVal] = ttest(perf.mul, perf.aud);
-pVal = round(pVal, 4, 'significant');
-title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
-ylim([0.5 1]);
-box off;
-
-%%
-axH = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg); hold on;
-histogram(axH, cell2mat(allRTs),100, 'FaceColor', 'k', 'EdgeColor', 'none', 'FaceAlpha', 1);
-xlim([0 1.5]);
-title([num2str(round(mean(cell2mat(allRTs)>0.5)*1000)/10) '% of tri > 0.5s']);
-axis square; 
-box off;
-%%
-axH = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); hold on;
-plotAltScatter(reac.aud, reac.vis, eIdx, axH)
+plotAltScatter([reac.aud, reac.vis reac.coh reac.con], reac.offset, eIdx, axH)
 [~, pVal] = ttest(reac.vis, reac.aud);
-pVal = round(pVal, 4, 'significant');
+pVal = round(pVal, 2, 'significant');
 title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
-ylim([0.1 0.35])
-box off;
-
-%%
-axH = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); hold on;
-plotAltScatter(reac.aud, reac.coh, eIdx, axH)
-[~, pVal] = ttest(reac.aud, reac.coh);
-pVal = round(pVal, 4, 'significant');
-title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
-ylim([0.1 0.35])
-box off;
-%%
-axH = plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg); hold on;
-plotAltScatter(reac.aud, reac.con, eIdx, axH)
-[~, pVal] = ttest(reac.aud, reac.con);
-pVal = round(pVal, 4, 'significant');
-title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
-ylim([0.1 0.35])
-box off;
-
-%%
-axH = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg); hold on;
-plotAltScatter(reac.coh, reac.con, eIdx, axH)
-[~, pVal] = ttest(reac.coh, reac.con);
-pVal = round(pVal, 4, 'significant');
-title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
-ylim([0.1 0.35])
+ylim([-0.05 0.05]);
 box off;
 
 %%
@@ -115,13 +73,17 @@ export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_scatterAltPlots_AudVer', 
 end
 
 
-function plotAltScatter(yDat1, yDat2, eIdx, axH)
-yDat = [[yDat1(~eIdx); yDat1(eIdx); mean(yDat1)] [yDat2(~eIdx); yDat2(eIdx); mean(yDat2)]];
-xDat = [yDat(:,1)*0+0.5, yDat(:,1)*0+1.5];
+function plotAltScatter(inDat, offset, eIdx, axH)
+nXPnts = size(inDat,2);
+inDat = inDat - repmat(offset, 1, nXPnts);
+yDat = cell2mat(arrayfun(@(x) [inDat(~eIdx,x); inDat(eIdx,x); mean(inDat(:,x))], 1:nXPnts, 'uni', 0));
+xDat = cell2mat(arrayfun(@(x) yDat(:,1)*0+x-0.5, 1:nXPnts, 'uni', 0));
 
-set(axH, 'position', get(axH, 'position').*[1 1 0.5 1]);
+set(axH, 'position', get(axH, 'position').*[1 1 (0.2*nXPnts) 1]);
 hold on
-cellfun(@(x,y) plot(x,y, 'k','HandleVisibility','off'), num2cell(xDat,2), num2cell(yDat,2));
+for i = 1:nXPnts-1
+    cellfun(@(x,y) plot(x,y, 'k','HandleVisibility','off'), num2cell(xDat(:,i:i+1),2), num2cell(yDat(:,i:i+1),2));
+end
 
 xDatN = xDat(1:end-2,:);
 yDatN = yDat(1:end-2,:);
@@ -129,5 +91,5 @@ plot(axH, xDatN, yDatN,'ok', 'MarkerEdgeColor', 'k','MarkerFaceColor', 'k', 'Mar
 plot(axH, xDat(end-1,:), yDat(end-1,:),'sc', 'MarkerEdgeColor', 'c','MarkerFaceColor', 'c', 'MarkerSize',6);
 plot(axH, xDat(end,:), yDat(end,:),'^c', 'MarkerEdgeColor', 'c','MarkerFaceColor', 'c', 'MarkerSize',6);
 
-xlim([0 2]);
+xlim([0 nXPnts]);
 end
