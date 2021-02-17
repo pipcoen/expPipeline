@@ -221,7 +221,7 @@ elseif contains('clicks', fineTune)
     warning('No audio output in timeline so cannot fine tune');
 end
 
-%%
+%% Extract visual onsets (unreliable after initial flip)
 if any(contains(fineTune, 'flashes'))
     % Change visual stimulus times to timeline version
     photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));

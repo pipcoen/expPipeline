@@ -1,3 +1,4 @@
+
 function inactResultsForChoice = viewInactivationEffectsOnChoice(obj, plotType, nShuffles, subsets, groups)
 %% Method for "spatialAnalysis" class. Plots effects of inactivation on behavior. Plots are shown as grids on an outline of cortex.
 
@@ -18,6 +19,7 @@ if ~exist('nShuffles', 'var'); nShuffles = 0; end
 if ~exist('groups', 'var'); useGroups = 0; else; useGroups = 1; end
 if ~contains(plotType, 'dif') && ~exist('subsets', 'var');subsets = {'VL', 'VR', 'AL', 'AR', 'CohL', 'CohR','ConL', 'ConR'}; end
 if contains(plotType, 'dif') && ~exist('subsets', 'var'); subsets = {'VL', 'AL', 'CohL', 'ConL'}; end
+if contains(plotType, 'out') outsideBrain = 1; else, outsideBrain = 0; end
 if ~iscell(subsets); subsets = {subsets}; end
 numOfMice = length(obj.blks);
 
@@ -34,6 +36,7 @@ for mIdx = 1:numOfMice
     iBlk = prc.filtBlock(iBlk, ~ismember(abs(iBlk.tri.inactivation.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | iBlk.tri.inactivation.laserType==0);
     iBlk = prc.filtBlock(iBlk, iBlk.tri.trialType.repeatNum==1 & iBlk.tri.trialType.validTrial);
     
+    if outsideBrain; iBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.galvoPosition(:,2)==5.5); end    
     %Conditional to optionally group inactivaiton sites together (e.g. if you want to combine all V1 sites). We "reflect" these groups, so only one
     %hemisphere needs to be defined. We find all trials with galvoPositions belonging to those groups in iBlk and replace with the mean group position
     if useGroups

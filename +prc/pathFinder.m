@@ -100,7 +100,7 @@ for i = 1:size(subject,1)
             case 'expinfo'; pathOut{i,j} = expInfo;                                                           %the expInfo path
             case 'ephysrecord'; pathOut{i,j} = [processedDirectory 'ePhysRecord.mat'];                        %an excel sheet with ephys records
             case 'allenatlas'; pathOut{i,j} = [driveName '\Dropbox (Neuropixels)\MouseData\Atlas\allenCCF\']; %local allan atlas directory
-            case 'probepath'; pathOut{i,j} = [processedDirectory 'XHistology\' subject{i} '\probe_histIdx'];  %probe vectors estimated from histology
+            case 'probepath'; pathOut{i,j} = [processedDirectory 'XHistology\' subject{i} '\probe_histIdx' expNum{i}];  %probe vectors estimated from histology
         end
     end
 end

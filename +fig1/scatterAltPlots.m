@@ -53,23 +53,61 @@ set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]
 
 axH = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg);
 plotAltScatter([perf.aud perf.vis perf.mul], perf.vis*0, eIdx, axH)
-[~, pVal] = ttest(perf.vis, perf.aud);
-pVal = round(pVal, 4, 'significant');
-title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
 ylim([0.5 1]);
 box off;
+title(['n = ' num2str(nMice)]);
+%%
+[~, pVal] = ttest(perf.vis, perf.aud);
+pVal = round(pVal, 2, 'significant');
+text(0, 0.4, ['A vs V: P<' num2str(pVal)]);
+
+[~, pVal] = ttest(perf.aud, perf.mul);
+pVal = round(pVal, 2, 'significant');
+text(0, 0.35, ['A vs M: P<' num2str(pVal)]);
+
+[~, pVal] = ttest(perf.vis, perf.mul);
+pVal = round(pVal, 2, 'significant');
+text(0, 0.3, ['V vs M: P<' num2str(pVal)]);
 
 %%
 axH = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg); hold on;
 plotAltScatter([reac.aud, reac.vis reac.coh reac.con], reac.offset, eIdx, axH)
-[~, pVal] = ttest(reac.vis, reac.aud);
-pVal = round(pVal, 2, 'significant');
-title(['n=' num2str(nMice) '   P<' num2str(pVal)]);
-ylim([-0.05 0.05]);
+title(['n=' num2str(nMice)]);
+if nargin<2
+    ylim([-0.05 0.05]);
+else
+    ylim([-0.06 0.06]);
+end
 box off;
+%%
+[~, pVal] = ttest(reac.aud, reac.vis);
+pVal = round(pVal, 2, 'significant');
+text(0, -0.08, ['A vs V: P<' num2str(pVal)]);
+
+[~, pVal] = ttest(reac.coh, reac.con);
+pVal = round(pVal, 2, 'significant');
+text(0, -0.09, ['Coh vs Con: P<' num2str(pVal)]);
+
+[~, pVal] = ttest(reac.aud, reac.coh);
+pVal = round(pVal, 2, 'significant');
+text(0, -0.10, ['A vs Coh: P<' num2str(pVal)]);
+
+[~, pVal] = ttest(reac.vis, reac.coh);
+pVal = round(pVal, 2, 'significant');
+text(0, -0.11, ['V vs Coh: P<' num2str(pVal)]);
+
+[~, pVal] = ttest(reac.aud, reac.vis);
+pVal = round(pVal, 2, 'significant');
+text(0, -0.12, ['A vs Con: P<' num2str(pVal)]);
+
+[~, pVal] = ttest(reac.coh, reac.con);
+pVal = round(pVal, 2, 'significant');
+text(0, -0.13, ['V vs Con: P<' num2str(pVal)]);
 
 %%
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_scatterAltPlots_AudVer', '-pdf', '-painters');
+if nargin<2
+    export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_scatterAltPlots_AudVer', '-pdf', '-painters');
+end
 end
 
 

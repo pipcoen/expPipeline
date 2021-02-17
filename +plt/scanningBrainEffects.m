@@ -11,7 +11,7 @@ pVals = scanPlot.pVals(:);
 minSig = min(pVals);
 if ~any(scanPlot.pVals(:)) || minSig > max(scanPlot.sigLevels)
     warning(['Pvals do not exist or are all > ' num2str(max(scanPlot.sigLevels))]);
-    spotSize = APCoord*0+200;
+    spotSize = APCoord*0+(200./(length(scanPlot.sigLevels)*1.5))*0.2;
 else
     spotSize = sum(cell2mat(arrayfun(@(x) (pVals<x), scanPlot.sigLevels, 'uni', 0)'),2);
     legendRef = scanPlot.sigLevels(scanPlot.sigLevels>minSig);

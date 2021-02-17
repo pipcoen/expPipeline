@@ -40,6 +40,7 @@ axesGap = [50/figHeight 50/figWidth];
 botTopMarg = [40, 40]/figHeight;
 lftRgtMarg = [40, 40]/figWidth;
 
+titles = {'Control'; 'V1'; 'MOs'; 'A1'; 'S1'};
 for j = 1:2
     figure;
     set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
@@ -92,7 +93,7 @@ for j = 1:2
         
         xL = xlim; hold on; plot(xL,[midPoint midPoint], '--k', 'linewidth', 1.5);
         yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
-        
+        title(titles{i});
     end
     
     %"contData" is the result from the "normEstRepeats" loops, and "shuffleData" is from the shuffled loops. We then sort these shuffled loops and

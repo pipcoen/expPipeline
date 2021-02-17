@@ -1,5 +1,11 @@
-function inactResultsForModel
-load('fig3eInactResultsForModel', 'inactResultsForModel')
+function inactResultsForModel(withY)
+if ~exist('withY', 'var') 
+    load('fig3eInactResultsForModel', 'inactResultsForModel')
+    sName = 'D:\OneDrive\Papers\Coen_2020\FigureParts\3_inactResultsForModel';
+elseif withY==1
+    load('figS3InactResultsForYParam', 'inactResultsForModel');
+    sName = 'D:\OneDrive\Papers\Coen_2020\FigureParts\SupX_inactResultsForYParam';
+end
 figure;
 axesOpt.btlrMargins =  [10 30 10 10];
 axesOpt.gapBetweenAxes = [10 0];
@@ -31,5 +37,5 @@ end
 
 %"contData" is the result from the "normEstRepeats" loops, and "shuffleData" is from the shuffled loops. We then sort these shuffled loops and
 %see where the control data appears in the shuffled data. This goes into the "scanPlot" plotting structure, along with the results.
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\3_inactResultsForModel', '-pdf', '-painters');
+export_fig(sName, '-pdf', '-painters');
 end

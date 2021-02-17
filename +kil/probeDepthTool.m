@@ -7,7 +7,6 @@ expList = load(prc.pathFinder('expList')); expList = expList.expList;
 %%
 ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
 selectedRecords = ephysRecord(contains({ephysRecord.subject}', subjects));
-expList = expList(contains({expList.subject}', subjects) & [expList.excluded]' ~=1 & contains({expList.expType}', 'eph'));
 
 guiData = struct;
 guiData.expList = expList;
@@ -347,7 +346,9 @@ else
     set(guiData.title, 'String', sprintf('%s: %s Penetration %d--Probe was painted', penetrationDetails.subject,penetrationDetails.expDate,guiData.currPenetration));
 end
 
-histologyData = load([prc.pathFinder('probepathdata', penetrationDetails.subject) num2str(penetrationDetails.histIdx)]);
+pathInfo.subject = penetrationDetails.subject;
+pathInfo.expNum = num2str(penetrationDetails.histIdx);
+histologyData = load(prc.pathFinder('probepath', pathInfo));
 histologyPoints = histologyData.probe_ccf;
 histologyPoints = [histologyPoints(:,3) histologyPoints(:,2) histologyPoints(:,1)];
 probeCenter = mean(histologyPoints,1);

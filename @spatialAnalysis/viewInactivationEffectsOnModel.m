@@ -1,4 +1,4 @@
-function inactResultsForModel = viewInactivationEffectsOnModel(obj, plotType, nShuffles, groups)
+function inactResultsForModel = viewInactivationEffectsOnModel(obj, plotType, nShuffles, freeP, groups)
 %% Method for "spatialAnalysis" class. Plots effects of inactivation on behavior. Plots are shown as grids on an outline of cortex.
 
 %INPUTS(default values)
@@ -16,6 +16,8 @@ if numOfMice > 1; error('Only coded to handle one mouse atm'); end
 if ~exist('groups', 'var'); useGroups = 0; else; useGroups = 1; end
 if ~exist('nShuffles', 'var'); nShuffles = 0; end
 if ~exist('plotType', 'var'); plotType = 'grp'; end
+if ~exist('freeP', 'var'); freeP = [1 1 1 0 1 1]>0; end
+freeP = freeP>0;
 
 %Create "iBlk" (initialBlock) which removes some incorrect galvoPositions, repeated trials, and keeps only valid trials
 iBlk = prc.filtBlock(obj.blks, obj.blks.tri.inactivation.galvoPosition(:,2)~=4.5);
@@ -58,14 +60,13 @@ if contains(plotType, 'dif')
 end
 
 [~, gridXY] = prc.makeGrid(uniBlk, uniBlk.tri.outcome.responseCalc, [], 'galvouni',2);
-freeP = [1 1 1 0 1 1]>0;
 
 %Define number of suffles, and the number of times to estimate the control (default is 10% or 500) since this will change with different
 %subsamples of the subjetcs. Total loops is the sum of shuffle and control loops. We randomly assign galvoPositions to the contBlk from the
 %galvoPositions in the testBlock (for shuffling purposes)
 if ~nShuffles; nShuffles = 1500; end
 nShuffles = round(nShuffles/10)*10;
-normEstRepeats = nShuffles/10;
+normEstRepeats = round(nShuffles/10);
 
 %Use some matrix tricks to create "uniformLaserFilters" which is a filter for each shuffle that equalizes the frequency of subjects
 %contributing to each point in the grid of galvo positions.
@@ -80,8 +81,8 @@ exampleUniform = prc.filtBlock(uniBlk, uniformLaserFilters{1});
 totalLaserTrials = prc.makeGrid(exampleUniform, exampleUniform.tri.outcome.responseCalc, @length, 'galvouni');
 
 %Removing these excess fields makes "filtBlock" run significantly faster in the subsequent loop
-uniBlk.tri = rmfield(uniBlk.tri, {'trialType', 'timings'});
-contBlk.tri = rmfield(contBlk.tri, {'trialType', 'timings'});
+uniBlk.tri = rmfield(uniBlk.tri, {'timings'});
+contBlk.tri = rmfield(contBlk.tri, {'timings'});
 uniBlk.tri.inactivation = rmfield(uniBlk.tri.inactivation, {'laserPower', 'galvoType', 'laserOnsetDelay', 'laserDuration'});
 contBlk.tri.inactivation = rmfield(contBlk.tri.inactivation, {'laserPower', 'galvoType', 'laserOnsetDelay', 'laserDuration'});
 
@@ -165,7 +166,7 @@ for i = find(freeP)
     scanPlot.data = contData./stdData;
     scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, abs(contData), sortedData,'uni', 0));
     scanPlot.pVals
-    scanPlot.colorBarLimits = [-10 10];
+    scanPlot.colorBarLimits = [-30 30];
     sigLevels = (10.^(-2:-1:-10))';
     lastSigLevel = find(sigLevels>min(scanPlot.pVals(:)),1,'last');
     scanPlot.sigLevels = [0.01; 0.001; 0.0001];%sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
