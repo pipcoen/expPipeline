@@ -68,7 +68,7 @@ for j = 1:2
             plotData = log10(plotData./(1-plotData));
             contrastPower = mOpt.contParams(4);
             fracRightTurns = log10(fracRightTurns./(1-fracRightTurns));
-            ylim([-2.2 2.2])
+            ylim([-2.5 2.5])
             xlim([-1 1])
             midPoint = 0;
         end

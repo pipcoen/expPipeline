@@ -1,17 +1,15 @@
 function meanBehavior(behBlks)
 %% This function plots the data panels for figure one of the ms
-if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'm2ephysmod', 0, 1); end
-blks2Use = behBlks.blks;
-if length(blks2Use) == 21; blks2Use(5:8) = []; end
-if length(blks2Use) == 20; blks2Use(5:8) = []; end
+if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'behaviour', 0, 1); end
 mTri = 1;
-nMice = length(blks2Use);
+behBlks = behBlks.blks;
+nMice = length(behBlks);
 [rTurns, nTrials, reacT, reacTSE, rTurnsSE] = deal(nan*ones(3, 9, nMice));
 visRef = [-1*[0.8, 0.4, 0.2, 0.1] 0 0.1, 0.2, 0.4, 0.8];
-eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, blks2Use, 'uni', 0), 'PC022');
+eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, behBlks, 'uni', 0), 'PC022');
 %%
 for i = 1:nMice
-    nBlk = spatialAnalysis.getBlockType(blks2Use(i), 'norm');
+    nBlk = spatialAnalysis.getBlockType(behBlks(i), 'norm');
     nBlk = prc.filtBlock(nBlk, nBlk.exp.numOfTrials > mTri);
     nBlk = prc.filtBlock(nBlk, ismember(nBlk.tri.stim.visDiff, visRef));
     
