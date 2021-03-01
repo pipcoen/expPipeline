@@ -1,13 +1,31 @@
 function [correctedBlock, aligned] = alignBlock2Timeline(block, timeline, expDef)
-%%
-inputNames = {timeline.hw.inputs.name}';
-timelineTime = timeline.rawDAQTimestamps;
-sampleRate = 1/diff(timeline.rawDAQTimestamps(1:2));
+%% A funciton align the block times to the timeline times for ephys, fusi, etc. experiments
+
+%INPUTS(default values)
+%block(required)----------The block file to be aligned
+%timeline(required)-------The timeline file to be aligned
+%expDef(required)---------A string that defines the expDef used in the experiment
+
+%OUTPUTS
+%correctedBlock-----------The corrected block, with times now matching timeline
+%aligned------------------
+%"eph" is a structure with ephys-specific information
+%"whoD"is a cell will the names of all variables in the file (loading this is quicker than asking matlab to check)
+
+%% Get a set of corresponding timeline and block timepoints for interpolation
+inputNames = {timeline.hw.inputs.name}';                      %List of inputs to the timeline file
+timelineTime = timeline.rawDAQTimestamps;                     %Timestamps in the timeline file
+sR = 1/diff(timeline.rawDAQTimestamps(1:2));          %Timeline sample rate
+
+%Establish whether there is a record in timeline of the audio output
 if contains('audioOut', inputNames); audInput = 'audioOut';
-% elseif  contains('audioMonitor', inputNames); audInput = 'audioMonitor';
 else, audInput = 0;
 end
 
+%Which features are extracted from timline depends on the expDef. Individual on/off times for each click are detected only in Passive.
+%"alignType" defines the type of signal to use in the initial alignment. It can be "wheel", "reward" or "photoDiode." "wheel" is best for active
+%experiments (because it occurs most often) and photoDiode is best for passive experiments (because wheel movement is likely minimal).
+%"fineTune" defines the timeline features to extract from each expDef.
 switch expDef
     case 'multiSpaceWorld'
         alignType = 'wheel';
@@ -22,66 +40,86 @@ switch expDef
         fineTune = {'clicksfine'; 'flashesfine'; 'reward'; 'wheelTraceTimeValue'};
 end
 
-if strcmp(alignType, 'wheel') && max(timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'))) == 1
-    warning('Max wheel value is 1---will not process timeline wheel data');
-    alignType = 'photoDiode';
-    fineTune = fineTune(~contains(fineTune, 'movements'));
-end
-
 switch alignType
-    case 'wheel'
-        smoothWindow = sampleRate/10+1;
+    case 'wheel' %Get interpolation points using the wheel data
+        %Unrap the wheel trace (it is circular) and then smooth it. Smoothing is important because covariance will not work otherwise
+        smthWin = sR/10+1;
         timelinehWeelPosition = timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'));
         timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
-        timelinehWeelPositionSmooth = smooth(timelinehWeelPosition,smoothWindow);
+        timelinehWeelPositionSmooth = smooth(timelinehWeelPosition,smthWin);
+
+        %Make initial block time zero (as with timeline) and then interpolate with timeline times and smooth to give same number of points etc.
         block.inputs.wheelValues = block.inputs.wheelValues-block.inputs.wheelValues(1);
         blockWheelPosition = interp1(block.inputs.wheelTimes, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
-        blockWheelPosition = smooth(blockWheelPosition,smoothWindow);
-        baseDelay = finddelay(diff(blockWheelPosition), diff(timelinehWeelPositionSmooth))/sampleRate;
-        blockWheelPosition = interp1(block.inputs.wheelTimes+baseDelay, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
-        blockWheelPosition = smooth(blockWheelPosition(:),smoothWindow);
+        blockWheelPosition = smooth(blockWheelPosition,smthWin);
         
-        blockWidth = 20*sampleRate;
-        sampleCentres = sampleRate*5:sampleRate*10:length(timelineTime);
+        %Find the overall delay with the entire trace. Then reinterpolate, accounting for this delay.
+        baseDelay = finddelay(diff(blockWheelPosition), diff(timelinehWeelPositionSmooth))/sR;
+        blockWheelPosition = interp1(block.inputs.wheelTimes+baseDelay, block.inputs.wheelValues, timeline.rawDAQTimestamps, 'linear', 'extrap');
+        blockWheelPosition = smooth(blockWheelPosition(:),smthWin);
+        
+        %Get the vectors for 20s sections of the blockWheelVelocity and timelinehWeelVelocity
+        blockWidth = 20*sR;
+        sampleCentres = sR*5:sR*10:length(timelineTime);
         blockWheelVelocity = diff(blockWheelPosition);
         timelinehWeelVelocity = diff(timelinehWeelPosition);
         samplePoints = arrayfun(@(x) (x-blockWidth):(x+blockWidth), sampleCentres, 'uni', 0);
-        samplePoints = cellfun(@(x) x(x>0 &x<length(timelineTime)), samplePoints, 'uni', 0);
+        samplePoints = cellfun(@(x) x(x>0 & x<length(timelineTime)), samplePoints, 'uni', 0);
         
-        testIdx = cellfun(@(x) sum(abs(blockWheelVelocity(x))), samplePoints)>(5*blockWidth/sampleRate);
-        if sum(testIdx) < 50; error('Not enough movment to synchronize using wheel');
+        %Check that there is enough wheel movement to make the alignement (based on absolute velocity)
+        testIdx = cellfun(@(x) sum(abs(blockWheelVelocity(x))), samplePoints)>(5*blockWidth/sR);
+        if mean(testIdx) < 0.2; error('Not enough movment to synchronize using wheel');
         elseif mean(testIdx) < 0.2; warning('Little movement so timeline alignment with wheel will be unreliable');
         end
+        
+        %Go through each subsection and detect the offset between block and timline
         samplePoints = samplePoints(testIdx);
-        delayValues = cellfun(@(x) finddelay(blockWheelVelocity(x), timelinehWeelVelocity(x), 1000), samplePoints)./sampleRate;
+        delayValues = cellfun(@(x) finddelay(blockWheelVelocity(x), timelinehWeelVelocity(x), 1000), samplePoints)./sR;
+        
+        %Use a smoothed median to select the evolving delat values, and use these to calculate the evolving reference points for block and timeline
         timelineRefTimes = timelineTime(sampleCentres);
         delayValues = interp1(timelineTime(sampleCentres(testIdx)), delayValues, timelineRefTimes, 'linear', 'extrap');
         delayValues = smooth(delayValues, 0.05, 'rlowess');
         blockRefTimes = movmedian(timelineRefTimes(:)-delayValues-baseDelay, 7)';
         blockRefTimes = interp1(timelineRefTimes(4:end-3), blockRefTimes(4:end-3), timelineRefTimes, 'linear', 'extrap');
         block.alignment = 'wheel';
-    case 'reward'
+        
+    case 'reward' %Get interpolation points using the reward data
+        %Rewards are very obvious, but infrequent and sometimes completely absent. But if there is no other option, simply detect the rewards in
+        %timesline, and use the rewardTimes from the block outputs to get reference points
         blockRefTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
         thresh = max(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')))/2;
         rewardTrace = timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho')) > thresh;
         timelineRefTimes = timeline.rawDAQTimestamps(strfind(rewardTrace', [0 1])+1);
         if length(timelineRefTimes)>length(blockRefTimes); timelineRefTimes = timelineRefTimes(2:end); end
         block.alignment = 'reward';
-    case 'photoDiode'
+        
+    case 'photoDiode' %Get interpolation points using the photodiode data
+        %Note, the photodiode *should* vary between two values, but it often doesn't. For reasons we don't understand, it sometimes goes to grey, and
+        %sometimes you skip changes that are recorded in the block etc. This is another reason I prefer to use the wheel. But this method has proved
+        %reasonably reliable if the wheel isn't suitable.
+        
+        %Extract photodiode trace and get repeated values by using kmeans. Get the lower and upper thersholds from this range.
         photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));
         [~, thresh] = kmeans(photoDiodeTrace,5);
         thresh = [min(thresh) + range(thresh)*0.2;  max(thresh) - range(thresh)*0.2];
+        
+        %Find flips based on these thresholds.
         photoDiodeFlipOn = sort([strfind(photoDiodeTrace'>thresh(1), [0 1]), strfind(photoDiodeTrace'>thresh(2), [0 1])]);
         photoDiodeFlipOff = sort([strfind(photoDiodeTrace'<thresh(1), [0 1]), strfind(photoDiodeTrace'<thresh(2), [0 1])]);
         photoDiodeFlips = sort([photoDiodeFlipOn photoDiodeFlipOff]);
+        
+        %Remove cases where two flips in the same direction appear in succession (you can't flip to white twice in a row)
         photoDiodeFlips([strfind(ismember(photoDiodeFlips, photoDiodeFlipOn), [1 1])+1 strfind(ismember(photoDiodeFlips, photoDiodeFlipOff), [1 1])+1]) = [];
+        
+        %Get corresponding flip times. Remove any that would be faster than 60Hz (screen refresh rate)
         photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
         photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
-        
         blockRefTimes = block.stimWindowUpdateTimes(diff(block.stimWindowUpdateTimes)>0.49);
         timelineRefTimes = photoDiodeFlipTimes(diff(photoDiodeFlipTimes)>0.49);
         
-               
+        %Use "prc.try2alignVectors" to deal with cases where the timeline and block flip times are different lengths, or have large differences. I
+        %have found this to solve all problems like this. However, I have also found it to be critical (the photodiode is just too messy otherwise)
         if length(blockRefTimes) ~= length(timelineRefTimes)
             [timelineRefTimes, blockRefTimes] = prc.try2alignVectors(timelineRefTimes, blockRefTimes, 0.25);
         elseif any(abs((blockRefTimes-blockRefTimes(1)) - (timelineRefTimes-timelineRefTimes(1)))>0.5)
@@ -93,6 +131,8 @@ switch alignType
         end
 end
 
+%% Use referece points to interpolate various fields of the block file
+%This does exactly the same thing for "inputs", "outputs" and "events" based on the field ending in "Times"
 fieldList = fieldnames(block.inputs);
 fieldList = fieldList(cellfun(@(x) strcmp(x(end-4:end), 'Times'), fieldnames(block.inputs)));
 for i = 1:length(fieldList); block.inputs.(fieldList{i}) = interp1(blockRefTimes,timelineRefTimes,block.inputs.(fieldList{i}),'linear','extrap'); end
@@ -105,12 +145,16 @@ fieldList = fieldnames(block.events);
 fieldList = fieldList(cellfun(@(x) strcmp(x(end-4:end), 'Times'), fieldList));
 for i = 1:length(fieldList); block.events.(fieldList{i}) = interp1(blockRefTimes,timelineRefTimes,block.events.(fieldList{i}),'linear','extrap'); end
 
-cutOff = round(block.events.newTrialTimes(1)*sampleRate-(0.05*sampleRate));
+%Flatten timeline traces prior to the first trial starting (avoids errneous event idenitification
+cutOff = round(block.events.newTrialTimes(1)*sR-(0.05*sR));
 timeline.rawDAQData(1:cutOff,:) = repmat(timeline.rawDAQData(cutOff,:), cutOff, 1);
 
+%% Prepare to extract events from timeline
+%Get the start/end times of the trials, and the stimulus start times from the blocks.
 trialStEnTimes = [block.events.newTrialTimes(1:length(block.events.endTrialTimes))', block.events.endTrialTimes'];
 stimStartBlock = block.events.stimPeriodOnOffTimes(block.events.stimPeriodOnOffValues==1);
-%%
+
+%% Extract the reward times from timeline. This is straightforward as the reward echo is very reliable. Just thershold and detect peaks.
 if contains('reward', fineTune) && contains('rewardEcho',inputNames)
     blockRewardTimes = block.outputs.rewardTimes(block.outputs.rewardValues > 0);
     rewardTrace = mat2gray(timeline.rawDAQData(:,strcmp(inputNames, 'rewardEcho'))) > 0.5;
@@ -122,21 +166,25 @@ if contains('reward', fineTune) && contains('rewardEcho',inputNames)
 end
 if contains('reward', fineTune) && ~contains('rewardEcho',inputNames); warning('No reward input echo... skipping'); end
 
+%% Extract audio clicks (these are pretty reliable, so can extract every click)
 if any(contains(fineTune, 'clicks')) && ischar(audInput)
+    %Detrend timeline trace, threshold using kmeans, detect onsets and offsets of sound, estimate duration from this.
     timelineClickTrace = [0;diff(detrend(timeline.rawDAQData(:,strcmp(inputNames, audInput))))];
     [~, thresh] = kmeans(timelineClickTrace,5);
     timelineClickOn = timelineTime(strfind((timelineClickTrace>max(thresh)*0.25)', [0 1]));
     timelineClickOff = timelineTime(strfind((timelineClickTrace<min(thresh)*0.25)', [0 1]));
     detectedDuration = round(mean(timelineClickOff-timelineClickOn)*1000);
     
+    %Sanity check: same number of onsets and offsets, check that detected duration matches the duration parameter (assumed constant here)
     if length(timelineClickOn)~=length(timelineClickOff); error('There should always be an equal number on/off signals for clicks'); end
     if abs(detectedDuration-(unique([block.paramsValues.clickDuration])*1000))>3; error('Diff in detected and requested click durations'); end
     
+    %Create vector that is sorted by time: [onset time, offset time, 1, 0] and find large gaps between successive onsets (stimulus period onsets)
     aStimOnOffTV = sortrows([[timelineClickOn';timelineClickOff'] [timelineClickOn'*0+1; timelineClickOff'*0]],1);  
     largeAudGaps = sort([find(diff([0; aStimOnOffTV(:,1)])>trialGapThresh); find(diff([aStimOnOffTV(:,1); 10e10])>trialGapThresh)]);
 
-    
-    %% Sanity check (should be match between stim starts from block and from timeline)
+    %%%%%%%%%%%%%%%%%%%%STILL NEEDS TO BE COMMENTED BELOW%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %Sanity check (should be match between stim starts from block and from timeline)
     audstimStartTimeline = aStimOnOffTV(largeAudGaps,1);
     audstimStartTimeline = audstimStartTimeline(aStimOnOffTV(largeAudGaps,2)==1);
     nonAudTrials = [block.paramsValues.audAmplitude]==0; nonAudTrials = nonAudTrials(1:length(stimStartBlock));
@@ -173,7 +221,7 @@ elseif contains('clicks', fineTune)
     warning('No audio output in timeline so cannot fine tune');
 end
 
-%%
+%% Extract visual onsets (unreliable after initial flip)
 if any(contains(fineTune, 'flashes'))
     % Change visual stimulus times to timeline version
     photoDiodeTrace = timeline.rawDAQData(:,strcmp(inputNames, 'photoDiode'));
@@ -234,35 +282,86 @@ end
 
 if any(contains(fineTune, 'movements'))
     %%
-    responseMadeIdx = block.events.feedbackValues ~= 0;
-    stimOnsetIdx = round(stimStartBlock(responseMadeIdx)*sampleRate)';
-    closedLoopPeriodIdx = round(block.events.closedLoopOnOffTimes*sampleRate);
-    closedLoopValues = block.events.closedLoopOnOffValues(1:find(block.events.closedLoopOnOffValues==0, 1, 'last'));
+    responseMadeIdx = block.events.feedbackValues(1:size(trialStEnTimes,1)) ~= 0;
     
+    timelineVisOnset = prc.indexByTrial(trialStEnTimes, aligned.visStimPeriodOnOff(:,1), aligned.visStimPeriodOnOff(:,1));
+    timelineVisOnset(cellfun(@isempty, timelineVisOnset)) = deal({nan});
+    timelineAudOnset = prc.indexByTrial(trialStEnTimes, aligned.audStimPeriodOnOff(:,1), aligned.audStimPeriodOnOff(:,1));
+    timelineAudOnset(cellfun(@isempty, timelineAudOnset)) = deal({nan});
+    timelineStimOnset = nanmin(cell2mat([timelineVisOnset timelineAudOnset]), [],2);
+    
+    stimOnsetIdx = round(timelineStimOnset(responseMadeIdx)*sR); 
     if ~exist('timelinehWeelPosition', 'var')
         timelinehWeelPosition = timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'));
         timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
     end
-    wheel = timelinehWeelPosition;
-    move4Response = wheel(closedLoopPeriodIdx(closedLoopValues==0)) - wheel(closedLoopPeriodIdx(closedLoopValues==1));
-    wheelThresh = median(abs(move4Response(responseMadeIdx)))*0.4;
+    wheelPos = timelinehWeelPosition;
+    whlDecThr = round(block.wheel2DegRatio*60);
+   
+    sumWin = 51;
+    velThresh  = sR*(whlDecThr*0.01)/sumWin;
+    wheelVel = diff([0; wheelPos])*sR;
+    posVelScan = conv(wheelVel.*double(wheelVel>0) - double(wheelVel<0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
+    negVelScan = conv(wheelVel.*double(wheelVel<0) + double(wheelVel>0)*1e6, [ones(1,sumWin) zeros(1,sumWin-1)]./sumWin, 'same').*(wheelVel~=0);
+    movingScan = smooth((posVelScan'>=velThresh) + (-1*negVelScan'>=velThresh),21); 
+    falseIdx = (movingScan(stimOnsetIdx)~=0); %don't want trials when mouse is moving at stim onset
     
-    movementTimes = arrayfun(@(x,y) max([nan find(abs(wheel(x:(x+(sampleRate*1.5)))-wheel(x))>wheelThresh,1)+x]), stimOnsetIdx)./sampleRate;
-    aligned.movementTimes = movementTimes;
+    choiceCrsIdx = arrayfun(@(x,y) max([nan find(abs(wheelPos(x:(x+(sR*1.5)))-wheelPos(x))>whlDecThr,1)+x]), stimOnsetIdx);
+    choiceCrsIdx(falseIdx) = nan;
+    gdIdx = ~isnan(choiceCrsIdx);
+    
+    choiceThreshTime = choiceCrsIdx/sR;
+    choiceThreshDirection = choiceThreshTime*nan;
+    choiceThreshDirection(gdIdx) = sign(wheelPos(choiceCrsIdx(gdIdx)) - wheelPos(choiceCrsIdx(gdIdx)-25));
+    choiceThreshDirection(gdIdx) = (((choiceThreshDirection(gdIdx)==-1)+1).*(abs(choiceThreshDirection(gdIdx))))';    
+    
+    tstWin = [zeros(1, sumWin-1), 1];
+    velThreshPoints = [(strfind((posVelScan'>=velThresh), tstWin)+sumWin-2) -1*(strfind((-1*negVelScan'>=velThresh), tstWin)+sumWin-2)]';
+
+    [~, srtIdx] = sort(abs(velThreshPoints));
+    moveOnsetIdx = abs(velThreshPoints(srtIdx));
+    moveOnsetSign = sign(velThreshPoints(srtIdx))';
+    moveOnsetDir = (((moveOnsetSign==-1)+1).*(abs(moveOnsetSign)))';    
+    
+    reactBound = [stimOnsetIdx, stimOnsetIdx+1.5*sR]/sR;
+    onsetTimDirByTrial = prc.indexByTrial(reactBound, moveOnsetIdx/sR, [moveOnsetIdx/sR moveOnsetDir]);
+    onsetTimDirByTrial(cellfun(@isempty, onsetTimDirByTrial) | isnan(choiceCrsIdx)) = deal({[nan nan]});
+%%
+    %"firstMoveTimes" are the first onsets occuring after stimOnsetIdx. "largeMoveTimes" are the first onsets occuring after stimOnsetIdx that match the
+    %sign of the threshold crossing defined earlier. Eliminate any that are longer than 1.5s, as these would be timeouts. Also, remove onsets when the
+    %mouse was aready moving at the time of the stimulus onset (impossible to get an accurate movement onset time in this case)
+    firstMoveTimeDir = cell2mat(cellfun(@(x) x(1,:), onsetTimDirByTrial, 'uni', 0));
+    choiceInitTimeDir = cellfun(@(x,y) x(find(x(:,1)<y,1,'last'),:), onsetTimDirByTrial, num2cell(choiceThreshTime(:,1)), 'uni', 0);
+    choiceInitTimeDir(cellfun(@isempty, choiceInitTimeDir)) = {[nan nan]};
+    choiceInitTimeDir = cell2mat(choiceInitTimeDir);
+    
+    %SANITY CHECK
+    responseMade = double(block.events.correctResponseValues(1:length(block.events.feedbackValues))).*(block.events.feedbackValues ~= 0);
+    responseMade(block.events.feedbackValues<0) = -1*(responseMade(block.events.feedbackValues<0));
+    responseMade = responseMade(block.events.feedbackValues ~= 0)';
+    responseMade = ((responseMade>0)+1).*(responseMade~=0);
+    tstIdx = ~isnan(choiceInitTimeDir(:,2));
+    if mean(choiceInitTimeDir(tstIdx,2) == responseMade(tstIdx)) < 0.65
+        warning('Why are most of the movements not in the same direction as the response?!?')
+        keyboard
+    end
+    
+    aligned.firstMoveTimeDir = firstMoveTimeDir;
+    aligned.choiceInitTimeDir = choiceInitTimeDir;
+    aligned.choiceThreshTimeDir = [choiceThreshTime, choiceThreshDirection];
 end
 
 if any(contains(fineTune, 'wheelTraceTimeValue'))
-    trialStEnIdx = round(trialStEnTimes.*sampleRate)';
     if ~exist('timelinehWeelPosition', 'var')
         timelinehWeelPosition = timeline.rawDAQData(:,strcmp(inputNames, 'rotaryEncoder'));
         timelinehWeelPosition(timelinehWeelPosition > 2^31) = timelinehWeelPosition(timelinehWeelPosition > 2^31) - 2^32;
     end
-    repeatPoints = strfind(diff([-1000,timelinehWeelPosition'])==0, [1 1]);
-    wheelValue = timelinehWeelPosition(setdiff(1:end, repeatPoints));
-    wheelTime = timelineTime(setdiff(1:end, repeatPoints))';
-    aligned.wheelTraceTimeValue = [wheelTime wheelValue];
+    changePoints = strfind(diff([0,timelinehWeelPosition'])==0, [1 0]);
+    trialStEnIdx = (trialStEnTimes*sR);
+    points2Keep = sort([1 changePoints changePoints+1 length(timelinehWeelPosition) ceil(trialStEnIdx(:,1))'+1, floor(trialStEnIdx(:,2))'-1]);
+    aligned.wheelTraceTimeValue = [timelineTime(points2Keep)' timelinehWeelPosition(points2Keep)];
 end
-
+%%
 rawFields = fields(aligned);
 for i = 1:length(rawFields)
     currField = rawFields{i};
@@ -275,17 +374,19 @@ for i = 1:length(rawFields)
         aligned.(currField)(emptyIdx) = {nan*ones(1,nColumns)};
         aligned.(currField) = cellfun(@single,aligned.(currField), 'uni', 0);
     end
-    if any(strcmp(currField, {'audStimPeriodOnOff'; 'visStimPeriodOnOff'; 'movementTimes'}))
+    if any(strcmp(currField, {'audStimPeriodOnOff'; 'visStimPeriodOnOff'; 'firstMoveTimeDir'; 'choiceInitTimeDir'; 'choiceThreshTimeDir'}))
         nColumns = max(cellfun(@(x) size(x,2), aligned.(currField)));
         aligned.(currField)(emptyIdx) = {nan*ones(1, nColumns)};
         aligned.(currField) = single(cell2mat(aligned.(currField)));
     end
 end
-requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff';'movementTimes';'rewardTimes';'wheelTraceTimeValue'};
+
+requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff'; 'firstMoveTimeDir';...
+                  'choiceInitTimeDir'; 'choiceThreshTimeDir'; 'rewardTimes';'wheelTraceTimeValue'};
 for i = 1:length(requiredFields)
     if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
 end
-
+%%
 aligned.alignment = block.alignment;
 correctedBlock = block;
 correctedBlock.fineTuned = 1;

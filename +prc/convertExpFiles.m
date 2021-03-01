@@ -3,15 +3,14 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 
 %Inputs(default values)
 %redoTag(0)---------------------Value of 1 will redo analyses even if they are already processed
-%dataType('all')----------------A tag to process only a specific file type ("flu" for 2P, "fus" for fusi, "eph" for ephys and "all" for all of them)
+%dataType('all')----------------A tag to process only a specific file type ("eph" for ephys and "all" for all of them)
 %selectedSubjects({'PC'; 'DJ'})-Run for a specific mouse, or group of mice containing this string(s)
-%selectedSubjects({'1'})-Run for a specific date, or group of dates containing this string(s)
+%selectedDates({'1'})-----------Run for a specific date, or group of dates containing this string(s)
 
 %Outputs
 %An output files is generated for each experiment in the form subject_yymmdd_expNumProc.mat These files will contain the following
 %"blk" is a structure comprising a reduced, processed block file which contains all essential information.
 %"raw" is a structure with some raw, rarely needed information that isn't usually loaded (takes too much time)
-%"fus" is a structure with fusi-specific information
 %"eph" is a structure with ephys-specific information
 %"whoD"is a cell will the names of all variables in the file (loading this is quicker than asking matlab to check)
 
@@ -20,17 +19,18 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %Set the default values for the inputs and check that they are of the right format
 if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
-if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'; 'AN'}; end
+if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 
+if ~zipComp; return; end
 %If running on Pip's lab computer, sync the processed data in dropbox with his shared folder on the server.
 if zipComp; fprintf('Running on Zip so will sync local folder and server... \n');
-    prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 0);
+    prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 2);
 end
 
 %Scan for new files and update the experiment list. Filter the list based on subject and date inputs.
-expList = prc.scanForNewFiles(0,[0 1]);
+expList = prc.scanForNewFiles(0,1);
 expList = prc.updatePaths(expList);
 expList = expList(cellfun(@(x) contains(x, selectedSubjects), {expList.subject}));
 expList = expList(cellfun(@(x) contains(x, selectedDates), {expList.expDate}));
@@ -45,39 +45,10 @@ if ~isempty(expDefs2Remove)
 end
 
 
-%Check whether the processed files already exist. If on Pip's computer, then also delete any files that are processed but have since been tagged as
-%excluded, along with any fusi-processed blocks on the server. Also, check that any processed fusi files have also been backed up into their
-%corresponding server folders
+%Check whether the processed files already exist. 
 javaHandles = cellfun(@(x) java.io.File(x), {expList.processedData}', 'uni', 0);
 processedSize = cellfun(@(x) x.length, javaHandles);
-existProcessed = processedSize>100000;
-notExcluded = [expList.excluded]'~=1;
-
-fusiIdx = contains({expList.expType}', 'fusi');
-fusiList = find(fusiIdx);
-kruminBackup = cellfun(@(x) strrep(x, 'Timeline', 'ProcBlock'), {expList.rawTimeline}', 'uni', 0);
-javaHandlesKruminServer = cellfun(@(x) java.io.File(x), kruminBackup(fusiList), 'uni', 0);
-javaHandlesProcessed = cellfun(@(x) java.io.File(x), {expList(fusiList).processedData}', 'uni', 0);
-copyIdx = fusiList(cellfun(@(x) x.lastModified, javaHandlesKruminServer)<cellfun(@(x) x.lastModified, javaHandlesProcessed));
-arrayfun(@(x) copyfile(expList(x).processedData, kruminBackup{x}), copyIdx);
-
-if zipComp
-    deleteIdx = ([expList.excluded]'==1 & existProcessed) | (processedSize>0 & processedSize<100000);
-    cellfun(@delete, {expList(deleteIdx).processedData});
-    cellfun(@delete, {expList(deleteIdx).serverProcessedData});
-    cellfun(@(x) delete(strrep(x, 'Timeline', 'ProcBlock')), {expList(deleteIdx & fusiIdx).rawTimeline});
-    
-    javaHandles = cellfun(@(x) java.io.File(x), {expList.rawBlock}', 'uni', 0);
-    missBackup = find(cellfun(@(x) x.length, javaHandles)==0 & notExcluded);
-    if ~isempty(missBackup)
-        missFolders = cellfun(@fileparts, {expList(missBackup).rawBlock}', 'uni', 0);
-        cellfun(@(x) mkdir(x), missFolders(cellfun(@(x) ~exist(x, 'dir'), missFolders)));
-        arrayfun(@(x,y) copyfile(prc.pathFinder('serverBlock', expList(x)), y{1}), missBackup, {expList(missBackup).rawBlock}');
-        arrayfun(@(x,y) copyfile(prc.pathFinder('serverParams', expList(x)), y{1}), missBackup, {expList(missBackup).rawParams}');
-    end
-end
-existProcessed = existProcessed(notExcluded);
-expList = expList(notExcluded);
+existProcessed = processedSize>10000;
 
 %If redoTag is 1, then process all files of selected animals and dates, otherwise only process ones that don't exist, or are of the experiment type
 %"fusi" or "ephys" (since these have extra processing stages).
@@ -88,12 +59,12 @@ end
 %% Loop to process the files
 %srtIdx can be more than zero if one wants to redo all files, but start in the middle. Useful if MATLAB crashes
 srtIdx = 0;
-for i = files2Run(files2Run>srtIdx)
+for i = files2Run(files2Run>srtIdx) 
     %create x, the processing structure. It is the expList entry for the current index, but also contains the entire list
     x = expList(i); x.expList = expList;
     x.existProcessed = existProcessed(i,:);
     
-    %If the processed file exists, try to load the whoD variable (turn off warning if not found) which contains a list of the variable in that
+    %If the processed file exists, try to load the whoD variable (turn off warning if not found) which contains a list of the variables in that
     %processed file. If the variable doesn't exist, check the contents of the file, create the "whoD" variable, and then save it to the file later.
     warning('off', 'MATLAB:load:variableNotFound');
     if x.existProcessed(1)
@@ -123,20 +94,25 @@ for i = files2Run(files2Run>srtIdx)
     end
     clear whoD
 end
-prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 0);
+%Synchronise the folders on the server and the local folder
+prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 2);
 end
 
 %% Fucntion to convert block files. Does some basic operations, then passes x to the helper function for that experimental definition
 function convBlockFile(x)
-%Load original block, params, and galvo log (if it exsits) Remove first trial because there are often timing issues with this trial
+%Load original block, params, and galvo log (if it exsits)
 x.oldBlock = load(x.rawBlock); x.oldBlock = x.oldBlock.block;
 x.oldParams = load(x.rawParams); x.oldParams = x.oldParams.parameters;
 if contains(x.expType, 'inactivation'); x.galvoLog = load(x.galvoLog); else, x.galvoLog = 0; end
-[x.oldBlock,  x.galvoLog] = prc.removeFirstTrialFromBlock(x.oldBlock, x.galvoLog);
-timeOffset = x.oldBlock.experimentStartedTime-x.oldBlock.events.expStartTimes;
 
-%Due to a silly bug, old experiments had huge offsets between signals event times and the stimwindowupdate times. 
-if timeOffset > 100
+%Remove first trial because there are often timing issues with this trial
+[x.oldBlock,  x.galvoLog] = prc.removeFirstTrialFromBlock(x.oldBlock, x.galvoLog);
+x.oldBlock.galvoLog = x.galvoLog;
+
+%Find the gross time offset between "experimentStartedTime" and the "events.expStartTimes" because there used to be a bug where this number was huge
+%(long story). Basically, if it is huge, we modify all the timings below for inputs, outputs, and events.
+timeOffset = x.oldBlock.experimentStartedTime-x.oldBlock.events.expStartTimes;
+if abs(timeOffset) > 100
     fieldList = fieldnames(x.oldBlock.inputs);
     fieldList = fieldList(cellfun(@(x) ~isempty(strfind(x, 'Times')>0), fieldList));
     for i = 1:length(fieldList); x.oldBlock.inputs.(fieldList{i}) = x.oldBlock.inputs.(fieldList{i}) + timeOffset; end
@@ -150,20 +126,31 @@ if timeOffset > 100
     for i = 2:2:length(fieldList); x.oldBlock.events.(fieldList{i}) = x.oldBlock.events.(fieldList{i}) + timeOffset; end
 end
 
-%This section standardizes the event names etc. for each experimetns. Events have changed since early instances of multiSpaceWorld
-x.oldBlock.galvoLog = x.galvoLog;
+%This section standardizes the event names etc. for each experiments. Events have changed since early instances of multiSpaceWorld
 [x.standardizedBlock, x.standardizedParams] = prc.standardBlkNames(x.oldBlock, x.oldParams);
+
+%Calclate the conversion between a tick of wheel movement and changes in visual azimuth
+if isfield(x.standardizedBlock.events, 'visAzimuthTimes')
+    %%
+    wheelTV = [x.standardizedBlock.inputs.wheelTimes' x.standardizedBlock.inputs.wheelValues'];
+    wheelTV(strfind(diff(wheelTV(:,2))', [0 0 0])+1,:) = [];
+    visAziTV = [x.standardizedBlock.events.visAzimuthTimes' x.standardizedBlock.events.visAzimuthValues'];
+    diffIdx = find(abs(diff(abs(visAziTV(:,2))))>0 & abs(diff(abs(visAziTV(:,2))))<30 & diff(abs(visAziTV(:,1)))<0.05);
+    visAziDiffTimes = [visAziTV(diffIdx,1) visAziTV(diffIdx+1,1)];
+    visAziDiffValue = abs(visAziTV(diffIdx+1,2)-visAziTV(diffIdx,2));
+    
+    wheelDiffIdx = [knnsearch(wheelTV(:,1), visAziDiffTimes(:,1)), knnsearch(wheelTV(:,1), visAziDiffTimes(:,2))];
+    wheelDiffValues = abs(wheelTV(wheelDiffIdx(:,2),2) - wheelTV(wheelDiffIdx(:,1),2));
+    
+    x.standardizedBlock.wheel2DegRatio = median(wheelDiffValues./visAziDiffValue);
+    cla; hist(wheelDiffValues(:)./visAziDiffValue(:),20); drawnow;
+end
 
 %If experiment includes a meaningful timeline, then load timeline, align with the signals block, and also extract visual and auditory timings from the
 %timeline, as well as reward and movement onset.
-if contains(x.expType, {'ephys'; 'fusi';'twophoton'})
+if contains(x.expType, {'ephys'})
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, x.expDef);
-    
-    if contains(x.expType, {'twophoton'})
-        nerualFrameTrace = x.timeline.rawDAQData(:,strcmp({x.timeline.hw.inputs.name}', 'neuralFrames'));
-        x.aligned.frameTimes = x.timeline.rawDAQTimestamps(diff(nerualFrameTrace)>0);
-    end
 else, x.aligned = [];
 end
 
@@ -176,12 +163,13 @@ for i = 1:length(fields2copy); x.standardizedParams.(fields2copy{i}) = x.(fields
 repeatPoints = strfind(diff([-1000,x.standardizedBlock.inputs.wheelValues])==0, [1 1]);
 wheelValue = x.standardizedBlock.inputs.wheelValues(setdiff(1:end, repeatPoints))';
 wheelTime = x.standardizedBlock.inputs.wheelTimes(setdiff(1:end, repeatPoints))';
-x.newBlock.rawWheelTimeValue = single([wheelTime wheelValue-wheelValue(1)]);
+x.newBlock.rawWheelTimeValue = [wheelTime wheelValue-wheelValue(1)];
 
 %Run the block funciton for the expDef that was used for the mouse. This adds all relevant fields to "newBlock"
 blockFunction = str2func(['prc.expDef.' x.expDef]);
 x = blockFunction(x);
 
+%Assing variable names to save
 blk = x.newBlock;
 raw = x.newRaw;
 tim = x.aligned;

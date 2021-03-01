@@ -1,8 +1,11 @@
 function preProcessPhase3(animal,day,sites2Process,dataCopied)
 % AP_preprocess_phase3(animal,day,testData)
 if ~exist('dataCopied', 'var'); dataCopied = 0; end
-dataPaths = {prc.pathFinder('serverprobedata', animal, day, 1)};
-savePaths = {[prc.pathFinder('serverprobedata', animal, day, 1) '\kilosort']};
+pathInfo.subject = animal;
+pathInfo.expDate = day;
+
+dataPaths = {prc.pathFinder('serverprobedata', pathInfo)};
+savePaths = {[prc.pathFinder('serverprobedata', pathInfo) '\kilosort']};
 
 % Check for multiple sites (based on the data path containing only folders)
 dataPathDir = dir(dataPaths{1});

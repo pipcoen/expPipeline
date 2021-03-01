@@ -12,7 +12,7 @@ if ~exist('eventTimes', 'var') || isempty(eventTimes)
             eventTimes = eventTimes(~isnan(eventTimes(:,1)),:);
     end
 elseif size(eventTimes,2) == 1 && size(eventTimes,1) == blk.tot.trials; eventTimes = [eventTimes blk.tri.expRef];
-elseif size(eventTimes,2) == 1 && length(unique(experimentIdxs)) == 1; eventTimes = [eventTimes eventTimes*0+experimentIdxs];
+elseif size(eventTimes,2) == 1 && length(unique(experimentIdxs)) == 1; eventTimes = [eventTimes eventTimes*0+experimentIdxs(1)];
 elseif size(eventTimes,2) == 1, error('Could not figure out experiment info for event times');
 end
 
@@ -21,7 +21,7 @@ clusterPSTH = cell(blk.tot.clusters,1);
 for i = 1:length(blk.pen.ephysRecordIdx)
     pentrationRef = blk.pen.ephysRecordIdx==blk.pen.ephysRecordIdx(i);
     tBlk = prc.filtBlock(blk, pentrationRef, 'pen');
-    if ~exist('tWin', 'var') || isempty(tBins)
+    if ~exist('tBins', 'var') || isempty(tBins)
         tBins = -0.5:0.01:0.5;
     end
     timeValues = tBins(1:end-1) + diff(tBins)./2;

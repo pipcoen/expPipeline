@@ -4,7 +4,7 @@ totFields = fields(blk.tot);
 if ~exist('criterion', 'var'); filtered = []; return; end
 if ~exist('filterTag', 'var')
     totals = cellfun(@(x) blk.tot.(x), totFields);
-    if length(totals) ~= length(unique(totals)); error('Please specify tag. Type of filter unclear'); end
+    if sum(length(criterion) == totals)~=1; error('Please specify tag. Type of filter unclear'); end
     filterTag = totFields(totals==length(criterion));
 end
 if iscell(filterTag); filterTag = filterTag{1}; end

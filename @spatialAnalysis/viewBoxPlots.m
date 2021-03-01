@@ -9,7 +9,7 @@ axesOpt.figureHWRatio = maxGrid(2)/(1.3*maxGrid(1));
 axesOpt.btlrMargins = [100 80 60 100];
 axesOpt.gapBetweenAxes = [100 40];
 
-boxPlot.colorMap = plt.redblue(64);
+boxPlot.colorMap = plt.redBlueMap(64);
 boxPlot.axisLimits = [0 1];
 colorBar.colorLabel = 'Fraction of right turns';
 colorBar.colorDirection = 'normal';

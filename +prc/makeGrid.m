@@ -1,15 +1,19 @@
-function [gridData, gridXY] = makeGrid(blks, data, operation, type, split)
+function [gridData, gridXY] = makeGrid(blks, data, operation, type, split,suppressCheck)
 %Make grid is a function for separating trials into a grid of audiovisual conditionLabels. It operates on the output of concatenate blks.
 if ~exist('blks', 'var'); error('Need block information to sort into grid'); end
 if ~exist('operation', 'var'); operation = @sum; end
 if ~exist('type', 'var') || isempty(type); type = 'condition'; end
 if ~exist('split', 'var') || isempty(split); split = 0; end
+if ~exist('suppressCheck', 'var') || isempty(suppressCheck); suppressCheck = 0; end
 
 experiments = blks.tot.experiments;
-conditionLabels = blks.tri.stim.conditionLabel;
 
+%Checks parameters match between blks, but takes a lot of time on repeated calls, so option to suppress
+if ~suppressCheck
 catBlk = prc.catStructs(blks);
 if length(uniquecell(catBlk.exp.conditionParametersAV))~=1; error('Blocks must have same parameter set to make grid'); end
+end
+
 paramsAV = blks.exp.conditionParametersAV{1};
 audValues = unique(paramsAV(:,1));
 visValues = unique(paramsAV(:,2));
@@ -21,9 +25,8 @@ grids.conditionLabels(gridIdx) = blks.exp.conditionLabels{1};
 gridIdx = num2cell(grids.conditionLabels);
 gridXY = {audValues; visValues};
 
-
+if ~strcmpi(type, 'galvouni'); conditionLabels = blks.tri.stim.conditionLabel; end
 if ~exist('data', 'var'); gridData = grids; return; end
-
 switch lower(type)
     case 'abscondition'
         conditionLabels = abs(conditionLabels);
@@ -34,6 +37,7 @@ switch lower(type)
         [gridXY{1}, gridXY{2}] = meshgrid(LMAxis, APAxis);
         gridIdx = arrayfun(@(x,y) [x y], gridXY{1}, gridXY{2}, 'uni', 0);
 end
+
 
 if split == 1
     fullGrid = repmat(gridIdx,[1,1,experiments]);
