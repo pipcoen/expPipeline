@@ -125,9 +125,7 @@ for i = 1:normEstRepeats+nShuffles
         disp([i j]);
     end
 end
-savePath = which('spatialAnalysis');
-savePath = savePath(1:strfind(savePath, '\@sp'));
-savePath = [savePath '\data4Plots\ModelPerturbations\ModelPerturbationShuffles' datestr(now,'YYMMDD') '.mat'];
+savePath = ['D:\Dropbox (Neuropixels)\MouseData\BackupData' datestr(now,'YYMMDD') '.mat'];
 
 prmLabels = {'Bias'; 'visScaleIpsi'; 'visScaleConta'; 'N'; 'audScaleIpsi'; 'audScaleContra'};
 save(savePath, 'normEstRepeats', 'contParams', 'deltaParams', 'gridXY', 'prmLabels', 'freeP');
