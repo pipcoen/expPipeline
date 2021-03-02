@@ -19,7 +19,7 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %Set the default values for the inputs and check that they are of the right format
 if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
-if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
+if ~exist('selectedSubjects', 'var'); selectedSubjects = {'MR'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 
@@ -43,7 +43,6 @@ if ~isempty(expDefs2Remove)
     fprintf('-%s \n', expDefs2Remove{:});
     expList = expList(~contains({expList.expDef}', [expDefs2Remove; 'Temporal']));
 end
-
 
 %Check whether the processed files already exist. 
 javaHandles = cellfun(@(x) java.io.File(x), {expList.processedData}', 'uni', 0);

@@ -26,10 +26,9 @@ if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
 expInfo = prc.pathFinder('expInfo');
 
 %The full list of subjects to be included (generally, mice that learnt the task and have a decent amount of data). 
-includedMice = [... 
-    cellfun(@(x) ['PC0' x], split({'11,12,13,15,22,27,29,30,31,32,33,34,43,45,46,48,50,51'},','), 'uni', 0); ...
-    cellfun(@(x) ['DJ0' x], split({'06,07,08,10'},','), 'uni', 0)];
-aliveMice = {'None'}; %Mice that are currently alive (i.e. may generate new data)
+includedMice = cellfun(@(x) ['MR0' x], split({'01'},','), 'uni', 0);
+
+aliveMice = {'MR001'}; %Mice that are currently alive (i.e. may generate new data)
 
 %Optional "started" and "retired" dates. This could be relevant if the same subject name was used by other people, or if you wanted to exclude a
 %swathe of dates from a particular mouse for some reason. Defaults assume all data from a given mouse is included.
@@ -50,8 +49,10 @@ if rebuildList == 0
     mice2Update = includedMice(contains(includedMice(:,1), aliveMice),:);
     recentDates = cell(size(mice2Update,1),1);
     for i = 1:size(mice2Update,1)
-        dateRange = num2cell(datestr(datenum(mice2Update{i,3})-nDays2Chk:datenum(mice2Update{i,3}), 'yyyy-mm-dd'),2);
-        recentDates{i,1} = cellfun(@(x) fileparts(fileparts(prc.pathFinder('serverfolder',mice2Update{i,1},x,'1'))),dateRange, 'uni', 0);
+        pathInfo.expDate = num2cell(datestr(datenum(mice2Update{i,3})-nDays2Chk:datenum(mice2Update{i,3}), 'yyyy-mm-dd'),2);
+        pathInfo.subject = repmat(mice2Update(i,1), length(pathInfo.expDate),1);
+        pathInfo.expNum = repmat({'1'}, length(pathInfo.expDate),1);
+        recentDates{i,1} = cellfun(@(x) fileparts(fileparts(x)),prc.pathFinder('serverfolder', pathInfo), 'uni', 0);
     end
     processList = vertcat(recentDates{:});
     expList = load(prc.pathFinder('expList'), 'expList'); expList = expList.expList;
@@ -90,12 +91,14 @@ if ~isempty(processList)
     processList(contains(processList, dir2Exclude)) = [];
 end
 
-%Check whether there are new files, the whole list is being rebuilt etc. If the whole list is being rebuilt, the create an empty "epxList" to append
+%Check whether there are new files, the whole list is being rebuilt etc. If the whole list is being rebuilt, the create an empty "expList" to append
 %experiments to. Otherwise, only process identified files that are not already part of the expList.
-oddNameCorrection = strcmp({expList.expDef}', 'multiSpaceWorldNewNames');
-if any(oddNameCorrection); [expList(oddNameCorrection).expDef] = deal('multiSpaceWorld'); save(prc.pathFinder('expList'), 'expList'); end
-if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return;
-elseif ~rebuildList, tLoc = prc.updatePaths(expList); processList = processList(~contains(processList,{tLoc.serverFolder}'));
+if ~isempty(fields(expList))
+    oddNameCorrection = strcmp({expList.expDef}', 'multiSpaceWorldNewNames');
+    if any(oddNameCorrection); [expList(oddNameCorrection).expDef] = deal('multiSpaceWorld'); save(prc.pathFinder('expList'), 'expList'); end
+    if ~rebuildList && isempty(processList); fprintf('No new files found\n'); return;
+    elseif ~rebuildList, tLoc = prc.updatePaths(expList); processList = processList(~contains(processList,{tLoc.serverFolder}'));
+    end
 end
 if length(unique(cellfun(@fileparts, processList, 'uni', 0))) ~= length(processList); error('Every detected folder should be unique'); end
 
@@ -137,34 +140,16 @@ for i = 1:length(processList)
     %Check whether to autoExclude for paper (based on whether it's the "wrong" exp type, or whether it is too short etc.) If so, created a text file
     %with the name 'auto2020PaperExclude.txt' that contains the reason for exclusion.
     if ~isfield(b, 'duration') || b.duration < 300
-        fid = fopen([tempLoc.serverFolder 'auto2020PaperExclude.txt'],'wt');
+        fid = fopen([tempLoc.serverFolder 'autoExclude.txt'],'wt');
         fprintf(fid, 'Duration undetected or less than 5 minutes, so assumed an erroneous');
         fclose(fid);
         continue;
     else, newExp.expDuration = b.duration;
     end
-    
-    if ~contains(newExp.expDef, 'SpaceWorld')
-        fid = fopen([tempLoc.serverFolder 'auto2020PaperExclude.txt'],'wt');
-        fprintf(fid, 'Detected non-SpaceWorldExperiment so not relevant for 2020 paper');
-        fclose(fid);
-        continue;
-    end
-    if strcmp(newExp.rigName, 'zatteo') && ~isempty(dir([tempLoc.serverFolder '\*fus.mat*']))
-        fid = fopen([tempLoc.serverFolder 'auto2020PaperExclude.txt'],'wt');
-        fprintf(fid, 'Detected as fusi exp so not relevant for 2020 paper');
-        fclose(fid);
-        continue;
-    end
-    if strcmp(newExp.rigName, 'zurprise') && ~isempty(dir([tempLoc.serverFolder '\*2P_00*.tif*'])) 
-        fid = fopen([tempLoc.serverFolder 'auto2020PaperExclude.txt'],'wt');
-        fprintf(fid, 'Detected as 2P exp so not relevant for 2020 paper');
-        fclose(fid);
-        continue;
-    end
+
     if contains(newExp.expDef, {'Choiceworld'}) 
-        fid = fopen([tempLoc.serverFolder 'auto2020PaperExclude.txt'],'wt');
-        fprintf(fid, 'Detected as choiceworld experiment so not relevant for 2020 paper');
+        fid = fopen([tempLoc.serverFolder 'autoExclude.txt'],'wt');
+        fprintf(fid, 'Detected as choiceworld experiment so not processed');
         fclose(fid);
         continue;
     end

@@ -3,10 +3,12 @@ if ~exist('addText', 'var'); addText = 1; end
 if ~isfield(boxPlot, 'plotLabels'); boxPlot.plotLabels = boxPlot.plotData; end
 if iscell(boxPlot.subject); boxPlot.subject = boxPlot.subject{1}; end
 plotData = boxPlot.plotData;
-% imsc(plotData, boxPlot.axisLimits, boxPlot.colorMap, 'k'); 
-imagesc(plotData);
+
+imH = imagesc(plotData);
 colormap(boxPlot.colorMap); 
+set(imH, 'AlphaData', ~isnan(plotData))
 daspect([1 1 1]); axis xy;
+set(gca, 'Color', [0, 0, 0])
 [xPnts, yPnts] = meshgrid(1:size(plotData,2), 1:size(plotData,1));
 if addText
     arrayfun(@(x,y,z) text(x,y, num2str(round(z*100)/100), 'horizontalalignment', 'center'), xPnts, yPnts, plotData)

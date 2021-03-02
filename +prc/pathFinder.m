@@ -17,8 +17,8 @@ if ~exist('pathType', 'var'); error('pathType required'); end
 if ~exist('pathInfo', 'var'); [pathInfo.subject, pathInfo.expDate, pathInfo.expNum, pathInfo.datNum] = deal('noDataGiven'); end
 if ~isfield(pathInfo, 'subject'); subject = 'noDataGiven'; else, subject = pathInfo.subject;  end
 if ~isfield(pathInfo, 'expDate'); expDate = 'noDataGiven'; else, expDate = pathInfo.expDate;  end
-if ~isfield(pathInfo, 'expNum'); expNum = 'noDataGiven'; else, expNum = pathInfo.expNum;  end
-if ~isfield(pathInfo, 'datNum'); datNum = 'noDataGiven'; else, datNum = pathInfo.datNum;  end
+if ~isfield(pathInfo, 'expNum'); expNum = repmat({'noDataGiven'}, length(subject),1); else, expNum = pathInfo.expNum;  end
+if ~isfield(pathInfo, 'datNum'); datNum = repmat({'noDataGiven'}, length(subject),1); else, datNum = pathInfo.datNum;  end
 
 if isnumeric(expNum); expNum = num2str(expNum); end
 if isnumeric(expDate); expDate =  datestr(expDate, 'yyyy-mm-dd'); end
@@ -36,16 +36,17 @@ if contains(hostName, 'ziptop'); driveName = 'C:';
 else, driveName = 'D:';
 end
 
-if contains(hostName, {'homerig'; 'ziptop'}); directoryCheck = 'local';
-elseif strcmp(hostName, {'zip'}); directoryCheck = 'all';
-else; directoryCheck = 'server';
-end
+% if contains(hostName, {'homerig'; 'ziptop'}); directoryCheck = 'local';
+% elseif strcmp(hostName, {'zip'}); directoryCheck = 'all';
+% else; directoryCheck = 'server';
+% end
+directoryCheck = 'server';
 
 %Assign locations for the raw data, processed data etc. depending on the access of the computer being used.
 rawBackup = [driveName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
-serverProcessedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData4Paper\';
+serverProcessedDirectory = '\\zserver.cortexlab.net\lab\Share\Magda\ProcessedMice\';
 if strcmp(directoryCheck, 'server')
-    processedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData4Paper\';
+    processedDirectory = '\\zserver.cortexlab.net\lab\Share\Magda\ProcessedMice\';
     if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'serverBlock'; end
     if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'serverParams'; end
 else
@@ -64,7 +65,7 @@ for i = 1:size(subject,1)
     %Annoying adjustments to account for changes in which server stored the data in lab. This is the expInfo path.
     expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zserver.cortexlab.net\Data\Subjects\'; '\\znas.cortexlab.net\Subjects\'};
     if ~strcmp(expDate{i}, 'noDataGiven')
-        if strcmp(datNum, 'noDataGiven'); datNum = {datenum(expDate, 'yyyy-mm-dd')}; end
+        if strcmp(datNum{i}, 'noDataGiven'); datNum{i} = datenum(expDate{i}, 'yyyy-mm-dd'); end
         if datNum{i} > 737589 && strcmp(subject{i}, 'PC037'); expInfo = expInfo{2}; %'2019-06-13'
         elseif datNum{i} > 737590 && strcmp(subject{i}, 'PC038'); expInfo = expInfo{2}; %'2019-06-14'
         elseif datNum{i} < 737612; expInfo = expInfo{1}; %'2019-07-06'

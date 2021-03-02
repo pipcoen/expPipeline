@@ -33,7 +33,7 @@ screenRatio = round(screenSize(3)/screenSize(4));
 %Assign number of rows and columns, or calculate from a combination of default columns and screen ratio.
 if ~isempty(axesOpt.numOfRows); numOfRows = axesOpt.numOfRows;
 elseif axesOpt.totalNumOfAxes < 4; numOfRows = 1;
-else, numOfRows = find(4*screenRatio.*(1:100)>=axesOpt.totalNumOfAxes,1);
+else, numOfRows = find(2*screenRatio.*(1:100)>=axesOpt.totalNumOfAxes,1);
 end
 
 numOfCols = ceil(axesOpt.totalNumOfAxes/numOfRows);

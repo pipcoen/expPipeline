@@ -34,20 +34,20 @@ for i  = subjects2Run
     boxPlot.xyLabel = {'AuditoryAzimuth'; 'VisualContrast'};
     switch lower(plotType(1:3))
         case 'res'
-            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @mean);
-            if isempty(obj.hand.figure) || ~any(ismember(obj.hand.figure, gcf)); obj.hand.figure(end+1) = gcf; end
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseCalc==2, @nanmean);
+            if isempty(obj.hand.figure) || ~any(ismember(obj.hand.figure, get(gcf, 'Number'))); obj.hand.figure(end+1) = gcf; end
             set(gcf, 'Tag', 'boxRes', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
         case 'gng'
             [~,blk] = spatialAnalysis.getMaxNumberOfTrials(obj.blks(i), 1, -1);
             blk = prc.combineBlocks(blk, blk.timeOutsBeforeResponse==0);
             set(gcf, 'Tag', 'boxGNG', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
-            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade~=0, @mean);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseCalc~=0, @mean);
         case 'las'  
             [~,blk] = spatialAnalysis.getMaxNumberOfTrials(obj.blks(i), 1);
             set(gcf, 'Tag', 'boxLas', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
             boxPlot.plotData = prc.makeGrid(blk, blk.tri.inactivaiton.laserType~=0, @sum);
         case 'num'
-            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @length);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseCalc==2, @length);
             set(gcf, 'Tag', 'boxNum', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
             colorBar.colorLabel = 'Relative Num of Trials';
             boxPlot.axisLimits = [0 max(boxPlot.plotData(:))];
@@ -56,7 +56,7 @@ for i  = subjects2Run
             boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
         case 'tim'
             [blk] = spatialAnalysis.getMaxNumberOfTrials(obj.blks(i), 0, 5);
-            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade==0, @mean);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseCalc==0, @mean);
             boxPlot.axisLimits = [min(boxPlot.plotData(:)) max(boxPlot.plotData(:))];
     end
     axesOpt.totalNumOfAxes = length(obj.blks);
