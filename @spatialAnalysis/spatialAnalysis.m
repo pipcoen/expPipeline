@@ -120,7 +120,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             laserType = blk.tri.inactivation.laserType;                                          %Lasertype used on each trial.   
             responseNans = isnan(blk.tri.outcome.responseCalc);
             removeIdx = timeOuts*0;
-            if removeTimeouts; timeOuts = timeOuts*0; end                                        %If not removing timeouts, filter becomes all zeros
+            if removeTimeouts; removeIdx(timeOuts) = 1; end                                      %If not removing timeouts, filter becomes all zeros
             if removeRespNans; removeIdx(responseNans & ~timeOuts) = 1; end                      %If not removing responseNans, filter becomes all zeros
             
             regBlk = prc.filtBlock(blk, (laserType==0 | isnan(laserType)) & ~removeIdx & validTrials, 'tri');

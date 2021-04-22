@@ -30,7 +30,7 @@ end
 
 
 %%
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\SupX_allPsycho3', '-pdf', '-painters'); close
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\SupX_allPsycho2', '-pdf', '-painters'); close
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\SupX_allPsycho1', '-pdf', '-painters');
+export_fig('D:\OneDrive\Papers\Coen_2021\FigureParts\SupX_allPsycho3', '-pdf', '-painters'); close
+export_fig('D:\OneDrive\Papers\Coen_2021\FigureParts\SupX_allPsycho2', '-pdf', '-painters'); close
+export_fig('D:\OneDrive\Papers\Coen_2021\FigureParts\SupX_allPsycho1', '-pdf', '-painters');
 end

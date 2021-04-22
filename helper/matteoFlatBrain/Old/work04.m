@@ -1,0 +1,209 @@
+
+%% 2021-02-20 seeing if I can do gradients of cortical layers
+
+% To do:
+% every point in 3D should have path to surface (use streamline) 
+% to show the results, use the template volume?
+% learn the topic in Matlab: 3-D volumetric image processing
+% make more slice views (use montage?)
+% identify potential difficult spots
+% project edge of layer 1 to 2D (using a mesh maybe?)
+% make curves for area borders and project them to 3D and 2D
+% come up with color scheme for 2D cortex
+% (segmentation of regions could be done with superpixel3 maybe?)
+
+% Not to do:
+% - don't go beyond isocortex (no layers)
+
+%% load volumes and structure tree
+
+addpath(genpath('../allenCCF'));
+addpath(genpath('../npy-matlab'));
+
+% Structure Tree: a table that explains the labels
+st = loadStructureTree('../Allen/structure_tree_safe_2017.csv'); 
+
+% Template Volume: gray-scale "background signal intensity" [AP,DV,ML]
+tv = readNPY('../Allen/template_volume_10um.npy'); 
+
+% Annotation Volume: the number at each pixel labels the area [AP,DV,ML]
+av = readNPY('../Allen/annotation_volume_10um_by_index.npy'); 
+
+% Allen CCF-bregma transform (estimated from eyeballing Paxinos->CCF)
+% [AP,DV,ML]
+% this is a function: AllenCCFBregma
+bregma = [540,0,570];
+
+%% SKIP THIS SECTION these are the functions that would be called 
+
+% allen_ccf_npx(tv,av,st);
+
+file_save_location = 'C:\Histology\Mouse1'; % where will the probe locations be saved
+probe_name = 'test'; % name probe to avoid overwriting
+
+f = allenAtlasBrowser(tv, av, st, file_save_location, probe_name);
+
+plotBrainGrid();
+
+%% example of navigation through the structure tree
+
+idx = 85; % 417 is piriform cortex
+st.structure_id_path(idx)
+
+idx1 = find(st.id == st.parent_structure_id(idx ));
+idx2 = find(st.id == st.parent_structure_id(idx1));
+idx3 = find(st.id == st.parent_structure_id(idx2));
+idx4 = find(st.id == st.parent_structure_id(idx3));
+idx5 = find(st.id == st.parent_structure_id(idx4));
+idx6 = find(st.id == st.parent_structure_id(idx5));
+
+st.name(idx )
+st.name(idx1)
+st.name(idx2)
+st.name(idx3)
+st.name(idx4) % isocortex
+st.name(idx5)
+st.name(idx6)
+
+%% Inspect the annotation volume
+
+figure; clf
+imagesc( squeeze( av( bregma(1),:,:) ) );
+axis image
+colormap(allen_ccf_colormap('2017'));
+
+figure; clf
+imagesc( squeeze( av( :,:,bregma(3)-200) )' );
+axis image
+colormap(allen_ccf_colormap('2017'));
+
+%% make a volume with layers (from 1 to 5)
+
+st(strcmp(st.name,'Isocortex'),:) % this is at depth = 5
+
+id_isocortex = st.id(strcmp(st.name,'Isocortex')); % the id of isocortex is 315
+ii_isocortex = contains(st.structure_id_path, ['/' num2str(id_isocortex) '/']);
+
+LayerNames = {'layer 1','layer 2','layer 4','layer 5','layer 6'};
+
+LayerVolume = zeros(size(av),'uint8');
+for iLayer = 1:5
+    ii_layer = contains(st.name,LayerNames{iLayer},'IgnoreCase',true)&ii_isocortex;
+    LayerRows = find(ii_layer); % rows of st that have this layer
+    for iLayerRow = 1:length(LayerRows)
+        iRow = LayerRows(iLayerRow);
+        disp(st.name(iRow));
+        LayerVolume(av==iRow)=iLayer;
+    end
+end
+
+figure; clf
+img = imagesc( squeeze( LayerVolume( bregma(1),:,:) ) );
+axis image
+
+save('LayerVolume','LayerVolume');
+
+
+%% load LayerVolume
+
+load LayerVolume;
+[nx,ny,nz] = size(LayerVolume);
+
+% hack: put a 6 in the non-cortex parts of the brain
+LayerVolume = LayerVolume + uint8(av>1);
+LayerVolume(LayerVolume==1) = uint8(7);
+LayerVolume = LayerVolume -1;
+
+figure; clf
+imagesc( squeeze( LayerVolume( bregma(1),:,:) ) );
+axis image
+
+figure; clf
+imagesc( squeeze( LayerVolume( :,:,bregma(3)-200) )' );
+axis image
+
+%% downsample it and smooth it
+
+% decimate it brutally
+DecLayerVolume = double(LayerVolume(1:10:nx,1:10:ny,1:10:nz));
+
+% blur it
+H = fspecial3('ellipsoid',[2 2 2]); % was 3
+volSmooth = imfilter(DecLayerVolume,H,'replicate');
+
+figure; clf
+imagesc( squeeze( DecLayerVolume( bregma(1)/10,:,:) ) );
+axis image
+
+figure; clf
+imagesc( squeeze( volSmooth( (bregma(1)+200)/10,:,:) ) );
+axis image
+
+%% find the gradients
+
+[ DnGradX, DnGradY, DnGradZ] = gradient(volSmooth,100);
+
+% set the gradients to zero outside cortex
+DnGradX = DnGradX.*(DecLayerVolume<6).*(DecLayerVolume>0);
+DnGradY = DnGradY.*(DecLayerVolume<6).*(DecLayerVolume>0);
+DnGradZ = DnGradZ.*(DecLayerVolume<6).*(DecLayerVolume>0);
+
+iX = (bregma(1)+200)/10;
+
+figure; clf; ax = [];
+ax(1) = subplot(3,1,1); imagesc( squeeze( DnGradX(iX,:,:) ) ); axis image
+ax(2) = subplot(3,1,2); imagesc( squeeze( DnGradY(iX,:,:) ) ); axis image
+ax(3) = subplot(3,1,3); imagesc( squeeze( DnGradZ(iX,:,:) ) ); axis image
+
+iX = (bregma(1))/10;
+
+figure; clf
+imagesc( squeeze( DecLayerVolume(iX,:,:) ) ); hold on
+yy = 1:4:ny/10;
+zz = 1:4:nz/10;
+quiver( zz, yy, squeeze(DnGradZ(iX,yy,zz)), squeeze(DnGradY(iX,yy,zz)) )
+axis image
+set(gca,'ydir','reverse')
+colormap hot
+
+
+iZ = (bregma(3)-200)/10;
+
+figure; clf
+imagesc( squeeze( DecLayerVolume(:,:,iZ) )' ); hold on
+axis image
+colormap hot
+xx = 1:4:nx/10;
+quiver( xx, yy, squeeze(DnGradY(xx,yy,iZ))', squeeze(DnGradX(xx,yy,iZ))' )
+
+%% a path to surface
+
+% starting point
+zz = 29;
+yy = 29;
+
+zz_neighbors = [zz-1 zz+1];
+yy_neighbors = [yy-1 yy+1];
+[zzn, yyn] = meshgrid(zz_neighbors,yy_neighbors);
+
+% next point
+zz(2) = zz(1)-1000*DnGradZ(iX,yy(1),zz(1));
+yy(2) = yy(1)-1000*DnGradY(iX,yy(1),zz(1));
+
+
+%% try "slice"
+
+figure; clf
+slice(double(DecLayerVolume),bregma(1)/10,ny/20*(1:3),[]);
+shading flat
+
+
+
+
+
+
+
+
+
+
+

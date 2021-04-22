@@ -109,7 +109,7 @@ switch lower(dataTag{1})
     case 'm2ephysgood'
         switch subjectID{1}
             case 'PC032'; dateRange = {'2019-04-03:2019-04-14'};
-            case 'PC043'; dateRange = {'2019-05-07:2019-05-16'};
+            case 'PC043'; dateRange = {'2019-05-07:2019-05-10';'2019-05-12:2019-05-16'};
             case 'PC045'; dateRange = {'2019-08-27:2019-09-06'};
             case 'PC046'; dateRange = {'2019-08-27:2019-09-06'};
             case 'PC048'; dateRange = {'2019-09-17:2019-09-26'};

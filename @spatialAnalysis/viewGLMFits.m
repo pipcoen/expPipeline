@@ -66,14 +66,18 @@ for i  = 1:length(obj.blks)
     
     xlim([-1 1])
     midPoint = 0.5;
+    tickVals = -0.80:0.1:0.8;
+    tickMarks = sign(tickVals).*(abs(tickVals).^contrastPower)./(maxContrast.^contrastPower);
+    tickVals = num2cell(tickVals*100);
+    tickVals(2:2:end) = deal({[]});
+    set(gca, 'xTick', tickMarks, 'xTickLabel', tickVals);
+    
     if strcmp(plotType, 'log')
-        maxContrast = ((maxContrast*100).^contrastPower)/100;
         ylim([-2.6 2.6])
         midPoint = 0;
     end
     
     box off;
-    set(gca, 'xTick', (-1):(1/4):1, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
     %%
     title([obj.blks(i).exp.subject{1} '    n = ' num2str(normBlk.tot.trials)]);
     xL = xlim; hold on; plot(xL,[midPoint midPoint], '--k', 'linewidth', 1.5);

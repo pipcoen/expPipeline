@@ -136,25 +136,25 @@ plot(xlim, velThresh*[1 1]*-1, '--k');
 %%
 axH = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); 
 cla; hold on;
-
+% 
 opt.Marker = 'none';
-load('figSSVMMoveModel_mov', 'svmMod')
+% load('figS1SVMMoveModel_mov', 'svmMod')
 cCol = [0 1 1; 1 0 1];
 
-for i = 1:2
-    modelPerf = cell2mat(cellfun(@(x) mean(x(:,:,i))', svmMod.modPerf, 'uni', 0))';
-    meanData = mean(modelPerf);
-    seData = std(modelPerf)./sqrt(size(modelPerf,1));
-    plotData = cat(3, meanData, meanData-seData, meanData+seData);
-    plt.rowsOfGrid(svmMod.svmTimes, plotData, cCol(i,:), opt);
-end
-xlim([-0.05 0.1]);
-ylim([0.5 1])
+% for i = 1:2
+%     modelPerf = cell2mat(cellfun(@(x) mean(x(:,:,i))', svmMod.modPerf, 'uni', 0))';
+%     meanData = mean(modelPerf);
+%     seData = std(modelPerf)./sqrt(size(modelPerf,1));
+%     plotData = cat(3, meanData, meanData-seData, meanData+seData);
+%     plt.rowsOfGrid(svmMod.svmTimes, plotData, cCol(i,:), opt);
+% end
+% xlim([-0.05 0.1]);
+% ylim([0.5 1])
+% 
+% axH = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); 
+% cla; hold on;
 
-axH = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); 
-cla; hold on;
-
-load('figSSVMMoveModel_stm', 'svmMod')
+load('figS1SVMMoveModel_stm', 'svmMod')
 for i = 1:2
     modelPerf = cell2mat(cellfun(@(x) mean(x(:,:,i))', svmMod.modPerf, 'uni', 0))';
     meanData = mean(modelPerf);
@@ -171,5 +171,5 @@ ylim([0.5 0.8])
 % s.viewRightLeftWheelSeparationOverTime;
 
 %%
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\SupX_wheelMovements', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2021\FigureParts\SupX_wheelMovements', '-pdf', '-painters');
 end

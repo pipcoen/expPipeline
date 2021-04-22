@@ -10,6 +10,7 @@ for i = 1:nMice
     iBlk = prc.filtBlock(iBlk, ~ismember(abs(iBlk.tri.inactivation.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | iBlk.tri.inactivation.laserType==0);
     iBlk = prc.filtBlock(iBlk, iBlk.tri.trialType.repeatNum==1 & iBlk.tri.trialType.validTrial);
     iBlk = prc.filtBlock(iBlk, ~isnan(iBlk.tri.outcome.responseCalc));
+%     iBlk = prc.filtBlock(iBlk, iBlk.tri.stim.visContrast<0.8);
     
     idx2Flip = iBlk.tri.inactivation.galvoPosition(:,1)<0 & iBlk.tri.inactivation.laserType==1;
     iBlk.tri.stim.audDiff(idx2Flip) = -1*iBlk.tri.stim.audDiff(idx2Flip);
@@ -21,12 +22,9 @@ for i = 1:nMice
     iBlk.tri.stim.audDiff(rIdx) = iBlk.tri.stim.audDiff(rIdx)*-1;
     iBlk.tri.stim.visDiff(rIdx) = iBlk.tri.stim.visDiff(rIdx)*-1;
     iBlk.tri.stim.conditionLabel(rIdx) = -1*iBlk.tri.stim.conditionLabel(rIdx);
-      
-%     iBlk = prc.filtBlock(iBlk, iBlk.tri.stim.visContrast==0 | iBlk.tri.stim.visContrast>=0.1);
-    
+          
     tTypeIdx = {iBlk.tri.trialType.auditory;iBlk.tri.trialType.visual; iBlk.tri.trialType.coherent; iBlk.tri.trialType.conflict};
     galvoIdx = {[0.6 2; 1.8, 2; 0.6, 3];[1.8 -4; 3,-4; 3,-3]};
-    
     
     for j = 1:length(galvoIdx)
         gIdx = ismember(iBlk.tri.inactivation.galvoPosition, galvoIdx{j}, 'rows');
@@ -34,22 +32,17 @@ for i = 1:nMice
             tBlk = prc.filtBlock(iBlk, (iBlk.tri.inactivation.laserType==0 | gIdx) & tTypeIdx{k});
             normBlk = prc.filtBlock(tBlk, tBlk.tri.inactivation.laserType==0);
             lasBlk = prc.filtBlock(tBlk, tBlk.tri.inactivation.laserType==1);
-            lasBlk = prc.filtBlock(lasBlk, lasBlk.tri.stim.visDiff==-0.4 | (lasBlk.tri.stim.visDiff==0 &  lasBlk.tri.stim.audDiff<0));
+            lasBlk = prc.filtBlock(lasBlk, lasBlk.tri.stim.visDiff<0 | (lasBlk.tri.stim.visDiff==0 &  lasBlk.tri.stim.audDiff<0));
             
             normGrds = prc.getGridsFromBlock(normBlk);
             lasGrds = prc.getGridsFromBlock(lasBlk);
             
-            %             reacN(i,j,k) = nanmedian(normBlk.tri.outcome.reactionTime(:))*1000;
-            %             reacL(i,j,k) = nanmedian(lasBlk.tri.outcome.reactionTime(:))*1000;
-            
             reacN{i,j,k} = nanmean(normGrds.reactionTimeComb(:))*1000;
             reacL{i,j,k} = nanmean(lasGrds.reactionTimeComb(:))*1000;
-            
-%             reacN{i,j,k} = normGrds.reactionTimeComb(~isnan(normGrds.reactionTimeComb))*1000;
-%             reacL{i,j,k} = lasGrds.reactionTimeComb(~isnan(lasGrds.reactionTimeComb))*1000;
         end
     end
 end
+
 %%
 figure;
 axHeight = 250;

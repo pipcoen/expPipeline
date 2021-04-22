@@ -68,24 +68,21 @@ n = x.newBlock;                        %x.newBlock, already populated with subje
 p = x.standardizedParams;              %Parameter values at start of entire session (includes multiple values for different conditions
 vIdx = e.repeatNumValues(1:length(x.standardizedBlock.events.endTrialTimes))==1;            %Indices of valid trials (0 for repeats)
 
-%% Trim trials if there are more than 100 total trials (if not, the mouse was likely still learning)
-if sum(vIdx) > 150
-    %We invalidate the first 5 and last 5 correct trials for each session.
-    vIdx = double(vIdx);
-    stimStartTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
-    quickResponses = (e.feedbackTimes(1:length(vIdx)) - stimStartTimes(1:length(vIdx)))<1.5;
-    vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 3, 'first'))) = -1;
-    vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 3, 'last')):end) = -1;
-    
-    %Invalidate trials where laser "trasitionTimes" are more than 90% of the time until the TTL pulse that activates the laser. Otherwise, cannot
-    %be confident that the laser was ready to receive the pulse.
-    if strcmp(n.expType, 'inactivation')
-        trasitionTimes = e.laserInitialisationTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx));
-        timeToTTL = (e.galvoTTLTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx)))*0.9;
-        vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
-    end
-    vIdx = vIdx>0;
+%% Trim trials--invalidate the first 3 and last 3 correct trials for each session.
+vIdx = double(vIdx);
+stimStartTimes = e.stimPeriodOnOffTimes(e.stimPeriodOnOffValues==1);
+quickResponses = (e.feedbackTimes(1:length(vIdx)) - stimStartTimes(1:length(vIdx)))<1.5;
+vIdx(1:max(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 3, 'first'))) = -1;
+vIdx(min(find(vIdx==1 & e.responseTypeValues(1:length(vIdx))~=0 & quickResponses, 3, 'last')):end) = -1;
+
+%Invalidate trials where laser "trasitionTimes" are more than 90% of the time until the TTL pulse that activates the laser. Otherwise, cannot
+%be confident that the laser was ready to receive the pulse.
+if strcmp(n.expType, 'inactivation')
+    trasitionTimes = e.laserInitialisationTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx));
+    timeToTTL = (e.galvoTTLTimes(1:length(vIdx))-e.newTrialTimes(1:length(vIdx)))*0.9;
+    vIdx(trasitionTimes(:)>timeToTTL(:) & vIdx(:)==1)=-1;
 end
+vIdx = vIdx>0;
 
 %% The number of repeats and timeouts for each trial type presented
 %Invalidate trials that are repeats following an incorrect choice (because the mouse knows which way to go based on the incorrect choice) and trials

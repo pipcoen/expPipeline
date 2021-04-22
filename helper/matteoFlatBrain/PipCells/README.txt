@@ -1,0 +1,3 @@
+a mat file with the location of my cells. "cellLocations" is an nx3 matrix will the allen locations for all cells. "penetrationReference" is an nx1 vector with a reference number indicating the penetration for each cell.
+
+I should mention that when I plot these cells in Matlab with jitter3d, I plot columns (3,1,2) for (x,y,x). I can't immediately remember why (it's possible there is some permutation relative to allen).

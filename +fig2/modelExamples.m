@@ -30,29 +30,86 @@ end
 
 
 %%
-behBlks = spatialAnalysis('all', 'behavior', 0, 1);
-allParametersAV = cell2mat(arrayfun(@(x) x.exp.conditionParametersAV{1}, behBlks.blks, 'uni', 0));
-[uniParametersAV, ~, rowIdx] = unique(allParametersAV, 'rows');
-condFreq = histcounts(rowIdx,1:max(rowIdx)+1)';
-cond2Use = uniParametersAV(condFreq>=15,:);
-
 glmBlk = spatialAnalysis('all', 'behavior', 1, 0);
 glmBlk.blks = spatialAnalysis.getBlockType(glmBlk.blks, 'norm');
-audDiff = glmBlk.blks.tri.stim.audDiff;
-visDiff = glmBlk.blks.tri.stim.visDiff;
-glmBlk.blks = prc.filtBlock(glmBlk.blks, ismember([audDiff visDiff], cond2Use, 'rows'));
+glmBlk.blks = prc.filtBlock(glmBlk.blks, glmBlk.blks.tri.stim.visContrast~=0.06);
+paramsAV = glmBlk.blks.exp.conditionParametersAV{find(cellfun(@length, glmBlk.blks.exp.conditionParametersAV)==25,1)};
+[vGrid, aGrid] = meshgrid(unique(paramsAV(:,2)),unique(paramsAV(:,1)));
 
+resp = glmBlk.blks.tri.outcome.responseCalc;
+vDiff = glmBlk.blks.tri.stim.visDiff;
+aDiff = glmBlk.blks.tri.stim.audDiff;
+fracRTurnsOrig = arrayfun(@(x,y) mean(resp(vDiff == x & aDiff==y)==2), vGrid, aGrid);
 %%
-numExp = glmBlk.blks.tot.experiments;
-glmBlk.blks.exp.conditionParametersAV = repmat(glmBlk.blks.exp.conditionParametersAV(end),numExp,1);
-axesHandle = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg);
-glmBlk.viewGLMFits('simpLogSplitVSplitA', [], [], 1)
-axis square;
-
-axesHandle = plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg);
-glmBlk.viewGLMFits('simpLogSplitVSplitA', [],'log', 1)
-axis square;
-
+fRightTurnsRep = fracRTurnsOrig*nan;
+nRepeats = 10;
+for i = 1:nRepeats
+    tBlk = glmBlk.copy;
+    tBlk.blks = prc.filtBlock(glmBlk.blks, prc.makeFreqUniform(glmBlk.blks.tri.subjectRef));
+    tBlk.viewGLMFits('simpLogSplitVSplitA', [], 'none');
+    glmRep{i,1} = tBlk.glmFit{1};
+    
+    resp = tBlk.blks.tri.outcome.responseCalc;
+    vDiff = tBlk.blks.tri.stim.visDiff;
+    aDiff = tBlk.blks.tri.stim.audDiff;    
+    fRightTurnsRep(:,:,i) = arrayfun(@(x,y) mean(resp(vDiff == x & aDiff==y)==2), vGrid, aGrid);
+end
 %%
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\2_modelExamples', '-pdf', '-painters');
+glm2Plot = glmRep{1};
+glm2Plot.prmFits = mean(cell2mat(cellfun(@(x) x.prmFits,glmRep, 'uni', 0)));
+glm2Plot.prmInit = mean(cell2mat(cellfun(@(x) x.prmInit,glmRep, 'uni', 0)));
+
+pHatCalculated = glm2Plot.calculatepHat(glm2Plot.prmFits,'eval');
+[grids.visValues, grids.audValues] = meshgrid(unique(glm2Plot.evalPoints(:,1)),unique(glm2Plot.evalPoints(:,2)));
+[~, gridIdx] = ismember(glm2Plot.evalPoints, [grids.visValues(:), grids.audValues(:)], 'rows');
+plotData = grids.visValues;
+plotData(gridIdx) = pHatCalculated(:,2);
+
+for i = [3 6]
+    axesHandle = plt.tightSubplot(nRows,nCols,i,axesGap,botTopMarg,lftRgtMarg);
+    cla;
+    fracRightTurns = nanmean(fRightTurnsRep,3);
+
+    contrastPower = 1;
+    ylim([0 1])
+    xlim([-1 1])
+    midPoint = 0.5;
+    
+    if i == 6
+        plotData = log10(plotData./(1-plotData));
+        contrastPower = glm2Plot.prmFits(4);
+        fracRightTurns = log10(fracRightTurns./(1-fracRightTurns));
+        ylim([-2.6 2.6])
+        midPoint = 0;
+    end
+    
+    plotOpt.lineStyle = '-';
+    plotOpt.Marker = 'none';
+    
+    visValues = (abs(grids.visValues(1,:))).^contrastPower.*sign(grids.visValues(1,:));
+    lineColors = plt.selectRedBlueColors(grids.audValues(:,1));
+    plt.rowsOfGrid(visValues, plotData, lineColors, plotOpt);
+    
+    plotOpt.lineStyle = 'none';
+    plotOpt.Marker = '.';
+    
+    visValues = vGrid(1,:);
+    maxContrast = max(abs(visValues(1,:)));
+    visValues = abs(visValues./maxContrast).^contrastPower.*sign(visValues);
+    plt.rowsOfGrid(visValues, fracRightTurns, lineColors, plotOpt);
+    
+    box off;
+    
+    tickVals = -0.80:0.1:0.8;
+    tickMarks = sign(tickVals).*(abs(tickVals).^contrastPower)./(maxContrast.^contrastPower);
+    tickVals = num2cell(tickVals*100);
+    tickVals(2:2:end) = deal({[]});
+    set(gca, 'xTick', tickMarks, 'xTickLabel', tickVals);
+    
+    xL = xlim; hold on; plot(xL,[midPoint midPoint], '--k', 'linewidth', 1.5);
+    yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
+    axis square;
+end
+%%
+export_fig('D:\OneDrive\Papers\Coen_2021\FigureParts\2_modelExamples_equalSubsample', '-pdf', '-painters');
 end

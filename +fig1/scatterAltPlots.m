@@ -8,11 +8,11 @@ if length(blks2Use) == 21; blks2Use(5:8) = []; end
 
 %pre-assign performance and reaction structures with nans
 [perf.vis, perf.aud, perf.mul] = deal(nan*ones(length(blks2Use), 1));
-[reac.vis, reac.aud, reac.coh, reac.con] = deal(perf.vis);
+[reac.vis, reac.aud, reac.coh, reac.con, reac.conA, reac.conV] = deal(perf.vis);
 allRTs = cell(length(blks2Use), 1);
 mTri = 1; %Can be uses to set a minimum number of trials per experiment
 
-eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, blks2Use, 'uni', 0), 'PC022');
+eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, blks2Use, 'uni', 0), 'PC051');
 nMice = length(blks2Use);
 for i = 1:nMice
     %"normalize" block--removes timeouts, laser, and nan-response trials
@@ -32,6 +32,8 @@ for i = 1:nMice
     conIdx = grds.visValues.*grds.audValues < 0 &~isnan(grds.reactionTime) & abs(grds.visValues) == vis2Use;
     reac.coh(i) = mean(grds.reactionTime(cohIdx));
     reac.con(i) = mean(grds.reactionTime(conIdx));
+    
+    nBlk = prc.filtBlock(nBlk, nBlk.tri.trialType.conflict);    
 end
 if any(sum(isnan([perf.vis, perf.aud, perf.mul, reac.vis, reac.aud, reac.coh, reac.con]))) && vis2Use~=0.8
     error('Why are there nans???'); 
@@ -74,7 +76,7 @@ axH = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg); hold on;
 plotAltScatter([reac.aud, reac.vis reac.coh reac.con], reac.offset, eIdx, axH)
 title(['n=' num2str(nMice)]);
 if nargin<2
-    ylim([-0.05 0.05]);
+    ylim([-0.04 0.04]);
 else
     ylim([-0.06 0.06]);
 end
@@ -105,12 +107,26 @@ pVal = round(pVal, 2, 'significant');
 text(0, -0.13, ['V vs Con: P<' num2str(pVal)]);
 
 %%
+axH = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg); hold on; cla;
+plotAltScatter([reac.conA, reac.conV], mean([reac.conA, reac.conV],2), eIdx, axH)
+title(['n=' num2str(nMice)]);
 if nargin<2
-    export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_scatterAltPlots_AudVer', '-pdf', '-painters');
+    ylim([-0.05 0.05]);
+else
+    ylim([-0.06 0.06]);
+end
+box off;
+
+[~, pVal] = ttest(reac.conA, reac.conV);
+pVal = round(pVal, 2, 'significant');
+text(0, -0.15, ['conA vs conV: P<' num2str(pVal)]);
+
+%%
+if nargin<2
+%     export_fig('D:\OneDrive\Papers\Coen_2021\FigureParts\1cg_scatterAltPlots_AudVer', '-pdf', '-painters');
 end
 end
-
-
+    
 function plotAltScatter(inDat, offset, eIdx, axH)
 nXPnts = size(inDat,2);
 inDat = inDat - repmat(offset, 1, nXPnts);

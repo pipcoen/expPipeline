@@ -12,8 +12,7 @@ s.blks  = prc.filtBlock(s.blks,s.blks.tri.trialType.validTrial);
 s.blks  = prc.filtBlock(s.blks,s.blks.tri.stim.audAmplitude~=0);
 %%
 plotCell(s.blks, 'PC045', 166, 95, [0 60]) % Choice cell
-ex
-port_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\4_exampleChoicePSTH', '-pdf', '-painters');
+export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\4_exampleChoicePSTH', '-pdf', '-painters');
 close;
 
 plotCell(s.blks, 'PC045', 166, 97, [0 100]) % AudONOFF cell
