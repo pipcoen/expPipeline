@@ -14,7 +14,7 @@ eIdx = strcmp(arrayfun(@(x) x.exp.subject{1}, blks2Use, 'uni', 0), 'PC022');
 nMice = length(blks2Use);
 for i = 1:nMice
     %"normalize" block--removes timeouts, laser, and nan-response trials
-    nBlk = spatialAnalysis.getBlockType(blks2Use(i), 'norm');
+    nBlk = spatialAnalysis.getBlockType(blks2Use(i), 'norm', 1, 0);
     nBlk = prc.filtBlock(nBlk, nBlk.exp.numOfTrials > mTri);    
     grds = prc.getGridsFromBlock(nBlk);
     

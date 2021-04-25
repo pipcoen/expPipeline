@@ -77,6 +77,7 @@ if ~contOnly
     uniformLaserFilters = cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0);
     
     exampleUniform = prc.filtBlock(uniBlk, uniformLaserFilters{1});
+    disp(['TotalTrials: ' num2str(length(uniformLaserFilters{1}))]);
     totalLaserTrials = prc.makeGrid(exampleUniform, exampleUniform.tri.outcome.responseCalc, @length, 'galvouni');
 end
 
