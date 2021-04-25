@@ -26,9 +26,9 @@ if ~exist('chkExpRigs', 'var') || isempty(chkExpRigs); chkExpRigs = 1; end
 expInfo = prc.pathFinder('expInfo');
 
 %The full list of subjects to be included (generally, mice that learnt the task and have a decent amount of data). 
-includedMice = cellfun(@(x) ['MR0' x], split({'01'},','), 'uni', 0);
+includedMice = cellfun(@(x) ['MR0' x], split({'01','02','03'},','), 'uni', 0)';
 
-aliveMice = {'MR001'}; %Mice that are currently alive (i.e. may generate new data)
+aliveMice = {'MR001', 'MR002', 'MR003'}; %Mice that are currently alive (i.e. may generate new data)
 
 %Optional "started" and "retired" dates. This could be relevant if the same subject name was used by other people, or if you wanted to exclude a
 %swathe of dates from a particular mouse for some reason. Defaults assume all data from a given mouse is included.
@@ -153,6 +153,7 @@ for i = 1:length(processList)
         fclose(fid);
         continue;
     end
+    newExp.expDets = [];
 
     if isempty(fields(expList)); expList = newExp; else, expList(end+1) = newExp; end
 end
