@@ -16,4 +16,15 @@ probTrialPresented = numTrials./sum(numTrials(:));
 
 pVAGivenR = probTrialPresented.*pRRewarded*2;
 margResult = sum(pVAGivenR,2)*sum(pVAGivenR,1);
+
+figure;
+subplot(2,1,1);
+imagesc(pVAGivenR); colormap gray;
+axis off
+axis equal;
+
+subplot(2,1,2);
+imagesc(margResult); colormap grey;
+axis off
+axis equal;
 end

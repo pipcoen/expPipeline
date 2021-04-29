@@ -8,23 +8,23 @@ pathInfo.expNum = s.blks.exp.expNum{1};
 rawBlk = load(prc.pathFinder('backupblock', pathInfo));
 rawBlk = rawBlk.block;
 
-% %% Test
-% sR = 1000;
-% sWin = 51;
-% wheelTime = 0:1/sR:rawBlk.inputs.wheelTimes(end);
-% wheelDeg = 360*rawBlk.inputs.wheelValues/(4*360);
-% wheelDeg = interp1(rawBlk.inputs.wheelTimes, wheelDeg, wheelTime', 'linear', 'extrap')';
-% wheelVel = smooth([0 (wheelDeg(2:end)-wheelDeg(1:end-1))*sR],sWin)';
-% wheelVel = interp1(wheelTime, wheelVel, wheelTime'-(sWin/2)/sR, 'linear', 'extrap')';
-% plot(wheelTime, wheelDeg); hold on;
-% plot(wheelTime, wheelDeg+wheelVel)
-% 
-% blk = s.blks(1); 
-% stimTime = blk.tri.timings.stimPeriodStart;
-% reactTime = blk.tri.outcome.reactionTime+stimTime;
-% gdIdx = strfind((blk.tri.outcome.reactionTime == blk.tri.outcome.timeToFirstMove)', [1 1 1 1 1 1]);
-% plotIdx = unique(cell2mat(arrayfun(@(x) x:x+5, gdIdx, 'uni', 0)))';
-% plot(reactTime(plotIdx), wheelDeg(round(reactTime(plotIdx)*sR)), '*')
+%% Test
+sR = 1000;
+sWin = 51;
+wheelTime = 0:1/sR:rawBlk.inputs.wheelTimes(end);
+wheelDeg = 360*rawBlk.inputs.wheelValues/(4*360);
+wheelDeg = interp1(rawBlk.inputs.wheelTimes, wheelDeg, wheelTime', 'linear', 'extrap')';
+wheelVel = smooth([0 (wheelDeg(2:end)-wheelDeg(1:end-1))*sR],sWin)';
+wheelVel = interp1(wheelTime, wheelVel, wheelTime'-(sWin/2)/sR, 'linear', 'extrap')';
+plot(wheelTime, wheelDeg); hold on;
+plot(wheelTime, wheelDeg+wheelVel)
+
+blk = s.blks(1); 
+stimTime = blk.tri.timings.stimPeriodStart;
+reactTime = blk.tri.outcome.reactionTime+stimTime;
+gdIdx = strfind((blk.tri.outcome.reactionTime == blk.tri.outcome.timeToFirstMove)', [1 1 1 1 1 1]);
+plotIdx = unique(cell2mat(arrayfun(@(x) x:x+5, gdIdx, 'uni', 0)))';
+plot(reactTime(plotIdx), wheelDeg(round(reactTime(plotIdx)*sR)), '*')
 %%
 
 sR = 1000;
