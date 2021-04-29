@@ -166,7 +166,7 @@ if ~isfield(expList, 'expDets'); expList(1).expDets = []; end
 %% Collect all paths--this also ensures paths are up to date with any changes in prc.pathFinder
 tLoc = prc.updatePaths(expList);
 if chkExpRigs
-    potentialEphys = find(contains({expList.rigName}', {'lilrig-stim'; 'zrig1'}) & ~contains({expList.expType}', 'ephys'));
+    potentialEphys = find(contains({expList.rigName}', {'lilrig-stim'; 'zrig1'; 'zelda'}) & ~contains({expList.expType}', 'ephys'));
     foundEphys = potentialEphys(arrayfun(@(x) ~isempty(dir([fileparts(x.serverFolder(1:end-1)) '\*hys*'])), tLoc(potentialEphys)));
     [expList(foundEphys).expType] = deal('ephys');
 end

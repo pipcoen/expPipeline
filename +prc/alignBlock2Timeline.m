@@ -18,6 +18,7 @@ timelineTime = timeline.rawDAQTimestamps;                     %Timestamps in the
 sR = 1/diff(timeline.rawDAQTimestamps(1:2));          %Timeline sample rate
 
 %Establish whether there is a record in timeline of the audio output
+inputNames(contains(inputNames, 'soundOutput')) = {'audioOut'};
 if contains('audioOut', inputNames); audInput = 'audioOut';
 else, audInput = 0;
 end
@@ -27,7 +28,7 @@ end
 %experiments (because it occurs most often) and photoDiode is best for passive experiments (because wheel movement is likely minimal).
 %"fineTune" defines the timeline features to extract from each expDef.
 switch expDef
-    case 'multiSpaceWorld'
+    case {'multiSpaceWorld'; 'multiSpaceWorld_checker'}'
         alignType = 'wheel';
         fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'; 'wheelTraceTimeValue'};
         trialGapThresh = 1;

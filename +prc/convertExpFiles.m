@@ -79,12 +79,12 @@ for i = files2Run(files2Run>srtIdx)
     warning('on', 'MATLAB:load:variableNotFound');
     %Check whether the file already contains blk (behavior) and flu (imaging) variables. 'ignore' is there to avoid errors if whoD is [];
     
-    %Loop to convert ephys files
-    if (~contains({'eph'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'})
-        fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
-        convEphysFile(x, redoTag);
-        load(x.processedData, 'whoD');
-    end
+%     %Loop to convert ephys files
+%     if (~contains({'eph'},['ignore'; whoD]) || redoTag) && strcmpi(x.expType, 'ephys') && contains(dataType, {'all'; 'eph'})
+%         fprintf('Converting ephys recording data for %s %s idx = %d\n', x.expDate,x.subject,i);
+%         convEphysFile(x, redoTag);
+%         load(x.processedData, 'whoD');
+%     end
     
     %If not converted through other processing steps, convert block file.
     if  (~contains({'blk'}, ['ignore'; whoD]) || redoTag == 1) && contains(dataType, {'all'; 'blk'})
