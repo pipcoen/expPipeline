@@ -19,15 +19,15 @@ function convertExpFiles(redoTag, dataType, selectedSubjects, selectedDates)
 %Set the default values for the inputs and check that they are of the right format
 if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
-if ~exist('selectedSubjects', 'var'); selectedSubjects = {'MR'}; end
+if ~exist('selectedSubjects', 'var'); selectedSubjects = {'FT'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
 if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
 
-if ~zipComp; return; end
-%If running on Pip's lab computer, sync the processed data in dropbox with his shared folder on the server.
-if zipComp; fprintf('Running on Zip so will sync local folder and server... \n');
-    prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 2);
-end
+% if ~zipComp; return; end
+% %If running on Pip's lab computer, sync the processed data in dropbox with his shared folder on the server.
+% if zipComp; fprintf('Running on Zip so will sync local folder and server... \n');
+%     prc.syncfolder(prc.pathFinder('processedDirectory'), prc.pathFinder('serverProcessedDirectory'), 2);
+% end
 
 %Scan for new files and update the experiment list. Filter the list based on subject and date inputs.
 expList = prc.scanForNewFiles(0,1);

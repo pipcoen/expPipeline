@@ -44,9 +44,9 @@ directoryCheck = 'server';
 
 %Assign locations for the raw data, processed data etc. depending on the access of the computer being used.
 rawBackup = [driveName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
-serverProcessedDirectory = '\\zserver.cortexlab.net\lab\Share\Flora\ProcessedMice\';
+serverProcessedDirectory = '\\zserver.cortexlab.net\lab\Share\Magda\ProcessedMice\';
 if strcmp(directoryCheck, 'server')
-    processedDirectory = '\\zserver.cortexlab.net\lab\Share\Flora\ProcessedMice\';
+    processedDirectory = '\\zserver.cortexlab.net\lab\Share\Magda\ProcessedMice\';
     if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'serverBlock'; end
     if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'serverParams'; end
 else
@@ -72,8 +72,8 @@ for i = 1:size(subject,1)
         elseif datNum{i} > 737590 && strcmp(subject{i}, 'PC038'); expInfo = expInfo{2}; %'2019-06-14'
         elseif datNum{i} < 737612; expInfo = expInfo{1}; %'2019-07-06'
         elseif datNum{i} > 737612 && datNum{i} <= 737739; expInfo = expInfo{2}; %'2019-07-06'
-        elseif datNum{i} > 737739 && datNum{i} <= 738337; expInfo = expInfo{3}; %'2019-11-10'
-        elseif datNum{i} > 738337;  expInfo = expInfo{4}; %'2021-06-30'
+        elseif datNum{i} > 737739; expInfo = expInfo{3}; %'2019-11-10'
+        elseif datNum{i}
         else, expInfo = expInfo{2};
         end
     end
