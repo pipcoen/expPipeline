@@ -46,7 +46,7 @@ end
 if isdir(p1) && p1(end)~='\', p1 = [p1, '\']; end
 if isdir(p2) && p2(end)~='\', p2 = [p2, '\']; end
 
-exclusions = {'.ini'; '~'};
+exclusions = {'.ini'; '~'; '.ap.bin'};
 % get the files and subdirectories, and sort them by alphabetically
 files1 = sortstruct(dir(p1), 'name');
 files2 = sortstruct(dir(p2), 'name');

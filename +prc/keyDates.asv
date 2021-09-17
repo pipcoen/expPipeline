@@ -151,10 +151,10 @@ switch lower(dataTag{1})
         
     case 'naive'
         switch subjectID{1}
-            case 'PC052'; dateRange = {'all'};                       
-            case 'PC053'; dateRange = {'all'};                         
-            case 'PC054'; dateRange = {'all'};                          
-            case 'PC055'; dateRange = {'all'};                         
+            case 'PC052'; dateRange = {'2019-03-06:2019-04-30'};                            %No inactivation 
+            case 'PC053'; dateRange = {'2019-07-30:2019-08-26'};                            %No inactivation 
+            case 'PC054'; dateRange = {'2019-07-24:2019-08-26'};                            %No inactivation
+            case 'PC055'; dateRange = {'2019-09-09:2019-09-16'};                            %No inactivation
             otherwise, dateRange = [];
         end
         

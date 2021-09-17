@@ -91,8 +91,8 @@ end
 %% Process information for the "exp" field
 %Add hardcoded set of fields from the blks to the exp field, including performanceAVM only on non-passive trials
 comBlks.exp.subjectRef = expBySubject;
-perExpFields = {'subject', 'expDate', 'expNum', 'rigName', 'expType', 'expDef', 'wheelTicksToDecision', 'conditionParametersAV', 'conditionLabels'};
-if ~any(contains({blks.expDef}', 'Passive')); perExpFields = [perExpFields, 'performanceAVM', 'inactivationSites']; end
+perExpFields = {'subject', 'expDate', 'expNum', 'rigName', 'expType', 'expDef', 'conditionParametersAV', 'conditionLabels'};
+if ~any(contains({blks.expDef}', 'Passive')); perExpFields = [perExpFields, 'performanceAVM', 'inactivationSites', 'wheelTicksToDecision']; end
 for i = perExpFields; comBlks.exp.(i{1}) = {blks.(i{1})}'; end
 comBlks.exp.numOfTrials = numOfTrials;
 

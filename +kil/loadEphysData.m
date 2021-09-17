@@ -24,8 +24,6 @@ flipperTrace = timeline.rawDAQData(:,strcmp(inputNames, 'flipper')) > 2;
 flipperFlips = sort([strfind(flipperTrace', [0 1]), strfind(flipperTrace', [1 0])])'+1;
 flipperFlipTimesTimeline = timeline.rawDAQTimestamps(flipperFlips)';
 
-%% Load task/behavior
-fprintf('Loading block file... \n');
 %% Load ephys data (single long recording)
 fprintf('Loading ephys... \n');
 % These are the digital channels going into the FPGA
@@ -39,14 +37,23 @@ sync = load([kilosortOutput '\sync.mat']); sync = sync.sync;
 
 %%
 % Read header information
-headerFID = fopen([kilosortOutput '\dat_params.txt']);
+if exist([kilosortOutput '\dat_params.txt'], 'file')
+    headerFID = fopen([kilosortOutput '\dat_params.txt']);
+else
+    headerFID = fopen([kilosortOutput '\params.py']);
+end
 headerInfo = textscan(headerFID,'%s %s', 'delimiter',{' = '});
 fclose(headerFID);
 headerInfo = [headerInfo{1}'; headerInfo{2}'];
 header = struct(headerInfo{:});
+if exist([kilosortOutput '\dat_params.txt'], 'file')
+    ephysSampleRate = str2double(header.apSampleRate);
+else
+    ephysSampleRate = str2double(header.sample_rate);
+end
+
 %%
 % Load spike data
-ephysSampleRate = str2double(header.apSampleRate);
 spikeTimes = double(readNPY([kilosortOutput '\spike_times.npy']))./ephysSampleRate;
 spikeTemplates = readNPY([kilosortOutput '\spike_templates.npy']);
 templates = readNPY([kilosortOutput '\templates.npy']);
@@ -58,7 +65,7 @@ if exist([kilosortOutput '\lfpPowerSpectra.mat'], 'file'); powerSpectra = load([
     powerSpectra.powerSpectra = mean(powerSpectra.powerSpectra,3);
 else, powerSpectra = [];
 end
-
+%%
 % Default channel map/positions are from end: make from surface
 channelPositions(:,2) = 3840 - channelPositions(:,2); %% Hard coded for now
 
@@ -66,11 +73,12 @@ channelPositions(:,2) = 3840 - channelPositions(:,2); %% Hard coded for now
 if exist('flipperFlipTimesTimeline','var')
     % Get flipper experiment differences by long delays
     flipThresh = 1; % time between flips to define experiment gap (s)
-    flipTimes = sync(flipperSyncIdx).timestamps;
+    if isstruct(sync); flipTimes = sync(flipperSyncIdx).timestamps;
+    else, flipTimes = (find(diff(sync)~=0)/ephysSampleRate)';
+    end
     flipperStEnIdx = [[1;find(diff(flipTimes) > flipThresh)+1], [find(diff(flipTimes) > flipThresh); length(flipTimes)]];
     experimentDurations = diff(flipTimes(flipperStEnIdx),[],2);
     [~, currExpIdx] = min(abs(experimentDurations-timeline.rawDAQTimestamps(end)));
-%     currExpIdx = 4;
     flipperFlipTimesFPGA = flipTimes(flipperStEnIdx(currExpIdx,1):flipperStEnIdx(currExpIdx,2));
     
     % Check that number of flipper flips in timeline matches ephys

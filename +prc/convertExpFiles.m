@@ -143,7 +143,6 @@ if isfield(x.standardizedBlock.events, 'visAzimuthTimes')
     wheelDiffValues = abs(wheelTV(wheelDiffIdx(:,2),2) - wheelTV(wheelDiffIdx(:,1),2));
     
     x.standardizedBlock.wheel2DegRatio = median(wheelDiffValues./visAziDiffValue);
-    cla; hist(wheelDiffValues(:)./visAziDiffValue(:),20); drawnow;
 end
 
 %If experiment includes a meaningful timeline, then load timeline, align with the signals block, and also extract visual and auditory timings from the
@@ -186,26 +185,35 @@ load(x.processedData, 'whoD');
 if  ~contains({'blk'}, whoD) || redoTag == 1
     fprintf('Converting block file for %s %s \n', x.expDate,x.subject);
     convBlockFile(x);
-    load(x.processedData, 'whoD');
+    load(x.processedData, 'whoD'); %#ok<*NASGU>
+end
+sGLXFiles = dir([x.rawProbeData '\**\*.ap.bin*']);
+if ~isempty(sGLXFiles)
+    pNams = cellfun(@(x) x(strfind(x, 'imec'):strfind(x, 'imec')+4), {sGLXFiles.name}', 'uni', 0);
+    siteList = cellfun(@(y) [x.kilosortOutput '\' y], pNams, 'uni', 0);
+    
+    needKil = ~cellfun(@(x) exist([x '\spike_templates.npy'], 'file'), siteList);
+    needSync = ~cellfun(@(x) exist([x '\sync.mat'], 'file'), siteList);    
+    if any(needKil + needSync); kil.preProcessSpikeGLX(x); end
+    
+    chkNoise = ~cellfun(@(x) exist([x '\cluster_pNoise.tsv'], 'file'), siteList);    
+    if any(chkNoise); cellfun(@kil.liklihoodNoise, siteList(chkNoise>0)); end
+    
+    chkLFP = ~cellfun(@(x) exist([x '\lfpPowerSpectra.mat'], 'file'), siteList);
+    %     if any(chkLFP);kil.loadAndSpectrogramLFP(x.subject, x.expDate, siteList(chkLFP>0); end
+    
+end
+try
+    clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
+    clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
+    spikeSorted = length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id));
+catch
+    warning('Error in loading custom labels--presumably not spike sorted');
+    spikeSorted = 0;
 end
 
-siteList = dir([fileparts(x.kilosortOutput) '\*site*']);
-if isempty(siteList); siteList = {x.kilosortOutput}; else; siteList = cellfun(@(y) [x.kilosortOutput '\' y], {siteList.name}', 'uni', 0); end
-sites2Process = cellfun(@(x) ~exist([x '/spike_templates.npy'], 'file'), siteList);
-if ~exist(x.kilosortOutput, 'dir') || any(sites2Process)
-    kil.preProcessPhase3(x.subject, x.expDate, sites2Process);
-    cellfun(@kil.liklihoodNoise, siteList);
-elseif any(cellfun(@(x) ~exist([x '\cluster_pNoise.tsv'], 'file'), siteList))
-    cellfun(@kil.liklihoodNoise, siteList);
-end
-sites2Process = cellfun(@(x) ~exist([x '/lfpPowerSpectra.mat'], 'file'), siteList);
-if any(sites2Process); kil.loadAndSpectrogramLFP(x.subject, x.expDate, sites2Process); end
 
-clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
-clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
-%%
-spikeSorted = length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id));
-loadData = isempty(whoD) || ~any(strcmp('eph', whoD)) && spikeSorted==1 || ~any(contains({'ephTmp'; 'eph'}, whoD)) || redoTag;
+loadData = (isempty(whoD) || ~any(strcmp('eph', whoD))) && (spikeSorted==1 || ~any(contains({'ephTmp'; 'eph'}, whoD)) || redoTag);
 if spikeSorted && loadData; fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
 elseif ~spikeSorted && loadData; fprintf('WARNING: %s %s needs to be SORTED. Processing temp file now... \n', x.expDate,x.subject);
 else, fprintf('WARNING: %s %s needs to be SORTED. \n', x.expDate,x.subject);
@@ -222,4 +230,38 @@ if loadData
     else, ephTmp = eph; whoD = unique([whoD; 'ephTmp']); save(x.processedData, 'ephTmp', 'whoD', '-append');
     end
 end
+
+% siteList = dir([fileparts(x.kilosortOutput) '\*site*']);
+% if isempty(siteList); siteList = {x.kilosortOutput}; else; siteList = cellfun(@(y) [x.kilosortOutput '\' y], {siteList.name}', 'uni', 0); end
+% sites2Process = cellfun(@(x) ~exist([x '/spike_templates.npy'], 'file'), siteList);
+% if ~exist(x.kilosortOutput, 'dir') || any(sites2Process)
+%     kil.preProcessPhase3(x.subject, x.expDate, sites2Process);
+%     cellfun(@kil.liklihoodNoise, siteList);
+% elseif any(cellfun(@(x) ~exist([x '\cluster_pNoise.tsv'], 'file'), siteList))
+%     cellfun(@kil.liklihoodNoise, siteList);
+% end
+% sites2Process = cellfun(@(x) ~exist([x '/lfpPowerSpectra.mat'], 'file'), siteList);
+% if any(sites2Process); kil.loadAndSpectrogramLFP(x.subject, x.expDate, sites2Process); end
+
+% clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
+% clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
+%% NEEDS WORK
+% spikeSorted = length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id));
+% loadData = isempty(whoD) || ~any(strcmp('eph', whoD)) && spikeSorted==1 || ~any(contains({'ephTmp'; 'eph'}, whoD)) || redoTag;
+% if spikeSorted && loadData; fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
+% elseif ~spikeSorted && loadData; fprintf('WARNING: %s %s needs to be SORTED. Processing temp file now... \n', x.expDate,x.subject);
+% else, fprintf('WARNING: %s %s needs to be SORTED. \n', x.expDate,x.subject);
+% end
+% 
+% if loadData
+%     [~, availableFolders] = cellfun(@fileparts, siteList, 'uni', 0);
+%     if strcmp(availableFolders, 'kilosort'); availableFolders = {'ephys'}; end
+%     penetrationsExist = cellfun(@(y) ~isempty(kil.getExpDets(x.subject, x.expDate, x.expNum, y)), availableFolders);
+%     eph = cell2mat(cellfun(@(y) kil.loadEphysData(x, y, spikeSorted), siteList(penetrationsExist), 'uni', 0));
+%     if isempty(eph); error('Why is eph empty?'); end
+%     load(x.processedData); whoD = whoD(~contains(whoD, 'eph'));
+%     if spikeSorted; whoD = unique([whoD; 'eph']); save(x.processedData, whoD{:});
+%     else, ephTmp = eph; whoD = unique([whoD; 'ephTmp']); save(x.processedData, 'ephTmp', 'whoD', '-append');
+%     end
+% end
 end

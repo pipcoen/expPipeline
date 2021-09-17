@@ -62,14 +62,16 @@ for i = 1:size(subject,1)
     processedFileName = [subject{i} '\' subject{i} '_' expDate{i}([3:4 6:7 9:10]) '_' expNum{i}  'Proc.mat'];
     
     %Annoying adjustments to account for changes in which server stored the data in lab. This is the expInfo path.
-    expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zserver.cortexlab.net\Data\Subjects\'; '\\znas.cortexlab.net\Subjects\'};
+    expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zserver.cortexlab.net\Data\Subjects\'; ...
+        '\\znas.cortexlab.net\Subjects\'; '\\128.40.224.65\Subjects\'};
     if ~strcmp(expDate{i}, 'noDataGiven')
         if strcmp(datNum, 'noDataGiven'); datNum = {datenum(expDate, 'yyyy-mm-dd')}; end
         if datNum{i} > 737589 && strcmp(subject{i}, 'PC037'); expInfo = expInfo{2}; %'2019-06-13'
         elseif datNum{i} > 737590 && strcmp(subject{i}, 'PC038'); expInfo = expInfo{2}; %'2019-06-14'
         elseif datNum{i} < 737612; expInfo = expInfo{1}; %'2019-07-06'
         elseif datNum{i} > 737612 && datNum{i} <= 737739; expInfo = expInfo{2}; %'2019-07-06'
-        elseif datNum{i} > 737739; expInfo = expInfo{3}; %'2019-11-10'
+        elseif datNum{i} > 737739 && datNum{i} <= 738157; expInfo = expInfo{3}; %'2019-11-10'
+        elseif datNum{i} > 738158; expInfo = expInfo{4}; %'2021-01-01'
         else, expInfo = expInfo{2};g
         end
     end
@@ -99,6 +101,7 @@ for i = 1:size(subject,1)
             case 'explist'; pathOut{i,j} = [processedDirectory 'expList.mat'];                                %the master list of experiments
             case 'expinfo'; pathOut{i,j} = expInfo;                                                           %the expInfo path
             case 'ephysrecord'; pathOut{i,j} = [processedDirectory 'ePhysRecord.mat'];                        %an excel sheet with ephys records
+            case 'ephysrecordnp2'; pathOut{i,j} = [processedDirectory 'ephysrecordNP2.mat'];                        %an excel sheet with ephys records
             case 'allenatlas'; pathOut{i,j} = [driveName '\Dropbox (Neuropixels)\MouseData\Atlas\allenCCF\']; %local allan atlas directory
             case 'probepath'; pathOut{i,j} = [processedDirectory 'XHistology\' subject{i} '\probe_histIdx' expNum{i}];  %probe vectors estimated from histology
         end

@@ -32,6 +32,7 @@ if contains(subject, expDate); subject{1} = subject{1}(1:5); end %Deals with cas
 
 %Load the ephys record, and get cell arrays of the contained subjects, dates, exp numbers, and folders
 ephysRecord = load(prc.pathFinder('ephysrecord')); ephysRecord = ephysRecord.ephysRecord;
+
 allSubjects = {ephysRecord.subject};
 allDates = {ephysRecord.expDate};
 allExpNums = {ephysRecord.expNum};
@@ -39,9 +40,9 @@ allFolders = {ephysRecord.folder};
 
 %Put the records from the excel sheet, and the requested records, into the same form for comparison. "all" accounts for cases where the same
 %penetration was used for all experiment numbers. This is usually the case, but not always.
-uniqueRecords = cellfun(@(w,x,y,z) [w,x,y,z], allSubjects(:), allDates(:), allExpNums(:), allFolders(:), 'uni', 0);
-requestedRecords = cellfun(@(w,x,y,z) [w,x,y,z], subject, expDate, expNum, folder, 'uni', 0);
-requestedRecordsAll = cellfun(@(w,x,y,z) [w,x,y,z], subject, expDate, repmat({'all'}, length(folder),1), folder, 'uni', 0);
+uniqueRecords = cellfun(@(w,x,y,z) lower([w,x,y,z]), allSubjects(:), allDates(:), allExpNums(:), allFolders(:), 'uni', 0);
+requestedRecords = cellfun(@(w,x,y,z) lower([w,x,y,z]), subject, expDate, expNum, folder, 'uni', 0);
+requestedRecordsAll = cellfun(@(w,x,y,z) lower([w,x,y,z]), subject, expDate, repmat({'all'}, length(folder),1), folder, 'uni', 0);
 
 %Find the selected index in the sheet (checking both "all" and expNum specific records") and add records to the output
 [~, selectedIdx] = ismember(requestedRecords, uniqueRecords);

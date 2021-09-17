@@ -85,12 +85,12 @@ if contains(lower(extraData), {'eph'; 'all';'ephTmp'})
         for i = 1:length(timelineAvailable); blk(timelineAvailable(i)).timeline = timeline(i); end
     end
     
-    if strcmpi(extraData, 'ephTmp'); eTag = 'ephTmp'; else, eTag = 'eph'; end
+    if strcmpi(extraData), 'ephTmp'); eTag = 'ephTmp'; else eTag = 'eph'; end
     ephysAvailable = find(cellfun(@(x) contains(eTag, x), whoD));
     ephys = cellfun(@(x) load(x, eTag), selectedFiles(ephysAvailable), 'uni', 0);
     if ~isempty(ephys)
         ephys = [ephys{:}]';
-        for i = 1:length(ephysAvailable); blk(ephysAvailable(i)).ephys = ephys(i).(eTag); end
+        for i = 1:length(ephysAvailable); blk(ephysAvailable(i)).ephys = ephys(i).eph; end
     end
 end
 
