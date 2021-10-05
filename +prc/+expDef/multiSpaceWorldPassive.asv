@@ -54,7 +54,7 @@ uniqueConditions = [zeroConditions; rightInitialConditions; leftInitialCondition
 if any(all([rightConditionsIdx~=0, leftConditionsIdx~=0],2)); error('Detect same condition as being Left and Right'); end
 conditionLabel = rightConditionsIdx + -1*leftConditionsIdx;
 conditionLabel((rewardClick | closedLoopOnsetTone)) = nan;
-uniqueConditionLabels = [zeros(size(zeroConditions,1),1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
+uniqueConditionLabels = [0*find(zeroConditions,1); (1:size(rightInitialConditions,1))'; -1*(1:size(leftInitialConditions,1))'];
 [~, conditionRowIdx] = ismember(conditionLabel, uniqueConditionLabels);
 uniqueDiff = [uniqueConditions(:,3) uniqueConditions(:,2).*sign(uniqueConditions(:,4))];
 

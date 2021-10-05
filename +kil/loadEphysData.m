@@ -77,7 +77,9 @@ if exist('flipperFlipTimesTimeline','var')
     else, flipTimes = (find(diff(sync)~=0)/ephysSampleRate)';
     end
     flipperStEnIdx = [[1;find(diff(flipTimes) > flipThresh)+1], [find(diff(flipTimes) > flipThresh); length(flipTimes)]];
-    experimentDurations = diff(flipTimes(flipperStEnIdx),[],2);
+    if size(flipperStEnIdx,1) == 1; experimentDurations = diff(flipTimes(flipperStEnIdx)); 
+    else, experimentDurations = diff(flipTimes(flipperStEnIdx),[],2);
+    end
     [~, currExpIdx] = min(abs(experimentDurations-timeline.rawDAQTimestamps(end)));
     flipperFlipTimesFPGA = flipTimes(flipperStEnIdx(currExpIdx,1):flipperStEnIdx(currExpIdx,2));
     
