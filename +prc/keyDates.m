@@ -90,7 +90,19 @@ switch lower(dataTag{1})
             case 'PC013'; dateRange = {'2017-06-20:2017-07-06'};
             otherwise, dateRange = []; 
         end
-               
+ 
+    case 'variscan'
+        switch subjectID{1}
+            case 'PC022'; dateRange = {'2018-05-31:2018-06-24'; '2018-07-03:2018-07-30'}; %Power was only 1.5mW
+            case 'PC027'; dateRange = {'2018-06-13:2018-06-24'; '2018-07-03:2018-09-23'};
+            case 'PC029'; dateRange = {'2018-07-18:2018-07-30'; '2018-08-01:2018-09-23'};
+            case 'DJ006'; dateRange = {'2018-07-11:2018-08-05'};
+            case 'DJ008'; dateRange = {'2018-07-18:2018-11-03'};
+            case 'DJ007'; dateRange = {'2018-07-03:2018-08-05'};
+            case 'DJ010'; dateRange = {'2018-07-03:2018-07-29'};
+            otherwise, dateRange = [];
+        end
+        
     case 'm2ephys'
         switch subjectID{1}
             case 'DJ007'; dateRange = {'2018-11-28:2018-12-02'}; 

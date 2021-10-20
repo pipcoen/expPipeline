@@ -1,6 +1,6 @@
 function scatterAltPlots(behBlksOrig, vis2Use)
 %Load the block if it doesn't exist. Remove mice that have different parameter values (4 mice of 21)
-if ~exist('behBlksOrig', 'var') || isempty(behBlksOrig); behBlksOrig = spatialAnalysis('all', 'behavior', 0, 1); end
+if ~exist('behBlksOrig', 'var') || isempty(behBlksOrig); behBlksOrig = spatialAnalysis('all', 'behavior', 0, 1, ''); end
 if ~exist('vis2Use', 'var'); vis2Use = 0.4; end %We use 0.4/40% contrast for comparisons
 
 blks2Use = behBlksOrig.blks;
@@ -106,7 +106,7 @@ text(0, -0.13, ['V vs Con: P<' num2str(pVal)]);
 
 %%
 if nargin<2
-    export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\1_scatterAltPlots_AudVer', '-pdf', '-painters');
+    export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\1_scatterAltPlots_AudVer', '-pdf', '-painters');
 end
 end
 

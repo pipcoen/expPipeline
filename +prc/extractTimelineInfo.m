@@ -1,4 +1,4 @@
-function [ o ] = extractTimelineInfo( x )
+function [o] = extractTimelineInfo(x)
 %extractTimelineInfo: gets the actual differences between the time of the
 %TTL pulse and the time of stimulus onset, and reports any inactivation
 %trials on which the difference between the intended delay and the actual

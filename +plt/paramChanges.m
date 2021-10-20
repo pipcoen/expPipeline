@@ -1,7 +1,7 @@
 function paramChanges(subject)
 if ~exist('subject', 'var'); error('Must supply subject'); end
 %%
-s = spatialAnalysis(subject, 'all',0,0);
+s = spatialAnalysis(subject, 'all',0,0,'');
 %%
 figure;
 allAVCombos = unique(cell2mat(s.blks.exp.conditionParametersAV(:)), 'rows');

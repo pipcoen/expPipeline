@@ -19,7 +19,7 @@ if ~exist('diffThresh', 'var')
 end
 
 %Find initial offset. If shifting the first 10 points doesn't align them better, move on. Otherwise, truncate accordingly.
-buff = 5;
+buff = 10;
 offsetTest = cell2mat(arrayfun(@(x) [sum(abs(t1Diff((buff+1:buff*2)+x)-t2Diff(buff+1:buff*2))) x],-buff:buff, 'uni', 0)');
 initialOffset = offsetTest(offsetTest(:,1)==min(offsetTest(:,1)),2);
 if initialOffset < 0; t2(1:abs(initialOffset)) = [];
@@ -33,16 +33,24 @@ loopNumber = 0;
 
 %Loop that iterates through "compareVect" and looks for mismatches in the "jumps" between the two time series. When it finds them, it deletes the
 %surrounding points so the jumps are removed. If it detects more than 50, assume there are bigger problems and throw an error.
+cla;
 while find(abs(diff(diff(compareVect,[],2)))>diffThresh,1)
+    plot(diff(diff(compareVect,[],2)), '.');
     errPoint = find(abs(diff(diff(compareVect,[],2)))>diffThresh,1);
-    t2(errPoint+1) = [];
-    t2(errPoint-1:errPoint+1) = [];
-    t1(errPoint-1:errPoint+1) = [];
+    if diff(t2(errPoint:errPoint+1)) < diff(t1(errPoint:errPoint+1))
+        t2(errPoint+1) = [];
+    else
+        t1(errPoint+1) = [];
+    end
+    
+    t2(max([errPoint-1,1]):errPoint+1) = [];
+    t1(max([errPoint-1,1]):errPoint+1) = [];
     
     minL = min([length(t1) length(t2)]);
     compareVect = [t1(1:minL)-(t1(1)) t2(1:minL)-t2(1)];
     loopNumber = loopNumber+1;
-    if loopNumber > 50; error('Extreme alignment error'); end
+    hold on;
+    if loopNumber > 100; error('Extreme alignment error'); end
 end
 t1Corrected = t1(1:minL);
 t2Corrected = t2(1:minL);

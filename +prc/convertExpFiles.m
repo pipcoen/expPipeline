@@ -168,6 +168,13 @@ x.newBlock.rawWheelTimeValue = [wheelTime wheelValue-wheelValue(1)];
 blockFunction = str2func(['prc.expDef.' x.expDef]);
 x = blockFunction(x);
 
+if contains(x.expType, {'inactivation'}) && length(unique(x.newBlock.params.laserOnsetDelays)) > 1
+    x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
+    [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, 'multiSpaceWorldInactivation');
+    x.newBlock.inactivation.laserOnsetDelay = x.aligned.laserTTLPeriodOnOff(:,1)-x.aligned.visStimPeriodOnOff(:,1);
+end
+
+
 %Assing variable names to save
 blk = x.newBlock;
 raw = x.newRaw;

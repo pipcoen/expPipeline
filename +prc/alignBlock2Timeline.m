@@ -27,6 +27,10 @@ end
 %experiments (because it occurs most often) and photoDiode is best for passive experiments (because wheel movement is likely minimal).
 %"fineTune" defines the timeline features to extract from each expDef.
 switch expDef
+    case 'multiSpaceWorldInactivation'
+        alignType = 'photoDiode';
+        fineTune = {'TTLPulse'; 'flashes'};
+        trialGapThresh = 1;
     case 'multiSpaceWorld'
         alignType = 'wheel';
         fineTune = {'clicksfine'; 'flashes'; 'reward'; 'movements'; 'wheelTraceTimeValue'};
@@ -234,24 +238,31 @@ if any(contains(fineTune, 'flashes'))
     photoDiodeFlipTimes = timeline.rawDAQTimestamps(photoDiodeFlips)';
     photoDiodeFlipTimes(find(diff(photoDiodeFlipTimes)<(12/1000))+1) = [];
     
-    trialGapThresh = 1./max([block.paramsValues.clickRate])*3;
+    trialGapThresh = 1./max([block.paramsValues.clickRate])*5;
     largeVisGaps = photoDiodeFlipTimes(sort([find(diff([0; photoDiodeFlipTimes])>trialGapThresh); find(diff([photoDiodeFlipTimes; 10e10])>trialGapThresh)]));
     zeroContrastTrials = arrayfun(@(x) max(abs(x.visContrast)),block.paramsValues)'==0;
     zeroContrastTrials = zeroContrastTrials(1:size(trialStEnTimes,1));
     largeGapsByTrial = arrayfun(@(x,y) largeVisGaps(largeVisGaps>x & largeVisGaps<y), trialStEnTimes(:,1), trialStEnTimes(:,2), 'uni', 0);
-    largeVisGaps = cell2mat(largeGapsByTrial(~zeroContrastTrials));
+    
+    if strcmpi(expDef, 'multiSpaceWorldInactivation')
+        largeVisGaps = cell2mat(largeGapsByTrial);
+        stimStartRef = stimStartBlock(1:size(trialStEnTimes,1));
+    else
+        largeVisGaps = cell2mat(largeGapsByTrial(~zeroContrastTrials));
+        stimStartRef = stimStartBlock(~zeroContrastTrials);
+    end
     largeVisGaps = [largeVisGaps(1:2:end) largeVisGaps(2:2:end)];
     
     %% Sanity check (should be match between stim starts from block and from timeline)
-    [compareIndex] = prc.nearestPoint(stimStartBlock(~zeroContrastTrials), largeVisGaps(:,1)');
+    [compareIndex] = prc.nearestPoint(stimStartRef, largeVisGaps(:,1)');
     if any(compareIndex-(1:numel(compareIndex)))
         fprintf('WARNING: problem matching visual stimulus start and end times \n');
         fprintf('Will try removing points that do not match stimulus starts \n');
         
-        [~, nearestPoint] = prc.nearestPoint(largeVisGaps(:,1), stimStartBlock(~zeroContrastTrials));
+        [~, nearestPoint] = prc.nearestPoint(largeVisGaps(:,1), stimStartRef);
         largeVisGaps(nearestPoint>0.5,:) = [];
         
-        [compareIndex] = prc.nearestPoint(stimStartBlock(~zeroContrastTrials), largeVisGaps(:,1)')';
+        [compareIndex] = prc.nearestPoint(stimStartRef, largeVisGaps(:,1)')';
         if any(compareIndex-(1:numel(compareIndex))'); fprintf('Error in matching visual stimulus start and end times \n'); keyboard; end
     end
     %%
@@ -361,6 +372,16 @@ if any(contains(fineTune, 'wheelTraceTimeValue'))
     points2Keep = sort([1 changePoints changePoints+1 length(timelinehWeelPosition) ceil(trialStEnIdx(:,1))'+1, floor(trialStEnIdx(:,2))'-1]);
     aligned.wheelTraceTimeValue = [timelineTime(points2Keep)' timelinehWeelPosition(points2Keep)];
 end
+
+%%
+if any(contains(fineTune, 'TTLPulse'))
+    blockTTLTimes = block.outputs.digitalTTLTimes(block.outputs.digitalTTLValues==1);
+    TTLTrace = mat2gray(timeline.rawDAQData(:,strcmp(inputNames, 'TTL'))) > 0.5;
+    timelineTTLTimes = timeline.rawDAQTimestamps(strfind(TTLTrace', [0 1]));
+    if length(timelineTTLTimes)~=length(blockTTLTimes); error('There should always be an equal number of reward signals'); end
+    aligned.laserTTLPeriodOnOff = [timelineTTLTimes', timeline.rawDAQTimestamps(strfind(TTLTrace', [1 0]))'];
+end
+
 %%
 rawFields = fields(aligned);
 for i = 1:length(rawFields)
@@ -374,14 +395,14 @@ for i = 1:length(rawFields)
         aligned.(currField)(emptyIdx) = {nan*ones(1,nColumns)};
         aligned.(currField) = cellfun(@single,aligned.(currField), 'uni', 0);
     end
-    if any(strcmp(currField, {'audStimPeriodOnOff'; 'visStimPeriodOnOff'; 'firstMoveTimeDir'; 'choiceInitTimeDir'; 'choiceThreshTimeDir'}))
+    if any(strcmp(currField, {'audStimPeriodOnOff'; 'visStimPeriodOnOff'; 'laserTTLPeriodOnOff'; 'firstMoveTimeDir'; 'choiceInitTimeDir'; 'choiceThreshTimeDir'}))
         nColumns = max(cellfun(@(x) size(x,2), aligned.(currField)));
         aligned.(currField)(emptyIdx) = {nan*ones(1, nColumns)};
         aligned.(currField) = single(cell2mat(aligned.(currField)));
     end
 end
 
-requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff'; 'firstMoveTimeDir';...
+requiredFields = {'audStimOnOff'; 'visStimOnOff'; 'audStimPeriodOnOff';'visStimPeriodOnOff'; 'firstMoveTimeDir'; 'laserTTLPeriodOnOff'; ...
                   'choiceInitTimeDir'; 'choiceThreshTimeDir'; 'rewardTimes';'wheelTraceTimeValue'};
 for i = 1:length(requiredFields)
     if ~isfield(aligned, requiredFields{i}); aligned.(requiredFields{i}) = trialStEnTimes(:,2)*0+nan; end
