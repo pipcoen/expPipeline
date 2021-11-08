@@ -1,6 +1,6 @@
 function meanBehavior(behBlks)
 %% This function plots the data panels for figure one of the ms
-if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'behaviour', 0, 1); end
+if ~exist('behBlks', 'var'); behBlks = spatialAnalysis('all', 'behaviour', 0, 1, ''); end
 mTri = 1;
 behBlks = behBlks.blks;
 nMice = length(behBlks);

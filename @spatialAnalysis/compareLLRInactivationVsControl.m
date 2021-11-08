@@ -1,4 +1,4 @@
-function inactResultsForModel = viewInactivationEffectsOnModel(obj, plotType, nShuffles, freeP, groups, crossVal)
+function inactLLRResults = compareLLRInactivationVsControl(obj, nShuffles, crossVal, contOnly)
 %% Method for "spatialAnalysis" class. Plots effects of inactivation on behavior. Plots are shown as grids on an outline of cortex.
 
 %INPUTS(default values)
@@ -13,53 +13,42 @@ function inactResultsForModel = viewInactivationEffectsOnModel(obj, plotType, nS
 %Set up defaults for the input values. "op2use" is "mean" as default for responses, but changes below depending on the type data being used
 numOfMice = length(obj.blks);
 if numOfMice > 1; error('Only coded to handle one mouse atm'); end
-if ~exist('groups', 'var'); useGroups = 0; else; useGroups = 1; end
 if ~exist('nShuffles', 'var'); nShuffles = 0; end
-if ~exist('plotType', 'var'); plotType = 'grp'; end
-if ~exist('freeP', 'var'); freeP = [1 1 1 0 1 1]>0; end
-if ~exist('crossVal', 'var'); crossVal = 0; end
-freeP = freeP>0;
+if ~exist('crossVal', 'var'); crossVal = 2; end
+if ~exist('contOnly', 'var'); contOnly = 0; end
+freeP = [1 1 1 0 1 1]>0;
 
 %Create "iBlk" (initialBlock) which removes some incorrect galvoPositions, repeated trials, and keeps only valid trials
 iBlk = prc.filtBlock(obj.blks, obj.blks.tri.inactivation.galvoPosition(:,2)~=4.5);
 iBlk = prc.filtBlock(iBlk, ~ismember(abs(iBlk.tri.inactivation.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | iBlk.tri.inactivation.laserType==0);
 iBlk = prc.filtBlock(iBlk, iBlk.tri.trialType.repeatNum==1 & iBlk.tri.trialType.validTrial);
 iBlk = prc.filtBlock(iBlk, ~isnan(iBlk.tri.outcome.responseCalc));
-iBlk = prc.filtBlock(iBlk, iBlk.tri.stim.visContrast~=0.06);
 
 %Conditional to optionally group inactivaiton sites together (e.g. if you want to combine all V1 sites). We "reflect" these groups, so only one
 %hemisphere needs to be defined. We find all trials with galvoPositions belonging to those groups in iBlk and replace with the mean group position
-if useGroups
-    galvoGrps = {};
-    groups = lower(groups);
-    if contains(groups, 'v1'); galvoGrps = [galvoGrps; [1.8 -4; 3,-4; 3,-3]]; end
-    if contains(groups, 'a1'); galvoGrps = [galvoGrps; [4.2,-2; 4.2,-3; 4.2,-4]]; end
-    if contains(groups, 'mos'); galvoGrps = [galvoGrps; [0.6 2; 1.8, 2; 0.6, 3]]; end
-    if contains(groups, 's1'); galvoGrps = [galvoGrps; [3,1; 3,0; 4.2,0]]; end
-    if contains(groups, 'av'); galvoGrps = [galvoGrps; [1.8 -4; 3,-4; 4.2,-4; 1.8,-3; 3,-3; 4.2,-3; 1.8,-2; 3,-2; 4.2,-2]]; end
-    
-    galvoGrps = [galvoGrps; cellfun(@(x) [x(:,1)*-1, x(:,2)], galvoGrps, 'uni', 0)];
-    grpNum = length(galvoGrps);
-    grpIdx = cellfun(@(x,y) ismember(iBlk.tri.inactivation.galvoPosition, x, 'rows').*y, galvoGrps, num2cell(1:grpNum)', 'uni', 0);
-    grpIdx = sum(cell2mat(grpIdx'),2);
-    meanPositions = cellfun(@mean, galvoGrps, 'uni', 0);
-    iBlk.tri.inactivation.galvoPosition(grpIdx>0,:) = cell2mat(meanPositions(grpIdx(grpIdx>0)));
-    iBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==0 | grpIdx>0);
-end
+posNames = {'MOs'; 'V1'; 'A1'; 'S1'};
+galvoGrps = {[0.6 2; 1.8, 2; 0.6, 3];[1.8 -4; 3,-4; 3,-3];[4.2,-2; 4.2,-3; 4.2,-4];[3,1; 3,0; 4.2,0]};
+tstDat = [abs(iBlk.tri.inactivation.galvoPosition(:,1)) iBlk.tri.inactivation.galvoPosition(:,2)];
+grpNum = length(galvoGrps);
+grpIdx = cellfun(@(x,y) ismember(tstDat, x, 'rows').*y, galvoGrps, num2cell(1:grpNum)', 'uni', 0);
+grpIdx = sum(cell2mat(grpIdx'),2);
+meanPositions = cellfun(@mean, galvoGrps, 'uni', 0);
+iBlk.tri.inactivation.galvoPosition(grpIdx>0,:) = cell2mat(meanPositions(grpIdx(grpIdx>0)));
+iBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==0 | grpIdx>0);
+
 
 contBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType == 0);
 uniBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType == 1);
 
-if contains(plotType, 'dif')
-    %If plotType contains 'dif' then we want to switch the responseCalc, vis and aud paramters such that all "left" trials are flipped (vis left trials in
-    %the case of conflict trials). Now, inactivations on the right hemisphere are contralateral, and left hemisphere is ipsilateral
-    idx2Flip = uniBlk.tri.inactivation.galvoPosition(:,1)<0;
-    uniBlk.tri.outcome.responseCalc(idx2Flip) = (uniBlk.tri.outcome.responseCalc(idx2Flip)*-1+3).*(uniBlk.tri.outcome.responseCalc(idx2Flip)>0);
-    uniBlk.tri.inactivation.galvoPosition(idx2Flip,1) = -1*uniBlk.tri.inactivation.galvoPosition(idx2Flip,1);
-    uniBlk.tri.stim.audDiff(idx2Flip) = -1*uniBlk.tri.stim.audDiff(idx2Flip);
-    uniBlk.tri.stim.visDiff(idx2Flip) = -1*uniBlk.tri.stim.visDiff(idx2Flip);
-    uniBlk.tri.stim.conditionLabel(idx2Flip) = -1*uniBlk.tri.stim.conditionLabel(idx2Flip);
-end
+%If plotType contains 'dif' then we want to switch the responseCalc, vis and aud paramters such that all "left" trials are flipped (vis left trials in
+%the case of conflict trials). Now, inactivations on the right hemisphere are contralateral, and left hemisphere is ipsilateral
+idx2Flip = uniBlk.tri.inactivation.galvoPosition(:,1)<0;
+uniBlk.tri.outcome.responseCalc(idx2Flip) = (uniBlk.tri.outcome.responseCalc(idx2Flip)*-1+3).*(uniBlk.tri.outcome.responseCalc(idx2Flip)>0);
+uniBlk.tri.inactivation.galvoPosition(idx2Flip,1) = -1*uniBlk.tri.inactivation.galvoPosition(idx2Flip,1);
+uniBlk.tri.stim.audDiff(idx2Flip) = -1*uniBlk.tri.stim.audDiff(idx2Flip);
+uniBlk.tri.stim.visDiff(idx2Flip) = -1*uniBlk.tri.stim.visDiff(idx2Flip);
+uniBlk.tri.stim.conditionLabel(idx2Flip) = -1*uniBlk.tri.stim.conditionLabel(idx2Flip);
+
 
 [~, gridXY] = prc.makeGrid(uniBlk, uniBlk.tri.outcome.responseCalc, [], 'galvouni',2);
 
@@ -68,7 +57,11 @@ end
 %galvoPositions in the testBlock (for shuffling purposes)
 if ~nShuffles; nShuffles = 1500; end
 nShuffles = round(nShuffles/10)*10;
-normEstRepeats = round(nShuffles/10);
+if contOnly
+    normEstRepeats = nShuffles;
+else
+    normEstRepeats = round(nShuffles/10);
+end
 
 %Use some matrix tricks to create "uniformLaserFilters" which is a filter for each shuffle that equalizes the frequency of subjects
 %contributing to each point in the grid of galvo positions.
@@ -79,9 +72,6 @@ laserShuffles = num2cell(cell2mat(laserShuffles(:)),1)';
 uniformLaserFilters = repmat(cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0),11,1);
 uniformControlFilters = repmat(num2cell(prc.makeFreqUniform(contBlk.tri.subjectRef,normEstRepeats),1)',11,1);
 
-exampleUniform = prc.filtBlock(uniBlk, uniformLaserFilters{1});
-totalLaserTrials = prc.makeGrid(exampleUniform, exampleUniform.tri.outcome.responseCalc, @length, 'galvouni');
-
 %Removing these excess fields makes "filtBlock" run significantly faster in the subsequent loop
 uniBlk.tri = rmfield(uniBlk.tri, {'timings'});
 contBlk.tri = rmfield(contBlk.tri, {'timings'});
@@ -89,8 +79,10 @@ uniBlk.tri.inactivation = rmfield(uniBlk.tri.inactivation, {'laserPower', 'galvo
 contBlk.tri.inactivation = rmfield(contBlk.tri.inactivation, {'laserPower', 'galvoType', 'laserOnsetDelay', 'laserDuration'});
 
 %This is the same loop as above, to generate "inactiveGrid" but with some extra steps to deal with the shuffles
-[contParams, deltaParams] = deal(cell(size(gridXY{1})));
-for i = 1:normEstRepeats+nShuffles
+[contParams, logLikDelta, logLikNoDelta, deltaParams] = deal(cell(length(posNames),1));
+
+if contOnly; totalLoops = normEstRepeats; else, totalLoops = normEstRepeats+nShuffles; end
+for i = 1:totalLoops
     %Filter both blks to make contributions from each subject equal at each galvoPosition and across control trials.
     uniformLasBlk = prc.filtBlock(uniBlk, uniformLaserFilters{i});
     uniformContBlk = prc.filtBlock(contBlk, uniformControlFilters{i});
@@ -109,10 +101,9 @@ for i = 1:normEstRepeats+nShuffles
     contGLM = fit.GLMmulti(subContBlk, 'simpLogSplitVSplitA');
     contGLM.fit;
     
-    for j = 1:length(gridXY{1}(:))
-        if totalLaserTrials(j) ==0; deltaParams{j}(i,:) = nan*ones(1,6); continue; end
+    for j = 4:length(posNames)
         contParams{j}(i,:) = contGLM.prmFits;
-        galvoRef = [gridXY{1}(j) gridXY{2}(j)];
+        galvoRef = meanPositions{j};
         includeIdx = ismember(subTestBlk.tri.inactivation.galvoPosition,galvoRef, 'rows');
         subTestGalvoBlk = prc.filtBlock(subTestBlk, includeIdx);
         
@@ -122,55 +113,34 @@ for i = 1:normEstRepeats+nShuffles
         deltaGLM = fit.GLMmulti(subTestGalvoBlk, 'simpLogSplitVSplitA');
         deltaGLM.prmInit = contParams{j}(i,:);
         deltaGLM.blockData.freeP = freeP;
-        deltaGLM.fit;
-        deltaParams{j}(i,:) = deltaGLM.prmFits;
+        deltaGLM.fitCV(crossVal);
+        deltaParams{j}(i,:) = mean(deltaGLM.prmFits,1);
+        logLikDelta{j}(i,:) = mean(deltaGLM.logLik);
+        
+        deltaGLM = fit.GLMmulti(subTestGalvoBlk, 'simpLogSplitVSplitA');
+        deltaGLM.prmInit = contParams{j}(i,:);
+        deltaGLM.blockData.freeP = (freeP*0)>1;
+        deltaGLM.fitCV(crossVal);
+        logLikNoDelta{j}(i,:) = mean(deltaGLM.logLik);
+
         disp([i j]);
     end
 end
-savePath = 'D:\Dropbox (Neuropixels)\MouseData\BackupData\ModelPerturbations';
-savePath = [savePath '\ModelPerturbationShuffles' datestr(now,'YYMMDD') '.mat'];
-
+% savePath = 'D:\Dropbox (Neuropixels)\MouseData';
+% savePath = [savePath '\LLRInativationSignificance' datestr(now,'YYMMDD') '.mat'];
+% % 
 prmLabels = {'Bias'; 'visScaleIpsi'; 'visScaleConta'; 'N'; 'audScaleIpsi'; 'audScaleContra'};
-save(savePath, 'normEstRepeats', 'contParams', 'deltaParams', 'gridXY', 'prmLabels', 'freeP');
+% if ~contOnly
+%     save(savePath, 'normEstRepeats', 'contParams', 'deltaParams', 'gridXY', 'prmLabels', 'freeP','logLikDelta','logLikNoDelta');
+% end
 
-inactResultsForModel.gridXY = gridXY;
-inactResultsForModel.normEstRepeats = normEstRepeats;
-inactResultsForModel.contParams = contParams;
-inactResultsForModel.deltaParams = deltaParams;
-inactResultsForModel.prmLabels = prmLabels;
-inactResultsForModel.freeP = freeP;
-
-%%
-%Make the "scanPlot" structure for plotting. Note that "contData" is a constant here, so just subtract from the mean over hte inactivaiton
-%grids for the different subsamples
-%Set up plotting axes arrangement on figrure
-
-
-axesOpt.btlrMargins =  [10 30 10 10];
-axesOpt.gapBetweenAxes = [10 0];
-axesOpt.axesSize = [200 200];
-
-axesOpt.numOfRows = 2;
-axesOpt.numOfCols = 3;
-axesOpt.totalNumOfAxes = 6;
-
-scanPlot.gridXY = gridXY;
-for i = find(freeP)
-    nShuffles = size(deltaParams{1},1) - normEstRepeats;
-    contParams(cellfun(@isempty, contParams)) = deal({nan*ones(max(max(cellfun(@length, contParams))),6)});
-    contData = cellfun(@(x) nanmean(x(1:normEstRepeats,i)),deltaParams);
-    stdData = cellfun(@(x) nanstd(x(normEstRepeats+1:end,i)),deltaParams);
-    sortedData = arrayfun(@(x,y) sort(abs([x{1}(normEstRepeats+1:end,i);y]),'descend'), deltaParams,contData, 'uni', 0);
-    
-    obj.hand.axes = plt.getAxes(axesOpt, i);
-    scanPlot.title = prmLabels{i};
-    scanPlot.data = contData./stdData;
-    scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, abs(contData), sortedData,'uni', 0));
-    scanPlot.pVals
-    scanPlot.colorBarLimits = [-30 30];
-    sigLevels = (10.^(-2:-1:-10))';
-    lastSigLevel = find(sigLevels>min(scanPlot.pVals(:)),1,'last');
-    scanPlot.sigLevels = [0.01; 0.001; 0.0001];%sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
-    plt.scanningBrainEffects(scanPlot);
-end
+inactLLRResults.posNames = posNames;
+inactLLRResults.meanPositions = meanPositions;
+inactLLRResults.normEstRepeats = normEstRepeats;
+inactLLRResults.contParams = contParams;
+inactLLRResults.deltaParams = deltaParams;
+inactLLRResults.logLikDelta = logLikDelta;
+inactLLRResults.logLikNoDelta = logLikNoDelta;
+inactLLRResults.prmLabels = prmLabels;
+inactLLRResults.freeP = freeP;
 end

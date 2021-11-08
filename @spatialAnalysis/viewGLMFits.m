@@ -40,6 +40,12 @@ for i  = 1:length(obj.blks)
     
     if strcmp(plotType, 'log')
         contrastPower  = params2use(strcmp(obj.glmFit{i}.prmLabels, 'N'));
+        if isempty(contrastPower)
+            tempFit = fit.GLMmulti(normBlk, 'simpLogSplitVSplitA');
+            tempFit.fit;
+            tempParams = mean(tempFit.prmFits,1);
+            contrastPower  = tempParams(strcmp(tempFit.prmLabels, 'N'));
+        end
         plotData = log10(plotData./(1-plotData));
     else
         contrastPower = 1;
@@ -66,14 +72,17 @@ for i  = 1:length(obj.blks)
     
     xlim([-1 1])
     midPoint = 0.5;
+    xTickLoc = (-1):(1/8):1;
     if strcmp(plotType, 'log')
-        maxContrast = ((maxContrast*100).^contrastPower)/100;
         ylim([-2.6 2.6])
         midPoint = 0;
+        xTickLoc = sign(xTickLoc).*abs(xTickLoc).^contrastPower;
     end
     
     box off;
-    set(gca, 'xTick', (-1):(1/4):1, 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)*100));
+    xTickLabel = num2cell(round(((-maxContrast):(maxContrast/8):maxContrast)*100));
+    xTickLabel(2:2:end) = deal({[]});
+    set(gca, 'xTick', xTickLoc, 'xTickLabel', xTickLabel);
     %%
     title([obj.blks(i).exp.subject{1} '    n = ' num2str(normBlk.tot.trials)]);
     xL = xlim; hold on; plot(xL,[midPoint midPoint], '--k', 'linewidth', 1.5);

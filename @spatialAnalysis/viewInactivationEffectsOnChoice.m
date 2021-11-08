@@ -1,4 +1,3 @@
-
 function inactResultsForChoice = viewInactivationEffectsOnChoice(obj, plotType, nShuffles, subsets, groups)
 %% Method for "spatialAnalysis" class. Plots effects of inactivation on behavior. Plots are shown as grids on an outline of cortex.
 

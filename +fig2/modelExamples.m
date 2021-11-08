@@ -16,7 +16,7 @@ lftRgtMarg = [40, 40]/figWidth;
 set(gcf, 'position', get(gcf, 'position').*[1 0 0 0] + [0 200 figWidth, figHeight]);
 
 for i = 1:length(mice2Plot)
-    behBlks = spatialAnalysis(mice2Plot(i), 'behavior', 0, 1);
+    behBlks = spatialAnalysis(mice2Plot(i), 'behavior', 0, 1, '');
     behBlks.blks = prc.filtBlock(behBlks.blks, behBlks.blks.tri.stim.visContrast ~= 0.06);
     
     axesHandle = plt.tightSubplot(nRows,nCols,i,axesGap,botTopMarg,lftRgtMarg);
@@ -30,7 +30,7 @@ end
 
 
 %%
-behBlks = spatialAnalysis('all', 'behavior', 0, 1);
+behBlks = spatialAnalysis('all', 'behavior', 0, 1, '');
 allParametersAV = cell2mat(arrayfun(@(x) x.exp.conditionParametersAV{1}, behBlks.blks, 'uni', 0));
 [uniParametersAV, ~, rowIdx] = unique(allParametersAV, 'rows');
 condFreq = histcounts(rowIdx,1:max(rowIdx)+1)';
@@ -54,5 +54,5 @@ glmBlk.viewGLMFits('simpLogSplitVSplitA', [],'log', 1)
 axis square;
 
 %%
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\2_modelExamples', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\2_modelExamples', '-pdf', '-painters');
 end

@@ -120,7 +120,9 @@ for i = 1:nRepeats
         deltaGLM.prmInit = contParams;
         deltaGLM.blockData.freeP = freeP;
         if crossVal; deltaGLM.fitCV(crossValFolds); else;  deltaGLM.fit; end
-        deltaGLMs{j}{i,1} = deltaGLM;
+        if nRepeats == 1; deltaGLMs{j} = deltaGLM;
+        else, deltaGLMs{j}{i,1} = deltaGLM;
+        end
     end
 end
 end

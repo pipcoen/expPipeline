@@ -1,7 +1,8 @@
-function scatterAltPlots(behBlksOrig, vis2Use)
+function scatterAltPlots(behBlksOrig, vis2Use, offset)
 %Load the block if it doesn't exist. Remove mice that have different parameter values (4 mice of 21)
 if ~exist('behBlksOrig', 'var') || isempty(behBlksOrig); behBlksOrig = spatialAnalysis('all', 'behavior', 0, 1, ''); end
 if ~exist('vis2Use', 'var'); vis2Use = 0.4; end %We use 0.4/40% contrast for comparisons
+if ~exist('offset', 'var'); offset = 1; end %We use 0.4/40% contrast for comparisons
 
 blks2Use = behBlksOrig.blks;
 if length(blks2Use) == 21; blks2Use(5:8) = []; end
@@ -36,7 +37,7 @@ end
 if any(sum(isnan([perf.vis, perf.aud, perf.mul, reac.vis, reac.aud, reac.coh, reac.con]))) && vis2Use~=0.8
     error('Why are there nans???'); 
 end
-reac.offset = mean([reac.aud reac.vis reac.coh reac.con],2);
+reac.offset = mean([reac.aud reac.vis reac.coh reac.con],2)*offset;
 %%
 figure;
 axHeight = 250;
@@ -78,27 +79,30 @@ if nargin<2
 else
     ylim([-0.06 0.06]);
 end
+if offset == 0
+    ylim([0.1 0.35]);
+end
 box off;
 %%
 [~, pVal] = ttest(reac.aud, reac.vis);
 pVal = round(pVal, 2, 'significant');
-text(0, -0.08, ['A vs V: P<' num2str(pVal)]);
+text(0, min(ylim)-0.08, ['A vs V: P<' num2str(pVal)]);
 
 [~, pVal] = ttest(reac.coh, reac.con);
 pVal = round(pVal, 2, 'significant');
-text(0, -0.09, ['Coh vs Con: P<' num2str(pVal)]);
+text(0, min(ylim)-0.09, ['Coh vs Con: P<' num2str(pVal)]);
 
 [~, pVal] = ttest(reac.aud, reac.coh);
 pVal = round(pVal, 2, 'significant');
-text(0, -0.10, ['A vs Coh: P<' num2str(pVal)]);
+text(0, min(ylim)-0.10, ['A vs Coh: P<' num2str(pVal)]);
 
 [~, pVal] = ttest(reac.vis, reac.coh);
 pVal = round(pVal, 2, 'significant');
-text(0, -0.11, ['V vs Coh: P<' num2str(pVal)]);
+text(0, min(ylim)-0.11, ['V vs Coh: P<' num2str(pVal)]);
 
 [~, pVal] = ttest(reac.aud, reac.vis);
 pVal = round(pVal, 2, 'significant');
-text(0, -0.12, ['A vs Con: P<' num2str(pVal)]);
+text(0, min(ylim)-0.12, ['A vs Con: P<' num2str(pVal)]);
 
 [~, pVal] = ttest(reac.coh, reac.con);
 pVal = round(pVal, 2, 'significant');

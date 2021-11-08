@@ -63,6 +63,17 @@ switch modChoose
             logOddsLR = P(1)+sum(cell2mat(visContributionLR), 2)*notAOnly+sum(cell2mat(audContributionLR),2)*notVOnly;
         end
         obj.evalPoints = [visGrid(:) audGrid(:)];
+        
+    case lower({'simpLogSplitVEmpA'})
+        obj.prmLabels = ['bias';'visScaleR';'visScaleL';'N'; audTags];
+        TOSrt = length(obj.prmLabels);
+        if exist('P', 'var')
+            visContributionLR =  P(2)*(abs(visDiff.*(visDiff>0)).^(P(4))) -  ...
+                P(3)*(abs(visDiff.*(visDiff<0)).^P(4));
+            audContributionLR = arrayfun(@(x,y,z) x*(y{1}==z), P(5:TOSrt), repAud, uniA', 'uni', 0);
+            logOddsLR = P(1)+visContributionLR+sum(cell2mat(audContributionLR),2);
+        end
+        obj.evalPoints = [visGrid(:) audGrid(:)];
 
         
     case lower({'fullEmp'})

@@ -1,6 +1,6 @@
-function scatterPlots(behBlksOrig, vis2Use)
+function scatterPlots(behBlksOrig, vis2Use, offset)
 %Load the block if it doesn't exist. Remove mice that have different parameter values (4 mice of 21)
-if ~exist('behBlksOrig', 'var') || isempty(behBlksOrig); behBlksOrig = spatialAnalysis('all', 'behavior', 0, 1); end
+if ~exist('behBlksOrig', 'var') || isempty(behBlksOrig); behBlksOrig = spatialAnalysis('all', 'behavior', 0, 1, ''); end
 if ~exist('vis2Use', 'var'); vis2Use = 0.4; end %We use 0.4/40% contrast for comparisons
 
 blks2Use = behBlksOrig.blks;

@@ -1,12 +1,10 @@
-function exampleInactModelFits(uniBlks)
-
-if ~exist('uniBlks', 'var'); uniBlks = spatialAnalysis('all', 'uniscan', 1, 1); end
+function exampleInactModelFits
+uniBlks = spatialAnalysis('all', 'uniscan', 1, 1); 
 mOpt = struct;
 mOpt.contOnly = 1;
 mOpt.nRepeats = 10;
 mOpt.useDif = 0;
 cGLMs = uniBlks.getModelFitsToInactivationData(mOpt);
-
 
 mOpt.contParams = mean(cell2mat(cellfun(@(x) x.prmFits, cGLMs, 'uni', 0)));
 mOpt.useDif = 1;
@@ -99,8 +97,8 @@ for j = 1:2
     %"contData" is the result from the "normEstRepeats" loops, and "shuffleData" is from the shuffled loops. We then sort these shuffled loops and
     %see where the control data appears in the shuffled data. This goes into the "scanPlot" plotting structure, along with the results.
     if j == 1
-        export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\3_exampleInactModelFits', '-pdf', '-painters');
+%         export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\3_exampleInactModelFits', '-pdf', '-painters');
     elseif j == 2
-        export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\3_exampleInactModelFits_log', '-pdf', '-painters');
+%         export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\3_exampleInactModelFits_log', '-pdf', '-painters');
     end
 end

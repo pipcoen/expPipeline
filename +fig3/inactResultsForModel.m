@@ -1,4 +1,48 @@
 function inactResultsForModel(withY)
+load inactCompResults211425;
+
+for i = length(logLikTest)
+    nShuffles = size(logLikTest{1},1) - normEstRepeats;
+    contLLR(i) = mean(logLikTrain{i}(1:normEstRepeats)-logLikTest{i}(1:normEstRepeats));
+    
+    testLLR(i) = logLikTrain{i}(normEstRepeats+1:end)-logLikTest{i}(normEstRepeats+1:end);
+    sortedData = sort(testLLR, contLLR, 'ascend');
+    
+    plt.getAxes(axesOpt, i);
+    scanPlot.title = prmLabels{i};
+    scanPlot.data = contData./stdData;
+    scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, abs(contData), sortedData,'uni', 0));
+    scanPlot.colorBarLimits = [-10 10];
+    scanPlot.sigLevels = [0.01; 0.001; 0.0001];
+    scanPlot.gridXY = inactResultsForModel.gridXY;
+    plt.scanningBrainEffects(scanPlot);
+end
+
+
+
+
+
+%%
+figure;
+axHeight = 250;
+axWidth = 250;
+nCols = 3;
+nRows = 2;
+figHeight = nRows*axHeight;
+figWidth = nCols*axWidth;
+
+axesGap = [50/figHeight 50/figWidth];
+botTopMarg = [40, 40]/figHeight;
+lftRgtMarg = [40, 40]/figWidth;
+set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
+
+
+
+%%
+
+
+
+
 if ~exist('withY', 'var') 
     load('fig3eInactResultsForModel', 'inactResultsForModel')
     sName = 'D:\OneDrive\Papers\Coen_2020\FigureParts\3_inactResultsForModel';

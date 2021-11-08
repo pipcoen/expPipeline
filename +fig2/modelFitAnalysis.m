@@ -25,7 +25,6 @@ visModVsBias =  plotOpt.yData{3}-plotOpt.yData{1};
 addModVBias =  plotOpt.yData{4}-plotOpt.yData{1};
 addModUniVBias =  plotOpt.yData{5}-plotOpt.yData{1};
 fullEmpVbias =  plotOpt.yData{6}-plotOpt.yData{1};
-simpEmpVbias =  plotOpt.yData{7}-plotOpt.yData{1};
 
 %%
 cla
@@ -115,7 +114,7 @@ plt.jitter(logLikDiff, opt);
 %%
 axesHandle = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg);
 cla;
-logLikDiff = cellfun(@(x) x-plotOpt.yData{end}, plotOpt.yData([5 7 6]), 'uni', 0);
+logLikDiff = cellfun(@(x) x-plotOpt.yData{end}, plotOpt.yData([4 7 6]), 'uni', 0);
 opt.faceColors = repmat([0 0 0], length(addModVBias),1);
 opt.faceColors(eIdx>0,:) = [1 0 0; 0 0 1; 0 1 0];
 opt.faceColors = repmat({opt.faceColors}, length(logLikDiff),1);
@@ -141,5 +140,5 @@ pVal = round(pVal, 4, 'significant');
 title(['n=' num2str(length(eIdx)-1) '   P<' num2str(pVal)]);
 box off
 %%
-export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\ModelFitAnalysis', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\ModelFitAnalysis', '-pdf', '-painters');
 end

@@ -17,6 +17,7 @@ if createOpt || ~isfield(opt, 'significanceTest'); opt.significanceTest = @ttest
 if createOpt || ~isfield(opt, 'linkedGroups'); opt.linkedGroups = []; end
 if createOpt || ~isfield(opt, 'yLimits'); opt.yLimits = []; end
 if createOpt || ~isfield(opt, 'pairLines'); opt.pairLines = 1; end
+if createOpt || ~isfield(opt, 'compare2zero'); opt.compare2zero = 0; end
 
 data = data(:);
 data = cellfun(@double, data, 'uni', 0);
@@ -46,6 +47,13 @@ if ~isempty(opt.pairs2test)
     significance = significance*sqrt(length(opt.pairs2test));
     xPositionOfPairs = cellfun(@(x) opt.xTickLocations(x), opt.pairs2test, 'uni',0);
     plt.sigstar(xPositionOfPairs,significance);
+end
+if opt.compare2zero
+    [~, pVal] = cellfun(@ttest, data);
+    for i = 1:length(pVal)
+        if pVal(i) > 0.05; continue; end
+        text(opt.xTickLocations(i), max(ylim)*0.95, ['*' num2str(pVal(i))])
+    end
 end
 if ~isempty(opt.yLimits); ylim(opt.yLimits); end
 set(gca,'XTick', opt.xTickLocations, 'XTickLabel',opt.xTickLabels);
