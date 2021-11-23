@@ -199,6 +199,9 @@ if ~isempty(sGLXFiles)
     pNams = cellfun(@(x) x(strfind(x, 'imec'):strfind(x, 'imec')+4), {sGLXFiles.name}', 'uni', 0);
     siteList = cellfun(@(y) [x.kilosortOutput '\' y], pNams, 'uni', 0);
     
+    chkLFP = ~cellfun(@(x) exist([x '\lfpPowerSpectra.mat'], 'file'), siteList);
+    if any(chkLFP); kil.getLFPFromSpikeGLX(x); end
+    
     needKil = ~cellfun(@(x) exist([x '\spike_templates.npy'], 'file'), siteList);
     needSync = ~cellfun(@(x) exist([x '\sync.mat'], 'file'), siteList);    
     if any(needKil + needSync); kil.preProcessSpikeGLX(x); end
@@ -206,14 +209,11 @@ if ~isempty(sGLXFiles)
     chkNoise = ~cellfun(@(x) exist([x '\cluster_pNoise.tsv'], 'file'), siteList);    
     if any(chkNoise); cellfun(@kil.liklihoodNoise, siteList(chkNoise>0)); end
     
-    chkLFP = ~cellfun(@(x) exist([x '\lfpPowerSpectra.mat'], 'file'), siteList);
-    %     if any(chkLFP);kil.loadAndSpectrogramLFP(x.subject, x.expDate, siteList(chkLFP>0); end
-    
 end
 try
     clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
-    clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
-    spikeSorted = length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id));
+    clusterPNoiseFile = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
+    spikeSorted = length(vertcat(clusterPNoiseFile.cluster_id))==length(vertcat(clusterGroups.cluster_id));
 catch
     warning('Error in loading custom labels--presumably not spike sorted');
     spikeSorted = 0;
@@ -251,9 +251,9 @@ end
 % if any(sites2Process); kil.loadAndSpectrogramLFP(x.subject, x.expDate, sites2Process); end
 
 % clusterGroups = cell2mat(cellfun(@(x) tdfread([x '\cluster_group.tsv']),siteList,'uni', 0));
-% clusterpNoise = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
+% clusterPNoiseFile = cell2mat(cellfun(@(x) tdfread([x '\cluster_pNoise.tsv']),siteList,'uni', 0));
 %% NEEDS WORK
-% spikeSorted = length(vertcat(clusterpNoise.cluster_id))==length(vertcat(clusterGroups.cluster_id));
+% spikeSorted = length(vertcat(clusterPNoiseFile.cluster_id))==length(vertcat(clusterGroups.cluster_id));
 % loadData = isempty(whoD) || ~any(strcmp('eph', whoD)) && spikeSorted==1 || ~any(contains({'ephTmp'; 'eph'}, whoD)) || redoTag;
 % if spikeSorted && loadData; fprintf('%s %s has been spike sorted. Loading and aligning data now... \n', x.expDate,x.subject);
 % elseif ~spikeSorted && loadData; fprintf('WARNING: %s %s needs to be SORTED. Processing temp file now... \n', x.expDate,x.subject);

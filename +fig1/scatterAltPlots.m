@@ -1,3 +1,4 @@
+
 function scatterAltPlots(behBlksOrig, vis2Use, offset)
 %Load the block if it doesn't exist. Remove mice that have different parameter values (4 mice of 21)
 if ~exist('behBlksOrig', 'var') || isempty(behBlksOrig); behBlksOrig = spatialAnalysis('all', 'behavior', 0, 1, ''); end
@@ -100,18 +101,18 @@ text(0, min(ylim)-0.10, ['A vs Coh: P<' num2str(pVal)]);
 pVal = round(pVal, 2, 'significant');
 text(0, min(ylim)-0.11, ['V vs Coh: P<' num2str(pVal)]);
 
-[~, pVal] = ttest(reac.aud, reac.vis);
+[~, pVal] = ttest(reac.aud, reac.con);
 pVal = round(pVal, 2, 'significant');
 text(0, min(ylim)-0.12, ['A vs Con: P<' num2str(pVal)]);
 
-[~, pVal] = ttest(reac.coh, reac.con);
+[~, pVal] = ttest(reac.vis, reac.con);
 pVal = round(pVal, 2, 'significant');
-text(0, -0.13, ['V vs Con: P<' num2str(pVal)]);
+text(0, min(ylim)-0.13, ['V vs Con: P<' num2str(pVal)]);
 
 %%
-if nargin<2
-    export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\1_scatterAltPlots_AudVer', '-pdf', '-painters');
-end
+% if nargin<2
+%     export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\1_scatterAltPlots_AudVer', '-pdf', '-painters');
+% end
 end
 
 

@@ -68,7 +68,9 @@ switch lower(dataTag{1})
         
     case 'aud5'
         switch subjectID{1}
-            case 'PC013'; dateRange = {'2017-10-18:2017-11-04'}; %Regular trials within inactivation
+            case 'PC013'; dateRange = {'2017-10-18:2018-02-27'}; %Regular trials within inactivation
+            case 'PC022'; dateRange = {'2017-12-04:2018-01-23'}; %Regular trials within inactivation
+            case 'PC015'; dateRange = {'2017-10-21:2017-11-22'}; %Regular trials within inactivation
             otherwise, dateRange = [];
         end
         

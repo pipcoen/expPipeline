@@ -14,20 +14,21 @@ axesGap = [50/figHeight 50/figWidth];
 botTopMarg = [40, 40]/figHeight;
 lftRgtMarg = [40, 40]/figWidth;
 set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
+conT = 1;
 
 axesHandle = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg); cla;
-s.viewInactivationTimedEffects('v1', 'stim', 'vis',1);
+s.viewInactivationTimedEffects('v1', 'stim', 'vis',1,conT);
 
 % axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); cla;
-s.viewInactivationTimedEffects('mos', 'stim', 'vis',1);
+s.viewInactivationTimedEffects('mos', 'stim', 'vis',1,conT);
 
 axesHandle = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg); cla;
-s.viewInactivationTimedEffects('v1', 'stim', 'aud',1);
+s.viewInactivationTimedEffects('v1', 'stim', 'aud',1,conT);
 
 % axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); cla;
-s.viewInactivationTimedEffects('mos', 'stim', 'aud',1);
+s.viewInactivationTimedEffects('mos', 'stim', 'aud',1,conT);
 %%
-export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\timedInactivations', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\timedInactivations', '-pdf', '-painters');
 %%
 % 
 % 

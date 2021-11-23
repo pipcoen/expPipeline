@@ -1,6 +1,8 @@
 function mouseWith5AudLevels
 %% This function plots the data panels for figure one of the ms
-s = spatialAnalysis('all', 'aud5', 1, 1);
+s = spatialAnalysis('PC013', 'aud5', 1, 1);
+s.blks = prc.filtBlock(s.blks, ~(abs(s.blks.tri.stim.audDiff)==15));
+% s.blks.exp.conditionParametersAV(:) = deal(s.blks.exp.conditionParametersAV(1));
 figure;
 axHeight = 250;
 axWidth = 250;
@@ -55,14 +57,17 @@ LL{2,1} = s.glmFit{1}.logLik;
 
 %%
 s.viewGLMFits('biasOnly', 5,'none', 1)
-offset = mean(s.glmFit{1}.logLik; 
+offset = mean(s.glmFit{1}.logLik); 
 
 %%
 axesHandle = plt.tightSubplot(nRows,nCols,3,axesGap,botTopMarg,lftRgtMarg);cla
-plt.jitter(LL);
+plt.jitter(cellfun(@(x) offset-x, LL, 'uni', 0));
 set(gca, 'position', get(gca, 'position').*[1 1 0.5 1])
-xlim([0.8 2.1])
-set(gca, 'xTickLabel', {'Add', 'Full'})
+xlim([0.8 4.1])
+ylim([0 0.5])
+set(gca, 'xTickLabel', {'visOnly', 'audOnly', 'Add', 'Full'})
+
+[~,~,stats] = anova1(cell2mat(LL'));
 %%
 export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\mouseWith5AudLevels', '-pdf', '-painters');
 end

@@ -2,10 +2,10 @@ function getGLMModelFits(models2fit, crossVal, maxAndMin)
 modelSet = {'biasOnly';'visOnly';'audOnly';'simpLog';'simpLogSplitV';'simpLogSplitA';'simpLogSplitVSplitA';...
     'fullEmp';'simpEmp';'visOnlyEmp';'audOnlyEmp'};  
 
-allBlks = spatialAnalysis('all', 'behavior', 1, 0);
+allBlks = spatialAnalysis('all', 'behavior', 1, 0, '');
 allBlks.blks = prc.filtBlock(allBlks.blks, allBlks.blks.tri.stim.visContrast ~= 0.06);
 
-sStart = spatialAnalysis('all', 'behavior', 0, 1);
+sStart = spatialAnalysis('all', 'behavior', 0, 1, '');
 for i = 1:length(sStart.blks)
     sStart.blks(i) = prc.filtBlock(sStart.blks(i), sStart.blks(i).tri.stim.visContrast ~= 0.06);
 end
@@ -17,7 +17,7 @@ if ~exist('crossVal', 'var'); crossVal = 5; end
 if ~exist('maxAndMin', 'var'); maxAndMin = 1; end
 
 expListDir = prc.pathFinder('expList');
-saveDir = [expListDir(1) ':\Dropbox (Personal)\XMatlabProg\GitHub\expPipeline\data4Plots\GLMFits2Behavior\'];
+saveDir = [expListDir(1) ':\Dropbox (Neuropixels)\MouseData\BackupData\GLMFits2Behavior\'];
 
 for i = 1:length(models2fit)
     fprintf('Currently fitting model %s \n', models2fit{i});

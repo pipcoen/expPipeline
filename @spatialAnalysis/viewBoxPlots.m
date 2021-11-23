@@ -34,7 +34,7 @@ for i  = subjects2Run
     boxPlot.xyLabel = {'AuditoryAzimuth'; 'VisualContrast'};
     switch lower(plotType(1:3))
         case 'res'
-            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseMade==2, @mean);
+            boxPlot.plotData = prc.makeGrid(blk, blk.tri.outcome.responseCalc==2, @mean);
             if isempty(obj.hand.figure) || ~any(ismember(obj.hand.figure, gcf)); obj.hand.figure(end+1) = gcf; end
             set(gcf, 'Tag', 'boxRes', 'userData', obj, 'ButtonDownFcn', @spatialAnalysis.alterFigure);
         case 'gng'

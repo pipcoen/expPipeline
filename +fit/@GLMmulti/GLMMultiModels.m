@@ -51,6 +51,53 @@ switch modChoose
         obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
         obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
     
+        
+    case lower({'simpLogSplitVSplitAAudDom'; 'simpLogSplitVSplitAAudExtraDom'; 'simpLogSplitVSplitASplitT'})
+        if contains(lower(modChoose), {'auddom'}); audDom = 1; else; audDom = 0; end
+        if contains(lower(modChoose), {'audextradom'}); audExDom = 1; else; audExDom = 0; end
+        if contains(lower(modChoose), {'splitt'}); splitT = 1; else; splitT = 0; end
+        obj.prmLabels = {'bias';'visScaleR';'visScaleL';'N';'audScaleR';'audScaleL'};
+        
+        cohIdx = sign(visDiff.*audDiff)==1;
+        conIdx = sign(visDiff.*audDiff)==-1;  
+        if splitT == 1
+            obj.prmLabels = [obj.prmLabels; 'cohScaleV'; 'conScaleV'; 'cohScaleA'; 'conScaleA'];
+        end
+        if audExDom == 1
+            obj.prmLabels = [obj.prmLabels; 'conScaleA'];
+        end
+        
+        
+        freeP = zeros(1,length(obj.prmLabels));
+        if ~isfield(obj.blockData, 'freeP'); freeP = freeP+1; elseif ~isempty(obj.blockData.freeP); freeP(obj.blockData.freeP) = 1; end
+        
+        if exist('P', 'var')
+            pOld = obj.prmInit;
+            allPrms = [pOld; P; freeP];
+            visContributionLR =  mkPrm(allPrms,2)*(abs(visDiff.*(visDiff>0)).^(mkPrm(allPrms,4))) -  ...
+                mkPrm(allPrms,3)*(abs(visDiff.*(visDiff<0)).^(mkPrm(allPrms,4)));
+            audContributionLR =  mkPrm(allPrms,5)*(abs(audDiff.*(audDiff>0))) -  mkPrm(allPrms,6)*(abs(audDiff.*(audDiff<0)));
+            
+            if splitT
+                visContributionLR(cohIdx) = visContributionLR(cohIdx)*mkPrm(allPrms,7);
+                visContributionLR(conIdx) = visContributionLR(conIdx)*mkPrm(allPrms,8);
+                audContributionLR(cohIdx) = audContributionLR(cohIdx)*mkPrm(allPrms,9);
+                audContributionLR(conIdx) = audContributionLR(conIdx)*mkPrm(allPrms,10);
+            end
+            
+            if audDom
+                visContributionLR = visContributionLR.*(~conIdx);
+            end
+            
+            if audExDom
+                visContributionLR = visContributionLR.*(~conIdx);
+                audContributionLR(conIdx) = audContributionLR(conIdx)*mkPrm(allPrms,7);
+            end
+            
+            logOddsLR = mkPrm(allPrms,1)+visContributionLR + audContributionLR;
+        end
+        obj.evalPoints = [repmat(linspace(-max(abs(uniV)),max(abs(uniV)),200)', length(uniA),1), reshape(repmat(uniA,1,200)',200*length(uniA),1)];
+        obj.prmBounds = repmat([-inf; inf], 1, length(obj.prmLabels));
          
     case lower({'simpEmp'; 'visOnlyEmp'; 'audOnlyEmp'})
         if contains(lower(modChoose), 'visonly'); notVOnly = 0; else; notVOnly = 1; end

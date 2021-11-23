@@ -14,7 +14,7 @@ lftRgtMarg = [40, 40]/figWidth;
 set(gcf, 'position', get(gcf, 'position').*[1 0 0 0] + [0 200 figWidth, figHeight]);
 %%
 plt.tightSubplot(nRows,nCols,1:2,axesGap,botTopMarg,lftRgtMarg); cla;
-load inactCompResults215026;
+load inactCompResults213720.mat;
 
 logLikR = zeros(5,5);
 for i = 1:5

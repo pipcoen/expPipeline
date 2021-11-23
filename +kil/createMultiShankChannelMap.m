@@ -1,4 +1,4 @@
-function [ichanidx] = createMultiShankChannelMap(binname,path,savemap)
+function [ichanidx, channelmapname] = createMultiShankChannelMap(binname,path,savemap)
 
 % binname leads to ap bin file, path is the relevant folder
 % redundant, but this is how Bill Karsh has wrote the readMeta
@@ -36,8 +36,6 @@ if savemap==1
 end
 
 [~,ichanidx]=sort(ycoords); % this sorts the channels of acquisiton order according to depth -- have to index into raw with this.
-
-
 end
 
 

@@ -1,4 +1,4 @@
-function viewInactivationTimedEffects(obj, sites, align, triT, plotType)
+function viewInactivationTimedEffects(obj, sites, align, triT, plotType, conT)
 %% Method for "spatialAnalysis" class. Plots effects of inactivation on behavior. Plots are shown as grids on an outline of cortex.
 
 %INPUTS(default values)
@@ -14,28 +14,29 @@ function viewInactivationTimedEffects(obj, sites, align, triT, plotType)
 if exist('sites', 'var') && isempty(sites); clear sites; end
 if ~exist('sites', 'var'); sites = 'mos'; end
 if ~exist('align', 'var'); align = 'move'; end
+if ~exist('conT', 'var'); conT = 1; end
 if ~exist('plotType', 'var'); plotType = 1; end
 if ~exist('triT', 'var'); triT = 'vis'; end
 if strcmpi(align, 'stim'); stim = 1; else, stim = 0; end
 
 
 %%
+binSize = 70;
 if stim
-    plotRange = [-135 185];
-    if strcmpi(triT, 'vis'); yRng = [-0.17 0.34]; end
-    if strcmpi(triT, 'aud'); yRng = [-0.07 0.14]; end
+    plotRange = [-100-binSize/2 150+binSize/2];
+    if strcmpi(triT, 'vis'); yRng = [-0.1 0.4]; end
+    if strcmpi(triT, 'aud'); yRng = [-0.1 0.4]; end
 else
     plotRange = [-300 100];
     yRng = [-0.1 0.15];
     if strcmpi(sites, 'v1'); yRng = [-0.3 0.45]; end
 end
 
-binSize = 70;
 overlap = binSize-10;
 bins = (plotRange(1):(binSize-overlap):plotRange(2)-binSize)';
 bins = [bins bins+binSize];
 pLim = 10^-3;
-xDat = bins(:,1)+binSize/2
+xDat = bins(:,1)+binSize/2;
 
 regRef = {'mos', [0.5, 2.0]; 'v1', [2.0, -4.0]; 'out' , [3 5.5]};
 
@@ -80,7 +81,11 @@ iBlk = prc.filtBlock(iBlk, iBlk.exp.numOfTrials>75);
 
 %Create normBlk and uniBlk which are filtered versions of iBlk with only control or inactivation trials respectively
 normBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==0);
-rIdx = normBlk.tri.stim.visDiff<0 | (normBlk.tri.stim.visDiff==0 & normBlk.tri.stim.audDiff<0);
+if conT
+    rIdx = normBlk.tri.stim.visDiff<0 | (normBlk.tri.stim.visDiff==0 & normBlk.tri.stim.audDiff<0);
+else
+    rIdx = normBlk.tri.stim.visDiff>0 | (normBlk.tri.stim.visDiff==0 & normBlk.tri.stim.audDiff>0);
+end
 uniBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==1);
 
 nrmDat.fracR = mean(normBlk.tri.inactivation.data2Use(rIdx));
@@ -90,11 +95,15 @@ nrmDat.nRT = sum(normBlk.tri.inactivation.data2Use(rIdx));
 laserOffsets = uniBlk.tri.inactivation.laserOnsetDelay*1000;
 if ~stim; laserOffsets = laserOffsets - uniBlk.tri.outcome.reactionTime*1000; end
 sampIdx = arrayfun(@(x,y) laserOffsets>x & laserOffsets<y, bins(:,1), bins(:,2), 'uni', 0);
-contra = uniBlk.tri.stim.visDiff<0 | (uniBlk.tri.stim.visDiff==0 & uniBlk.tri.stim.audDiff<0);
+
+if conT
+    contra = uniBlk.tri.stim.visDiff<0 | (uniBlk.tri.stim.visDiff==0 & uniBlk.tri.stim.audDiff<0);
+else
+    contra = uniBlk.tri.stim.visDiff>0 | (uniBlk.tri.stim.visDiff==0 & uniBlk.tri.stim.audDiff>0);
+end
 
 xlim([xDat(1) xDat(end)])
 for i = 1:2
-    if i == 2; contra = ~contra; end
     tDat.fracR(i,:) = cellfun(@(x) mean(uniBlk.tri.inactivation.data2Use(x & contra)), sampIdx);
     tDat.nTri(i,:) = cellfun(@(x) length(uniBlk.tri.inactivation.data2Use(x & contra)), sampIdx);
     tDat.nRT(i,:) = cellfun(@(x) sum(uniBlk.tri.inactivation.data2Use(x & contra)), sampIdx);

@@ -66,11 +66,9 @@ if exist([kilosortOutput '\lfpPowerSpectra.mat'], 'file'); powerSpectra = load([
         powerSpectra = mean(powerSpectra.powerSpectra,3);
     else
         powerSpectra = powerSpectra.lfpPowerSpectra;
-        if ~isfield(powerSpectra, 'surfaceEst')
+        if ~isfield(powerSpectra, 'surfaceEstimate')
             kil.quickEstimateDepthKS2(powerSpectra, [kilosortOutput '\lfpPowerSpectra.mat']);
             uiwait(gcf);
-            powerSpectra = load([kilosortOutput '\lfpPowerSpectra.mat']);
-            powerSpectra = powerSpectra.lfpPowerSpectra;
         end
         
     end
@@ -82,7 +80,7 @@ if ~contains(header.dat_path, 'imec')
     channelPositions(:,2) = 3840 - channelPositions(:,2); %% Hard coded for now
 else
     for i = 1:4
-        idx = (floor(channelPositions(:,1)/200)+1) == i;
+        idx = (floor(channelPositions(:,1)/100)+1) == i;
         channelPositions(idx,2) = powerSpectra.surfaceEst(i) - channelPositions(idx,2); 
     end
 end

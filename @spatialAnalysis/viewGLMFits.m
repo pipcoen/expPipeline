@@ -1,4 +1,4 @@
-function viewGLMFits(obj, modelString, cvFolds, plotType, useCurrentAxes)
+function viewGLMFits(obj, modelString, cvFolds, plotType, useCurrentAxes, contrastPower)
 if ~exist('modelString', 'var') || isempty(modelString); modelString = 'simpLogSplitVSplitA'; end
 if ~exist('cvFolds', 'var') || isempty(cvFolds); cvFolds = 0; end
 if ~exist('plotType', 'var') || isempty(plotType); plotType = 'normal'; end
@@ -39,7 +39,9 @@ for i  = 1:length(obj.blks)
     plotOpt.Marker = 'none';
     
     if strcmp(plotType, 'log')
-        contrastPower  = params2use(strcmp(obj.glmFit{i}.prmLabels, 'N'));
+        if ~exist('contrastPower', 'var')
+            contrastPower  = params2use(strcmp(obj.glmFit{i}.prmLabels, 'N'));
+        end
         if isempty(contrastPower)
             tempFit = fit.GLMmulti(normBlk, 'simpLogSplitVSplitA');
             tempFit.fit;
