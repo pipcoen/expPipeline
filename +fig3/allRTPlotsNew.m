@@ -1,6 +1,5 @@
 function allRTPlotsNew
 %%
-opt.pltType = 'both';
 opt.prmType = 'rea';
 opt.revNorm = 1;
 opt.siteLoc = 'contra';

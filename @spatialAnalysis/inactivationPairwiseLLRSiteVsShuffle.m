@@ -38,13 +38,15 @@ grpIdx = cellfun(@(x,y) ismember(tstDat, x, 'rows').*y, galvoGrps, num2cell(1:gr
 grpIdx = sum(cell2mat(grpIdx'),2);
 meanPositions = cellfun(@mean, galvoGrps, 'uni', 0);
 iBlk.tri.inactivation.grpIdx = grpIdx;
+galvoSign = iBlk.tri.inactivation.galvoPosition(:,1)<0;
 iBlk.tri.inactivation.galvoPosition(grpIdx>0,:) = cell2mat(meanPositions(grpIdx(grpIdx>0)));
+iBlk.tri.inactivation.galvoPosition(galvoSign,1) = iBlk.tri.inactivation.galvoPosition(galvoSign,1)*-1;
 iBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==0 | grpIdx>0);
 
 nBlk = iBlk;
 
 %If plotType contains 'dif' then we want to switch the responseCalc, vis and aud paramters such that all "left" trials are flipped (vis left trials in
-%the case of conflict trials). Now, inactivations on the right hemisphere are contralateral, and left hemisphere is ipsilateral
+%the case of conflict trials). 
 idx2Flip = nBlk.tri.inactivation.galvoPosition(:,1)<0;
 nBlk.tri.outcome.responseCalc(idx2Flip) = (nBlk.tri.outcome.responseCalc(idx2Flip)*-1+3).*(nBlk.tri.outcome.responseCalc(idx2Flip)>0);
 nBlk.tri.inactivation.galvoPosition(idx2Flip,1) = -1*nBlk.tri.inactivation.galvoPosition(idx2Flip,1);
@@ -63,7 +65,12 @@ normEstRepeats = round(nShuffles/10);
 %contributing to each point in the grid of galvo positions.
 trialIdx = (1:nBlk.tot.trials)';
 nonUniformLaser = prc.makeGrid(nBlk, [double(nBlk.tri.subjectRef) trialIdx], [], 'galvouni',2);
+
 laserShuffles = cellfun(@(x) double(prc.makeFreqUniform(x(:,1),normEstRepeats,x(:,2))), nonUniformLaser, 'uni', 0);
+maxTrials = cellfun(@length, laserShuffles(:));
+maxTrials = floor(min(maxTrials(maxTrials > 0)/nBlk.tot.subjects)/2)*2;
+
+laserShuffles = cellfun(@(x) double(prc.makeFreqUniform(x(:,1),normEstRepeats,x(:,2),maxTrials)), nonUniformLaser, 'uni', 0);
 laserShuffles = num2cell(cell2mat(laserShuffles(:)),1)';
 uniformLaserFilters = repmat(cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0),11,1);
 
@@ -82,58 +89,101 @@ tDat = nBlk.tri.inactivation.galvoPosition;
 mPos = cell2mat(meanPositions);
 grpFilter = cellfun(@(x) ismember(tDat, mPos([x(1) x(2)],:), 'rows'), num2cell(grpOrd,2), 'uni', 0);
 
-[trainParams, testParams, logLikTest, logLikTrain, selfTestParams, logLikSelfTest] = deal(cell(size(grpOrd,1),1));
+[trainGrp1Params, trainGrp2Params, trainGrp1LogLik, trainGrp2LogLik,  ...
+    testGrp1Params, testGrp2Params, testGrp1LogLik, testGrp2LogLik] = deal(cell(size(grpOrd,1),1));
 for j = 1:size(grpOrd,1)
     for i = 1:totalLoops
+        if grpOrd(j,1) > grpOrd(j,2); continue; end
+        altIdx = find(grpOrd(:,1) == grpOrd(j,2) & grpOrd(:,2) == grpOrd(j,1));
         %Filter both blks to make contributions from each subject equal at each galvoPosition and across control trials.
         uniformBlk = prc.filtBlock(nBlk, uniformLaserFilters{i} & grpFilter{j});
         
         %Generate "randomBlk" by concatenating control and test blocks. If the repeat number is outside the "normEstRepeats" range then we shuffle
         %the laser activation and galvoPositions
         if i > normEstRepeats
-            uniformBlk.tri.inactivation.grpIdx = uniformBlk.tri.inactivation.grpIdx(randperm(uniformBlk.tot.trials),:);
+            for k = 1:uniformBlk.tot.subjects
+                sIdx = find(uniformBlk.tri.subjectRef == k);
+                uniformBlk.tri.inactivation.grpIdx(sIdx,:) = uniformBlk.tri.inactivation.grpIdx(sIdx(randperm(length(sIdx))),:);
+            end
         end
-        trainBlk = prc.filtBlock(uniformBlk, uniformBlk.tri.inactivation.grpIdx == grpOrd(j,1));
-        testBlk = prc.filtBlock(uniformBlk, uniformBlk.tri.inactivation.grpIdx == grpOrd(j,2));
+        grp1Blk = prc.filtBlock(uniformBlk, uniformBlk.tri.inactivation.grpIdx == grpOrd(j,1));
+        grp2Blk = prc.filtBlock(uniformBlk, uniformBlk.tri.inactivation.grpIdx == grpOrd(j,2));
         
-        trainGLM = fit.GLMmulti(trainBlk, 'simpLogSplitVSplitA');
-        testGLM.blockData.freeP = freeP;
-        trainGLM.fit
-        trainParams{j}(i,:) = trainGLM.prmFits;
-        logLikTrain{j}(i,:) = mean(trainGLM.logLik);
+        randSplit = prc.makeFreqUniform(grp1Blk.tri.subjectRef,1,[],grp1Blk.tot.trials/grp1Blk.tot.subjects/2);
+        trainGrp1Blk = prc.filtBlock(grp1Blk, randSplit);
+        testGrp1Blk = prc.filtBlock(grp1Blk, ~randSplit);
+        
+        randSplit = prc.makeFreqUniform(grp2Blk.tri.subjectRef,1,[],grp2Blk.tot.trials/grp2Blk.tot.subjects/2);
+        trainGrp2Blk = prc.filtBlock(grp2Blk, randSplit);
+        testGrp2Blk = prc.filtBlock(grp2Blk, ~randSplit);
+       
+        
+        trainGrp1GLM = fit.GLMmulti(trainGrp1Blk, 'simpLogSplitVSplitA');
+        trainGrp1GLM.blockData.freeP = freeP;
+        trainGrp1GLM.fit
+        trainGrp1Params{j}(i,:) = trainGrp1GLM.prmFits;
+        trainGrp1LogLik{j}(i,:) = mean(trainGrp1GLM.logLik);
+        
+        trainGrp2Params{altIdx}(i,:) = trainGrp1GLM.prmFits;
+        trainGrp2LogLik{altIdx}(i,:) = mean(trainGrp1GLM.logLik);
+        
+        trainGrp2GLM = fit.GLMmulti(trainGrp2Blk, 'simpLogSplitVSplitA');
+        trainGrp2GLM.blockData.freeP = freeP;
+        trainGrp2GLM.fit
+        trainGrp2Params{j}(i,:) = trainGrp2GLM.prmFits;
+        trainGrp2LogLik{j}(i,:) = mean(trainGrp2GLM.logLik);
+        
+        trainGrp1Params{altIdx}(i,:) = trainGrp2GLM.prmFits;
+        trainGrp1LogLik{altIdx}(i,:) = mean(trainGrp2GLM.logLik);
         
         %After shuffling, separate randomBlk based on laser activation. This will do nothing if unshuffled of course. Then estimate the result
         %(which is based on data2Use and op2Use) for each galvoPosition for testBlk and subtract the single value from the trainBlk.        
-        testGLM = fit.GLMmulti(testBlk, 'simpLogSplitVSplitA');
-        testGLM.prmInit = trainParams{j}(i,:);
-        testGLM.blockData.freeP = (freeP*0)>0;
-        testGLM.fit;
-        testParams{j}(i,:) = mean(testGLM.prmFits,1);
-        logLikTest{j}(i,:) = mean(testGLM.logLik);
+        testGrp1GLM = fit.GLMmulti(testGrp1Blk, 'simpLogSplitVSplitA');
+        testGrp1GLM.prmInit = trainGrp1Params{j}(i,:);
+        testGrp1GLM.blockData.freeP = (freeP*0)>0;
+        testGrp1GLM.fit;
+        testGrp1Params{j}(i,:) = mean(testGrp1GLM.prmFits,1);
+        testGrp1LogLik{j}(i,:) = mean(testGrp1GLM.logLik);
         
-        selfTestGLM = fit.GLMmulti(testBlk, 'simpLogSplitVSplitA');
-        selfTestGLM.prmInit = trainParams{j}(i,:);
-        selfTestGLM.blockData.freeP = freeP;
-        selfTestGLM.fit;
-        selfTestParams{j}(i,:) = mean(selfTestGLM.prmFits,1);
-        logLikSelfTest{j}(i,:) = mean(selfTestGLM.logLik);
-                
+        testGrp2GLM = fit.GLMmulti(testGrp1Blk, 'simpLogSplitVSplitA');
+        testGrp2GLM.prmInit = trainGrp2Params{j}(i,:);
+        testGrp2GLM.blockData.freeP = (freeP*0)>0;
+        testGrp2GLM.fit;
+        testGrp2Params{j}(i,:) = mean(testGrp2GLM.prmFits,1);
+        testGrp2LogLik{j}(i,:) = mean(testGrp2GLM.logLik);
+         
+        
+        testGrp1GLM = fit.GLMmulti(testGrp2Blk, 'simpLogSplitVSplitA');
+        testGrp1GLM.prmInit = trainGrp2Params{j}(i,:);
+        testGrp1GLM.blockData.freeP = (freeP*0)>0;
+        testGrp1GLM.fit;
+        testGrp1Params{altIdx}(i,:) = mean(testGrp1GLM.prmFits,1);
+        testGrp1LogLik{altIdx}(i,:) = mean(testGrp1GLM.logLik);
+        
+        testGrp2GLM = fit.GLMmulti(testGrp2Blk, 'simpLogSplitVSplitA');
+        testGrp2GLM.prmInit = trainGrp1Params{j}(i,:);
+        testGrp2GLM.blockData.freeP = (freeP*0)>0;
+        testGrp2GLM.fit;
+        testGrp2Params{altIdx}(i,:) = mean(testGrp2GLM.prmFits,1);
+        testGrp2LogLik{altIdx}(i,:) = mean(testGrp2GLM.logLik);
+        
         disp([i j]);
     end
 end
 %%
 inactCompResults.posNames = posNames;
-inactCompResults.grpOrd = grpOrd;
+inactCompResults.trainTestGroups = grpOrd;
 inactCompResults.prmLabels = prmLabels;
 inactCompResults.meanPositions = meanPositions;
 inactCompResults.normEstRepeats = normEstRepeats;
-inactCompResults.trainParams = trainParams;
-inactCompResults.testParams = testParams;
-inactCompResults.selfTestParams = selfTestParams;
-inactCompResults.logLikTest = logLikTest;
-inactCompResults.logLikTrain = logLikTrain;
-inactCompResults.logLikSelfTest = logLikSelfTest;
-
+inactCompResults.trainGrp1Params = trainGrp1Params;
+inactCompResults.trainGrp2Params = trainGrp2Params;
+inactCompResults.testGrp1Params = testGrp1Params;
+inactCompResults.testGrp2Params = testGrp2Params;
+inactCompResults.trainGrp1LogLik = trainGrp1LogLik;
+inactCompResults.trainGrp2LogLik = trainGrp2LogLik;
+inactCompResults.testGrp1LogLik = testGrp1LogLik;
+inactCompResults.testGrp2LogLik = testGrp2LogLik;
 %%
 savePath = 'D:\Dropbox (Neuropixels)\MouseData';
 savePath = [savePath '\inactCompResults' datestr(now,'YYMMDD') '.mat'];

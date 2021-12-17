@@ -14,21 +14,35 @@ axesGap = [50/figHeight 50/figWidth];
 botTopMarg = [40, 40]/figHeight;
 lftRgtMarg = [40, 40]/figWidth;
 set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
-conT = 1;
+contra = 1;
+yRng = [-0.1 0.4];
+pType = 'res';
 
 axesHandle = plt.tightSubplot(nRows,nCols,1,axesGap,botTopMarg,lftRgtMarg); cla;
-s.viewInactivationTimedEffects('v1', 'stim', 'vis',1,conT);
-
-% axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); cla;
-s.viewInactivationTimedEffects('mos', 'stim', 'vis',1,conT);
+s.viewInactivationTimedEffects('v1', 'vis', pType,contra, yRng);
+s.viewInactivationTimedEffects('v1', 'aud', pType,contra, yRng);
+title('VIS Inactivation')
 
 axesHandle = plt.tightSubplot(nRows,nCols,2,axesGap,botTopMarg,lftRgtMarg); cla;
-s.viewInactivationTimedEffects('v1', 'stim', 'aud',1,conT);
+s.viewInactivationTimedEffects('mos', 'vis', pType,contra, yRng);
+s.viewInactivationTimedEffects('mos', 'aud', pType,contra, yRng);
+title('MOs Inactivation')
 
-% axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); cla;
-s.viewInactivationTimedEffects('mos', 'stim', 'aud',1,conT);
-%%
-% export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\timedInactivations', '-pdf', '-painters');
+axesHandle = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); cla;
+yRng = [-0.2 0.5];
+s.viewInactivationTimedEffects('s1', 'vis', pType,contra, yRng);
+s.viewInactivationTimedEffects('s1', 'aud', pType,contra, yRng);
+title('S1 Inactivation')
+
+axesHandle = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); cla;
+yRng = [-0.2 0.4];
+s.viewInactivationTimedEffects('out', 'vis', pType,contra, yRng);
+s.viewInactivationTimedEffects('out', 'aud', pType,contra, yRng);
+title('Outside Brain')
+
+plt.suplabel('Change in Rightward Trials with Contra Inactivation', 't')
+
+% export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\timedInactivations_Choices_Ipsi', '-pdf', '-painters');
 %%
 % 
 % 
