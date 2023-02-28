@@ -32,9 +32,11 @@ axesOpt.axesSize = [200 200];
 for mIdx = 1:numOfMice
     %Create "iBlk" (initialBlock) which removes some incorrect galvoPositions, repeated trials, and keeps only valid trials
     iBlk = prc.filtBlock(obj.blks(mIdx), obj.blks(mIdx).tri.inactivation.galvoPosition(:,2)~=4.5 | obj.blks(mIdx).tri.inactivation.laserType==0);
-    iBlk = prc.filtBlock(iBlk, ~ismember(abs(iBlk.tri.inactivation.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | iBlk.tri.inactivation.laserType==0);
+    if ~contains(plotType, 'bil')
+        iBlk = prc.filtBlock(iBlk, ~ismember(abs(iBlk.tri.inactivation.galvoPosition(:,1)),[0.5; 2; 3.5; 5]) | iBlk.tri.inactivation.laserType==0);
+    end
     iBlk = prc.filtBlock(iBlk, iBlk.tri.trialType.repeatNum==1 & iBlk.tri.trialType.validTrial);
-    
+
     if outsideBrain; iBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.galvoPosition(:,2)==5.5); end    
     %Conditional to optionally group inactivaiton sites together (e.g. if you want to combine all V1 sites). We "reflect" these groups, so only one
     %hemisphere needs to be defined. We find all trials with galvoPositions belonging to those groups in iBlk and replace with the mean group position
@@ -45,6 +47,11 @@ for mIdx = 1:numOfMice
         if contains(groups, 'a1'); galvoGrps = [galvoGrps; [4.2,-2; 4.2,-3; 4.2,-4]]; end
         if contains(groups, 'mos'); galvoGrps = [galvoGrps; [0.6 2; 1.8, 2; 0.6, 3]]; end
         if contains(groups, 'av'); galvoGrps = [galvoGrps; [1.8 -4; 3,-4; 4.2,-4; 1.8,-3; 3,-3; 4.2,-3; 1.8,-2; 3,-2; 4.2,-2]]; end
+
+        if contains(groups, 'v1b'); galvoGrps = [galvoGrps; [1.5 -4; 2.5,-4; 2.5,-3]]; end
+        if contains(groups, 'pcb'); galvoGrps = [galvoGrps; [1.5,-2; 2.5,-2; 3.5,-2]]; end
+        if contains(groups, 'mosb'); galvoGrps = [galvoGrps; [0.5 2; 1.5, 2; 0.5, 3]]; end
+                
         galvoGrps = [galvoGrps; cellfun(@(x) [x(:,1)*-1, x(:,2)], galvoGrps, 'uni', 0)];
         grpNum = length(galvoGrps);
         grpIdx = cellfun(@(x,y) ismember(iBlk.tri.inactivation.galvoPosition, x, 'rows').*y, galvoGrps, num2cell(1:grpNum)', 'uni', 0);
@@ -63,6 +70,10 @@ for mIdx = 1:numOfMice
         iBlk.tri.stim.visInitialAzimuth(rIdx) = iBlk.tri.stim.visInitialAzimuth(rIdx)*-1;
         iBlk.tri.stim.visInitialAzimuth(isinf(iBlk.tri.stim.visInitialAzimuth)) = inf;
         iBlk.tri.inactivation.galvoPosition(rIdx,1) = -1*iBlk.tri.inactivation.galvoPosition(rIdx,1);
+    end
+    if contains(plotType, 'bil')
+        iBlk.tri.inactivation.galvoPosition(:,1) = abs(iBlk.tri.inactivation.galvoPosition(:,1));
+        iBlk = prc.filtBlock(iBlk, iBlk.tri.outcome.reactionTime<1.5);
     end
     
     %We add "data2Use" to the outcome structure, and this will change depend on the data we want to compare between inactivaiton sites
@@ -97,6 +108,10 @@ for mIdx = 1:numOfMice
     %Create normBlk and uniBlk which are filtered versions of iBlk with only control or inactivation trials respectively
     normBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==0);
     uniBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==1);
+    if contains(plotType, 'bil')
+        uniBlk = prc.filtBlock(iBlk, iBlk.tri.inactivation.laserType==2);
+        iBlk.tri.stim.visDiff = sign(iBlk.tri.stim.visDiff);
+    end
     
     [~, gridXY] = prc.makeGrid(uniBlk, uniBlk.tri.inactivation.data2Use, op2Use, 'galvouni',[],1);
     inactResultsForChoice.subsets = subsets;
@@ -116,7 +131,7 @@ for mIdx = 1:numOfMice
         %Use some matrix tricks to create "uniformLaserFilters" which is a filter for each shuffle that equalizes the frequency of subjects
         %contributing to each point in the grid of galvo positions.
         trialIdx = (1:testBlk.tot.trials)';
-        nonUniformLaser = prc.makeGrid(testBlk, [double(testBlk.tri.subjectRef) trialIdx], [], 'galvouni',2);
+        nonUniformLaser = prc.makeGrid(testBlk, [double(testBlk.tri.subjectRef) trialIdx], [], 'galvouni',2,1);
         laserShuffles = cellfun(@(x) double(prc.makeFreqUniform(x(:,1),normEstRepeats,x(:,2))), nonUniformLaser, 'uni', 0);
         laserShuffles = num2cell(cell2mat(laserShuffles(:)),1);
         uniformLaserFilters = repmat(cellfun(@(x) ismember(trialIdx, x), laserShuffles, 'uni', 0),11,1);
@@ -144,11 +159,15 @@ for mIdx = 1:numOfMice
                 randomBlk.tri.inactivation.laserType = randomBlk.tri.inactivation.laserType(randperm(randomBlk.tot.trials));
                 randomBlk.tri.inactivation.galvoPosition = randomBlk.tri.inactivation.galvoPosition(randperm(randomBlk.tot.trials),:);
             end
-            
+
             %After shuffling, separate randomBlk based on laser activation. This will do nothing if unshuffled of course. Then estimate the result
             %(which is based on data2Use and op2Use) for each galvoPosition for subTestBlk and subtract the single value from the subContBlk.
             subContBlk = prc.filtBlock(randomBlk, randomBlk.tri.inactivation.laserType==0);
-            subTestBlk = prc.filtBlock(randomBlk, randomBlk.tri.inactivation.laserType==1);
+            if contains(plotType, 'bil')
+                subTestBlk = prc.filtBlock(randomBlk, randomBlk.tri.inactivation.laserType==2);
+            else
+                subTestBlk = prc.filtBlock(randomBlk, randomBlk.tri.inactivation.laserType==1);
+            end
             inactGrid(:,:,j) = prc.makeGrid(subTestBlk, subTestBlk.tri.inactivation.data2Use, op2Use, 'galvouni',[],1);
             controlGrid(:,:,j) = op2Use(subContBlk.tri.inactivation.data2Use)+(inactGrid(:,:,j)*0);
             disp([i j]);
@@ -162,10 +181,11 @@ for mIdx = 1:numOfMice
         scanPlot.pVals = cell2mat(arrayfun(@(x,y) max([find(x==y{1},1) nan])./nShuffles, abs(contData), sortedData,'uni', 0));
         scanPlot.data = contData; disp(contData);
         scanPlot.addTrialNumber = 0;
-        sigLevels = [0.05; (10.^(-2:-1:-10))'];
-        lastSigLevel = find(sigLevels>min(scanPlot.pVals(:)),1,'last');
-        scanPlot.sigLevels = sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
-        
+        %         sigLevels = [0.05; (10.^(-2:-1:-10))'];
+        %         lastSigLevel = find(sigLevels>min(scanPlot.pVals(:)),1,'last');
+        %         scanPlot.sigLevels = sigLevels(max([1 lastSigLevel-2]):lastSigLevel);
+        scanPlot.sigLevels = [10^-2; 10^-3; 10^-4];
+
         %%Plot the data in the "scanPlot" structure.
         axesOpt.numOfRows = 1;%min([4 length(subsets)]);
         axesOpt.numOfCols = 4;%numOfMice;

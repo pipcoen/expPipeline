@@ -10,12 +10,17 @@ if ~useCurrentAxes && ~strcmpi(plotType, 'none'); figure; end
 axesOpt.totalNumOfAxes = length(obj.blks);
 axesOpt.btlrMargins = [80 100 80 40];
 axesOpt.gapBetweenAxes = [100 60];
-axesOpt.numOfRows = min(length(obj.blks), 4);
+axesOpt.numOfRows = min(length(obj.blks), 2);
 axesOpt.figureHWRatio = 1.1;
 if ~onlyPlt; obj.glmFit = cell(length(obj.blks),1); end
+recalcContrastPower = 0;
 for i  = 1:length(obj.blks)   
     if ~onlyPlt
         normBlk = spatialAnalysis.getBlockType(obj.blks(i),'norm');
+        if ~any(normBlk.tri.stim.audInitialAzimuth==0)
+            normBlk.tri.stim.audInitialAzimuth(isinf(normBlk.tri.stim.audInitialAzimuth)) = 0;
+            normBlk.tri.stim.audDiff(isinf(normBlk.tri.stim.audDiff)) = 0;
+        end
         normBlk = prc.filtBlock(normBlk,~isinf(normBlk.tri.stim.audInitialAzimuth));
         disp(normBlk.tot.trials);
         obj.glmFit{i} = fit.GLMmulti(normBlk, modelString);
@@ -39,8 +44,9 @@ for i  = 1:length(obj.blks)
     plotOpt.Marker = 'none';
     
     if strcmp(plotType, 'log')
-        if ~exist('contrastPower', 'var')
+        if recalcContrastPower == 1 || ~exist('contrastPower', 'var')
             contrastPower  = params2use(strcmp(obj.glmFit{i}.prmLabels, 'N'));
+            recalcContrastPower = 1;
         end
         if isempty(contrastPower)
             tempFit = fit.GLMmulti(normBlk, 'simpLogSplitVSplitA');

@@ -55,7 +55,7 @@ glmBlk.viewGLMFits('visOnly', [],'log', 1,pow2use)
 axesHandle = plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg); cla
 glmBlk.viewGLMFits('audOnly', [],'log', 1,pow2use)
 
-export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\FullAddModelFitAnalysis_GLMs', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\FullAddModelFitAnalysis_GLMs', '-pdf', '-painters');
 %%
 figure;
 gcaeight = 250;
@@ -81,7 +81,7 @@ for i = 1:6
     plot(xlim, xlim, '--k')
     title(tVals(tIdx(i)-1))
 end
-export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\FullAddModelFitAnalysis_Scatter', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\FullAddModelFitAnalysis_Scatter', '-pdf', '-painters');
 
 %%
 figure;
@@ -144,7 +144,9 @@ set(gca, 'position', get(gca, 'position').*[1.3 1 1 1]);
 
 %%
 plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg); cla;
+logLikDiff = cellfun(@(x) x-plotOpt.yData{6}, plotOpt.yData([7 8]), 'uni', 0);
 opt.faceColors = repmat({[0 0 0]}, length(logLikDiff{1}),1);
-opt.linkedGroups = [1 2];
-plt.jitter(logLikDiff, opt);
+hold on
+cellfun(@(x,y) plot([1,2], [x,y]), plotOpt.yData{6}, plotOpt.yData{7})
+ylim([-0.005 0.005])
 end

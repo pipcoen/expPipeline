@@ -49,7 +49,7 @@ botTopMarg = [40, 40]/figHeight;
 lftRgtMarg = [40, 40]/figWidth;
 set(gcf, 'position', get(gcf, 'position').*[1 0 0 0] + [0 200 figWidth, figHeight]);
 
-
+sites ={'MOs'; 'VIS'; 'AUD'; 'S1'};
 for i = 1:4
     plt.tightSubplot(nRows,nCols,i,axesGap,botTopMarg,lftRgtMarg); cla
     yDat = squeeze(delta_mIdx_Prm_Site(:,:,i));
@@ -63,7 +63,6 @@ for i = 1:4
     end
     
     plot(xlim, [0 0], '--k')
-    sites ={'MOs'; 'VIS'; 'AUD'; 'S1'};
     plot(gca, xDat, yDat,'ok', 'MarkerEdgeColor', 'k','MarkerFaceColor', 'k', 'MarkerSize',5);
     [~, pVal] = ttest(yDat);
     xlim([0 nXPnts]);
@@ -77,4 +76,4 @@ for i = 1:4
 end
 
 %%
-export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\sigTest4InactivationSites', '-pdf', '-painters');
+% export_fig('D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\sigTest4InactivationSites', '-pdf', '-painters');

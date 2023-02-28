@@ -21,7 +21,7 @@ if ~exist('redoTag', 'var') || isempty(redoTag); redoTag = 0; end
 if ~exist('dataType', 'var') || isempty(dataType); dataType = 'all'; end
 if ~exist('selectedSubjects', 'var'); selectedSubjects = {'PC'; 'DJ'}; end
 if ~exist('selectedDates', 'var'); selectedDates = {'1'}; end
-if strcmp(hostname, 'zip'); zipComp = 1; else, zipComp = 0; end
+if strcmp(hostname, 'zippy'); zipComp = 1; else, zipComp = 0; end
 
 if ~zipComp; return; end
 %If running on Pip's lab computer, sync the processed data in dropbox with his shared folder on the server.
@@ -168,7 +168,7 @@ x.newBlock.rawWheelTimeValue = [wheelTime wheelValue-wheelValue(1)];
 blockFunction = str2func(['prc.expDef.' x.expDef]);
 x = blockFunction(x);
 
-if contains(x.expType, {'inactivation'}) && length(unique(x.newBlock.params.laserOnsetDelays)) > 1
+if contains(x.expType, {'inactivation'}) && length(unique(x.standardizedParams.laserOnsetDelays)) > 1
     x.timeline = load(x.rawTimeline); x.timeline = x.timeline.Timeline;
     [x.standardizedBlock, x.aligned] = prc.alignBlock2Timeline(x.standardizedBlock, x.timeline, 'multiSpaceWorldInactivation');
     x.newBlock.inactivation.laserOnsetDelay = x.aligned.laserTTLPeriodOnOff(:,1)-x.aligned.visStimPeriodOnOff(:,1);

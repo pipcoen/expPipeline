@@ -10,18 +10,28 @@ figure;
 axesOpt.totalNumOfAxes = length(obj.blks);
 axesOpt.btlrMargins = [80 100 80 40];
 axesOpt.gapBetweenAxes = [100 60];
-axesOpt.numOfRows = ceil(length(obj.blks)/5);
+axesOpt.numOfRows = ceil(length(obj.blks)/4);
 axesOpt.axesSize = [400 450];
 
 
 allR2 = [];
 for i  = 1:length(obj.blks)
     blk = spatialAnalysis.getBlockType(obj.blks(i),'norm',1);
-    blk = prc.filtBlock(blk, blk.tri.stim.audAmplitude~=0);
+%     blk = prc.filtBlock(blk, blk.tri.stim.audAmplitude~=0);
     plotOpt.Marker = '.'; plotOpt.MarkerSize = 20; plotOpt.lineStyle = '-';
     obj.hand.axes = plt.getAxes(axesOpt, i);
     audValues = unique(blk.exp.conditionParametersAV{1}(:,1));
     visValues = unique(blk.exp.conditionParametersAV{1}(:,2));
+
+    if ~any(blk.tri.stim.audInitialAzimuth==0)
+        blk.tri.stim.audInitialAzimuth(isinf(blk.tri.stim.audInitialAzimuth)) = 0;
+        blk.tri.stim.audDiff(isinf(blk.tri.stim.audDiff)) = 0;
+        for q = 1:length(blk.exp.conditionParametersAV)
+            paramsAV = blk.exp.conditionParametersAV{q};
+            blk.exp.conditionParametersAV{q}(isinf(paramsAV(:,1))) = 0;
+        end
+        blk = prc.filtBlock(blk, blk.tri.outcome.reactionTime < 1.5);
+    end
     
     grds = prc.getGridsFromBlock(blk);
     switch plotType(1:3)
@@ -29,6 +39,7 @@ for i  = 1:length(obj.blks)
             grds.reactionTimeComb(all(isnan(grds.reactionTime),2),:) = [];
             colors =  plt.selectRedBlueColors(grds.audValues(~isinf(grds.audValues(:,1)),1));
             plt.rowsOfGrid(grds.visValues(1,:)*100, grds.reactionTimeComb, colors);
+            yAxLabel = 'Reaction time (s)';
         case 'ken'
             blk = prc.getKennethResopnseFromBlock(blk);
             gridData = prc.makeGrid(blk, round(blk.tri.outcome.timeToKenMove*1e3), @nanmedian, [], 1);
@@ -37,6 +48,7 @@ for i  = 1:length(obj.blks)
         case 'res'
 %             gridData = prc.makeGrid(blk, blk.tri.outcome.responseCalc==2, @mean, 1);
             colors =  plt.selectRedBlueColors(grds.audValues(~isinf(grds.audValues(:,1)),1));
+            if all(isinf(grds.audValues(end,:))); colors = [colors; 0 0 0];end
             plt.rowsOfGrid(grds.visValues(1,:)*100, grds.fracRightTurns(1:3,:), colors);
 %             plt.gridSplitByRows(gridData, visValues*100, audValues, plotOpt);
             ylim([0 1]);
@@ -45,6 +57,7 @@ for i  = 1:length(obj.blks)
             xlim([-maxContrast maxContrast]);
             set(gca, 'xTick', round(((-maxContrast):(maxContrast/4):maxContrast)), 'xTickLabel', round(((-maxContrast):(maxContrast/4):maxContrast)));
             yL = ylim; hold on; plot([0 0], yL, '--k', 'linewidth', 1.5);
+            yAxLabel = 'Fraction of right choices';
         case 'tst'
             blk.tri.outcome.firstMoveDirection = cellfun(@(x) x(1,2), blk.tri.outcome.timeDirAllMoveOnsets);
             gridData = prc.makeGrid(blk, blk.tri.outcome.firstMoveDirection==2, @mean, 1);
@@ -76,6 +89,6 @@ for i  = 1:length(obj.blks)
 end
 figureSize = get(gcf, 'position');
 mainAxes = [80./figureSize(3:4) 1-2*(70./figureSize(3:4))];
-plt.suplabel('\fontsize{20} Fraction of right choices', 'y', mainAxes);
+plt.suplabel(['\fontsize{20} ' yAxLabel], 'y', mainAxes);
 plt.suplabel('\fontsize{20} Visual Contrast', 'x', mainAxes);
 end

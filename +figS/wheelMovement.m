@@ -134,11 +134,88 @@ box off;
 plot(xlim, velThresh*[1 1], '--k');
 plot(xlim, velThresh*[1 1]*-1, '--k');
 %%
+axH = plt.tightSubplot(nRows,nCols,6,axesGap,botTopMarg,lftRgtMarg); 
+hold on
+sAct = spatialAnalysis('all', 'm2ephysmod',1,1,'eph','multiSpaceWorld');
+sAct = sAct.blks;
+sPass = spatialAnalysis('all', 'm2ephysmod',1,1,'eph','multiSpaceWorldPassive');
+sPass = sPass.blks;
+
+% sAct = prc.filtBlock(sAct, sAct.tri.trialType.validTrial & ~isnan(sAct.tri.outcome.responseCalc));
+sAct = prc.filtBlock(sAct, sAct.tri.trialType.validTrial & ~sAct.tri.trialType.blank);
+sPass = prc.filtBlock(sPass, ~sPass.tri.trialClass.closedLoopOnsetTone ...
+    & ~sPass.tri.trialClass.rewardClick...
+    & ~sPass.tri.trialClass.blank);
+%%
+segVect = -1:0.005:0.5;
+wheelPosPlot = cell(2,1);
+for i = 1:2
+    if i ==1
+        wheelTV = sAct.tri.timeline.wheelTraceTimeValue;
+        stimTime = double(min([sAct.tri.timeline.visStimPeriodOnOff(:,1), sAct.tri.timeline.audStimPeriodOnOff(:,1)],[],2));
+    else
+        wheelTV = sPass.tri.timeline.wheelTraceTimeValue;
+        stimTime = double(min([sPass.tri.timeline.visStimPeriodOnOff(:,1), sPass.tri.timeline.audStimPeriodOnOff(:,1)],[],2));
+    end
+
+    wheelTV(cellfun(@(x) size(x,1)==1, wheelTV)) = deal({[-0.5,0;0.5,0]});
+    wheelTV = cellfun(@(x,y) [double(x(:,1))-y+(rand(length(x(:,1)),1)/1e5) double(360*x(:,2)/(4*360))], wheelTV, num2cell(stimTime), 'uni', 0);
+    interpWheel = cellfun(@(x) interp1(x(:,1), x(:,2), segVect, 'nearest','extrap'), wheelTV, 'uni', 0);
+    wheelPosPlot{i,1} = cell2mat(interpWheel);
+    wheelPosPlot{i,1} = abs(bsxfun(@minus, wheelPosPlot{i,1}, wheelPosPlot{i,1}(:,segVect==0)));
+end
+%%
+cla
+pIdx = segVect>-0.05 & segVect<=0.5;
+clear actVals pasVals
+for i = 1:sAct.tot.subjects
+    sIdx = sAct.tri.subjectRef==i;
+    actVals(i,:) = mean(wheelPosPlot{1}(sIdx,pIdx),'omitnan');
+    pasVals(i,:) = mean(wheelPosPlot{2}(sIdx,pIdx),'omitnan');
+end
+opt.Marker = 'none';
+opt.lineWidth = 0.5;
+
+plt.rowsOfGrid(segVect(pIdx), actVals, repmat([1,0,0],5,1), opt)
+plot(segVect(pIdx), mean(actVals), 'r', 'linewidth', 3);
+
+plt.rowsOfGrid(segVect(pIdx), pasVals, repmat([0,0,1],5,1), opt)
+plot(segVect(pIdx), mean(pasVals), 'b', 'linewidth', 3);
+
+xline(0, '--k', 'LineWidth',2, 'alpha', 1)
+
+xlim([-0.05, 0.5]);
+box off;
+
+
+%%
+% cla
+% pIdx = segVect>-0.05 & segVect<0.5;
+% for i = 1:sAct.tot.subjects+1
+%     sIdx = sAct.tri.subjectRef==i;
+% 
+%     testVals = mean(wheelPosPlot{1}(sIdx,pIdx),'omitnan');
+% %     normVals = mean(wheelPosPlot{2}(sIdx,pIdx),'omitnan');
+%     plot(segVect(pIdx), testVals, 'r');
+% 
+% 
+%     testVals = mean(wheelPosPlot{3}(sIdx,pIdx),'omitnan');
+% %     normVals = mean(wheelPosPlot{4}(sIdx,pIdx),'omitnan');
+%     plot(segVect(pIdx), testVals, 'b');
+% 
+%     hold on;
+% end
+% xlim([-0.05, 0.5]);
+% ylabel('Abs wheel position')
+% xlabel('Time from stimulus')
+% 
+% box off;
+%%
 axH = plt.tightSubplot(nRows,nCols,4,axesGap,botTopMarg,lftRgtMarg); 
 cla; hold on;
 
 opt.Marker = 'none';
-load('figSSVMMoveModel_mov', 'svmMod')
+load('figS1SVMMoveModel_mov', 'svmMod')
 cCol = [0 1 1; 1 0 1];
 
 for i = 1:2
@@ -154,11 +231,11 @@ ylim([0.5 1])
 axH = plt.tightSubplot(nRows,nCols,5,axesGap,botTopMarg,lftRgtMarg); 
 cla; hold on;
 
-load('figSSVMMoveModel_stm', 'svmMod')
+load('figS1SVMMoveModel_stm', 'svmMod')
 for i = 1:2
     modelPerf = cell2mat(cellfun(@(x) mean(x(:,:,i))', svmMod.modPerf, 'uni', 0))';
     meanData = mean(modelPerf);
-    seData = std(modelPerf)./sqrt(size(modelPerf,1));;
+    seData = std(modelPerf)./sqrt(size(modelPerf,1));
     plotData = cat(3, meanData, meanData-seData, meanData+seData);
     plt.rowsOfGrid(svmMod.svmTimes, plotData, cCol(i,:), opt);
 end
@@ -171,5 +248,5 @@ ylim([0.5 0.8])
 % s.viewRightLeftWheelSeparationOverTime;
 
 %%
-export_fig('D:\OneDrive\Papers\Coen_2020\FigureParts\SupX_wheelMovements', '-pdf', '-painters');
+export_fig('C:\Users\Pip\OneDrive - University College London\Papers\Coen_2021\NeuronRevision\Round2\NewFigures\SupX_wheelMovements', '-pdf', '-painters');
 end

@@ -227,6 +227,6 @@ if strcmpi(opt.pltType, 'mean') || strcmpi(opt.pltType, 'both')
         end
     end
     fName = [sName 'Diff_nRev' num2str(opt.revNorm) '_' opt.siteLoc];
-    export_fig(['D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\' fName], '-pdf', '-painters');
+%     export_fig(['D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\' fName], '-pdf', '-painters');
 end
 end

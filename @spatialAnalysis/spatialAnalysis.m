@@ -46,7 +46,7 @@ classdef spatialAnalysis < matlab.mixin.Copyable
             if ~iscell(expDate); expDate = {expDate}; end
             if ~iscell(subjects); subjects = {subjects}; end
             if any(strcmp(subjects, 'all'))
-                subjects = [arrayfun(@(x)['PC0' num2str(x)], 11:99,'uni', 0),'DJ006', 'DJ007','DJ008','DJ010'];
+                subjects = [arrayfun(@(x)['PC0' num2str(x)], 10:99,'uni', 0),'DJ006', 'DJ007','DJ008','DJ010'];
             end
             
             %If there is only one date provided, repeat for all subjects.

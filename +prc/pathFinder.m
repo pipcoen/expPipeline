@@ -33,19 +33,21 @@ if ~iscell(datNum); datNum = {datNum}; end
 %Assign the drive name and directoryCheck depending on where Pip keeps his dropbox
 hostName = hostname;
 if contains(hostName, 'ziptop'); driveName = 'C:';
+elseif contains(hostName, 'zippy'); driveName = 'C:\Users\Pip';
 else, driveName = 'D:';
 end
 
 if contains(hostName, {'homerig'; 'ziptop'}); directoryCheck = 'local';
 elseif strcmp(hostName, {'zip'}); directoryCheck = 'all';
+elseif strcmp(hostName, {'zippy'}); directoryCheck = 'all';
 else; directoryCheck = 'server';
 end
 
 %Assign locations for the raw data, processed data etc. depending on the access of the computer being used.
 rawBackup = [driveName '\Dropbox (Neuropixels)\MouseData\RawBehavior\'];
-serverProcessedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData4Paper\';
+serverProcessedDirectory = '\\znas.cortexlab.net\lab\Share\Pip\ProcessedData4Paper\';
 if strcmp(directoryCheck, 'server')
-    processedDirectory = '\\zserver.cortexlab.net\lab\Share\Pip\ProcessedData4Paper\';
+    processedDirectory = '\\znas.cortexlab.net\lab\Share\Pip\ProcessedData4Paper\';
     if contains('rawBlock', pathType); pathType{contains(pathType, 'rawBlock')} = 'serverBlock'; end
     if contains('rawParams', pathType); pathType{contains(pathType, 'rawParams')} = 'serverParams'; end
 else
@@ -62,7 +64,7 @@ for i = 1:size(subject,1)
     processedFileName = [subject{i} '\' subject{i} '_' expDate{i}([3:4 6:7 9:10]) '_' expNum{i}  'Proc.mat'];
     
     %Annoying adjustments to account for changes in which server stored the data in lab. This is the expInfo path.
-    expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zserver.cortexlab.net\Data\Subjects\'; ...
+    expInfo = {'\\zubjects.cortexlab.net\Subjects\'; '\\zinu.cortexlab.net\Data\Subjects\'; ...
         '\\znas.cortexlab.net\Subjects\'; '\\128.40.224.65\Subjects\'};
     if ~strcmp(expDate{i}, 'noDataGiven')
         if strcmp(datNum, 'noDataGiven'); datNum = {datenum(expDate, 'yyyy-mm-dd')}; end
@@ -72,7 +74,7 @@ for i = 1:size(subject,1)
         elseif datNum{i} > 737612 && datNum{i} <= 737739; expInfo = expInfo{2}; %'2019-07-06'
         elseif datNum{i} > 737739 && datNum{i} <= 738157; expInfo = expInfo{3}; %'2019-11-10'
         elseif datNum{i} > 738158; expInfo = expInfo{4}; %'2021-01-01'
-        else, expInfo = expInfo{2};g
+        else, expInfo = expInfo{2};
         end
     end
     

@@ -12,7 +12,7 @@ function expList = scanForNewFiles(rebuildList, chkExpRigs)
 %   .expNum-----------------Experiment number for session
 %   .expDef-----------------The experimental definition file used
 %   .excluded---------------Tag for excluded files (these may be excluded for a variety of reasons)
-%   .rigName----------------Name of the rig where the experiment took place
+%   .rigName----------------Name of the rig where the experiment took placeexpList
 %   .expType----------------Type of experiment (e.g. training, ephys, fusi, etc.)
 %   .expDuration------------Duration of the experiment (s)
 %   .expDets----------------Empty placeholder for extra experimental details to be later loaded
@@ -27,9 +27,9 @@ expInfo = prc.pathFinder('expInfo');
 
 %The full list of subjects to be included (generally, mice that learnt the task and have a decent amount of data). 
 includedMice = [... 
-    cellfun(@(x) ['PC0' x], split({'11,12,13,15,22,27,29,30,31,32,33,34,43,45,46,48,50,51,52,53,54,55'},','), 'uni', 0); ...
+    cellfun(@(x) ['PC0' x], split({'10,11,12,13,15,22,27,29,30,31,32,33,34,43,45,46,48,50,51,52,53,54,55'},','), 'uni', 0); ...
     cellfun(@(x) ['DJ0' x], split({'06,07,08,10'},','), 'uni', 0)];
-aliveMice = {'PC052'; 'PC053'}; %Mice that are currently alive (i.e. may generate new data)
+aliveMice = {'X'}; %Mice that are currently alive (i.e. may generate new data)
 
 %Optional "started" and "retired" dates. This could be relevant if the same subject name was used by other people, or if you wanted to exclude a
 %swathe of dates from a particular mouse for some reason. Defaults assume all data from a given mouse is included.
@@ -44,7 +44,7 @@ if any(retiredIdx); includedMice(retiredIdx > 0,3) = num2cell(datenum(retiredDat
 
 %% Create the search tree for experiments
 %Depending on rebuildList, we assign a number of folder cycles to look through, folders from the last 10 days (for living mice), etc.
-nDays2Chk = 30;
+nDays2Chk = 2000;
 if rebuildList == 0
     cycles = 2;
     mice2Update = includedMice(contains(includedMice(:,1), aliveMice),:);
@@ -123,7 +123,7 @@ for i = 1:length(processList)
     b = block;
     
     backUpDir = fileparts(prc.pathFinder('backupblock', newExp));
-    if strcmp(hostname, 'zip') && ~exist(prc.pathFinder('backupblock', newExp), 'file')
+    if strcmp(hostname, 'zippy') && ~exist(prc.pathFinder('backupblock', newExp), 'file')
         if ~exist(backUpDir, 'dir'); mkdir(backUpDir); end
         copyfile(prc.pathFinder('serverblock', newExp), backUpDir)
         copyfile(prc.pathFinder('serverparams', newExp), backUpDir)

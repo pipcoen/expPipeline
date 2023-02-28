@@ -22,7 +22,7 @@ switch projTag
         pOrd = [2,1,3];
 end
 brainOutline = cell2mat(bwboundaries(permute((max(av,[],pIdx)) > 1,pOrd), 'noholes'));
-plot(axH, brainOutline(:,2), brainOutline(:,1),'k','linewidth',2);
+plot(axH, brainOutline(:,2), brainOutline(:,1),'k','linewidth',4);
 
 %%
 cOrd = 'rbmcgy';

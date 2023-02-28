@@ -13,7 +13,7 @@ axesOpt.numOfCols = length(subsets);
 axesOpt.totalNumOfAxes = length(subsets)*nMice;
 
 subRegions = {[0.6 2; 1.8, 2; 0.6, 3];[1.8 -4; 3,-4; 3,-3];[4.2,-2; 4.2,-3; 4.2,-4]};
-compareEffect = cell(length(subRegions),length(subsets));
+compareEffect_RegSubset = cell(length(subRegions),length(subsets));
 %%
 gridXY = inactResultsForChoice.gridXY{1};
 for j = 1:nMice
@@ -24,8 +24,7 @@ for j = 1:nMice
             for q = 1:length(subRegions{k})
                 dat2Take(gridXY{1}==subRegions{k}(q,1) & gridXY{2}==subRegions{k}(q,2)) = 1;
             end
-            dat2Take
-            compareEffect{k,i}(j,1) = mean(contData(dat2Take>0));
+            compareEffect_RegSubset{k,i}(j,1) = mean(contData(dat2Take>0));
         end
     end
 end

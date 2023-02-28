@@ -87,17 +87,17 @@ switch lower(dataTag{1})
         
     case 'biscan'
         switch subjectID{1}
-            case 'PC010'; dateRange = {'2017-06-20:2017-07-04'}; %Power was only 1.5mW
-            case 'PC012'; dateRange = {'2017-06-21:2017-07-04'}; %Power was only 1.5mW
-            case 'PC013'; dateRange = {'2017-06-20:2017-07-04'}; %Power was only 1.5mW
+            case 'PC010'; dateRange = {'2017-06-20:2017-07-05'}; %Power was only 1.5mW
+            case 'PC012'; dateRange = {'2017-06-21:2017-07-05'}; %Power was only 1.5mW
+            case 'PC013'; dateRange = {'2017-06-20:2017-07-06'}; %Power was only 1.5mW
             otherwise, dateRange = []; 
         end
 
     case 'biscannorm'
         switch subjectID{1}
-            case 'PC010'; dateRange = {'2017-07-05:2017-07-09'}; %Power was only 1.5mW
-            case 'PC012'; dateRange = {'2017-07-05:2017-07-09'}; %Power was only 1.5mW
-            case 'PC013'; dateRange = {'2017-07-05:2017-07-09'}; %Power was only 1.5mW
+            case 'PC010'; dateRange = {'2017-06-20:2017-07-0'}; %Power was only 1.5mW
+            case 'PC012'; dateRange = {'2017-06-21:2017-07-05'}; %Power was only 1.5mW
+            case 'PC013'; dateRange = {'2017-06-20:2017-07-06'}; %Power was only 1.5mW
             otherwise, dateRange = [];
         end
  

@@ -3,8 +3,8 @@ function scatterPlotsDifferenceWithLMETestComplete(opt)
 uniBlks = spatialAnalysis('all', 'uniscan', 0, 1);
 %%
 if ~exist('opt', 'var'); opt = struct; end
-if ~isfield(opt, 'prmType'); opt.prmType = 'rea'; end
-if ~isfield(opt, 'pltType'); opt.pltType = 1; end
+if ~isfield(opt, 'prmType'); opt.prmType = 'ti2'; end
+if ~isfield(opt, 'pltType'); opt.pltType = 2; end
 %pre-assign performance and reaction structures with nans
 nMice = length(uniBlks.blks);
 clear reacN reacL
@@ -19,13 +19,16 @@ for mouse = 1:nMice
     
     if strcmpi(opt.prmType, 'rea')
         f2Use = 'reactionTimeComb';
-        op2use  = @nanmedian;
         iBlk.tri.datGlobal = iBlk.tri.outcome.reactionTime;
         iBlk = prc.filtBlock(iBlk, ~isnan(iBlk.tri.outcome.reactionTime));
-    else
+    elseif strcmpi(opt.prmType, 'tim')
         f2Use = 'fracTimeOutComb';
-        op2use  = @mean;
         iBlk.tri.datGlobal = iBlk.tri.outcome.responseRecorded==0;
+    elseif strcmpi(opt.prmType, 'ti2')
+        f2Use = 'fracLongResponses';
+%         iBlk.tri.outcome.reactionTime(iBlk.tri.outcome.responseRecorded == 0) = 1.5;
+        iBlk.tri.datGlobal = iBlk.tri.outcome.reactionTime;
+        iBlk = prc.filtBlock(iBlk, ~isnan(iBlk.tri.outcome.reactionTime));
     end
     
     for Cn_Ip = 1:2
@@ -140,6 +143,7 @@ elseif strcmpi(opt.prmType, 'tim')
 end
 axLims = [-35 105];
 if strcmpi(opt.prmType, 'tim'); axLims = [-0.08 0.45]; end
+if strcmpi(opt.prmType, 'ti2'); axLims = [-0.2 0.45]; end
 
 figure;
 axHeight = 250;
@@ -195,13 +199,14 @@ if opt.pltType == 1
             text(1,max(ylim)*1.1,legendCell, 'fontsize', 10)
         end
     end
-    fName = [sName 'InactiveDelta'];
-    export_fig(['D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\' fName], '-pdf', '-painters');
+%     fName = [sName 'InactiveDelta'];
+%     export_fig(['D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\' fName], '-pdf', '-painters');
 end
-
-
+%%
+set(gcf, 'position', get(gcf, 'position').*[1 1 0 0] + [0 0 figWidth, figHeight]);
 if opt.pltType == 2
     for Cn_Ip = 1:2
+        figure;
         for triType = 1:length(typeOrd)
             axH = plt.tightSubplot(nRows,nCols,triType,axesGap,botTopMarg,lftRgtMarg);
             hold on
@@ -233,7 +238,7 @@ if opt.pltType == 2
             end
             
             for i = 1:length(compDo)
-                if pValSite_triT_Cn_Ip{i}(triT,Cn_Ip) < 0.05
+                if pValSite_triT_Cn_Ip{i}(triType,Cn_Ip) < 0.05
                     S = num2str(pValSite_triT_Cn_Ip{i}(triType,Cn_Ip), '%.1E');
                 else
                     S = 'ns';
@@ -252,7 +257,7 @@ if opt.pltType == 2
             legendCell = [typeOrd{triType} ' Trials-' leftAlign{Cn_Ip}];
             text(1,max(ylim)*1.1,legendCell, 'fontsize', 10)
         end
-        fName = [sName 'Alt_InactiveDelta_' leftAlign{Cn_Ip}];
-        export_fig(['D:\OneDrive\Papers\Coen_2021\Revision\NewFigureParts\' fName], '-pdf', '-painters');
+%         fName = [sName 'Alt_InactiveDelta_' leftAlign{Cn_Ip}];
+        export_fig(['C:\Users\Pip\OneDrive - University College London\Papers\Coen_2021\NeuronRevision\Round2\NewFigures\Rev_SlowResponses_' leftAlign{Cn_Ip}], '-pdf', '-painters');
     end
 end

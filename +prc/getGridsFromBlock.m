@@ -29,8 +29,10 @@ if fastMode < 3
     grids.reactionTime = nanmean(grids.reactionTime, 3);
 end
 
+grids.fracRightTurnsComb = prc.makeGrid(blk, outC.responseCalc==2, @nanmean);
 grids.reactionTimeComb = prc.makeGrid(blk, outC.reactionTime, @nanmedian);
 grids.timeToResponseThreshComb = prc.makeGrid(blk, outC.timeToResponseThresh, @nanmedian);
+grids.fracLongResponses = prc.makeGrid(blk, outC.reactionTime>0.3, @nanmean);
 grids.fracTimeOutComb = prc.makeGrid(blk, outC.responseRecorded==0, @nanmean);
 
 
